@@ -1,0 +1,18 @@
+Event_0nym0la at=(15.7,-13.6) size=2.6x3
+Event_0tmbhob at=(21.3,-7.8) size=2.6x3
+Event_1125kuo at=(21.3,-13.6) size=2.6x3
+Event_1mid6b7 at=(15.7,-7.8) size=2.6x3
+Event_1vph62a at=(8.3,-7.8) size=2.6x3
+Event_1wmhvbv at=(30.1,-10.5) size=2.6x3
+Nesting_0cbyns1 area=(13.2,-4.7)(24.4,-16.3)
+condition Event_1mid6b7 -> Event_0nym0la via=(15.7,-9.3)(15.7,-12.1)
+condition Event_1vph62a -> Event_1mid6b7 via=(9.6,-8.1)(14.4,-8.1)
+exclude Event_0tmbhob -> Event_1125kuo via=(21,-9.3)(21,-12.1)
+exclude Event_1125kuo -> Event_0tmbhob via=(21.6,-12.1)(21.6,-9.3)
+include Event_0nym0la -> Event_1125kuo via=(17,-13.3)(20,-13.3)
+include Event_1mid6b7 -> Event_0tmbhob via=(17,-7.5)(20,-7.5)
+milestone Nesting_0cbyns1 -> Event_1wmhvbv via=(24.4,-10.9)(28.8,-10.9)
+response Event_0nym0la -> Event_1125kuo via=(17,-13.9)(20,-13.9)
+response Event_1mid6b7 -> Event_0tmbhob via=(17,-8.1)(20,-8.1)
+response Event_1vph62a -> Event_1mid6b7 via=(9.6,-7.5)(14.4,-7.5)
+response Nesting_0cbyns1 -> Event_1wmhvbv via=(24.4,-10.3)(28.8,-10.3)

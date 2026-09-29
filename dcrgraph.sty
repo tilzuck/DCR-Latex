@@ -69,7 +69,7 @@
 \newlength\dcr@border  \setlength\dcr@border{1.5pt}  % box line width
 \newlength\dcr@datasize \setlength\dcr@datasize{0.36cm} % data page icon
 \newlength\dcr@rx
-\newlength\dcr@dmnsize \setlength\dcr@dmnsize{0.36cm}  % DMN table icon
+\newlength\dcr@dmnsize \setlength\dcr@dmnsize{8pt}  % DMN table icon width
 \newlength\dcr@rwidth  \setlength\dcr@rwidth{1.3pt}   % relation line width
 
 % font used for everything inside a DCR graph (default: sans serif,
@@ -164,8 +164,7 @@
   % event and collection icons
   dcr/access marker/.style={text=dcr icon, font=\dcr@font\small, inner sep=1pt},
   dcr/dmn size/.code={\setlength\dcr@dmnsize{#1}},
-  dcr/dmn icon/.style={draw=dcr border, line width=0.6\dcr@border, fill=white},
-  dcr/dmn grid/.style={draw=dcr dmn, line width=0.5pt},
+  dcr/dmn grid/.style={draw=dcr dmn, line width=0.6pt},
   dcr/global icon/.style={draw=dcr icon, line width=0.6pt, fill=white},
   dcr/form marker/.style={dcr/nesting marker},
   dcr/multi marker/.style={draw=dcr icon, line width=0.9pt},
@@ -326,17 +325,13 @@
         ([yshift=-\dcr@header-\dcr@datasize]#3.north east);
       \addtolength\dcr@rx{\dcr@datasize}%
     \fi
-    \ifdcr@dmn    % a small box with a blue table grid, in the corner
-      % flush with the box outline (the anchor lies outside the line)
-      \ifdcr@data\addtolength\dcr@rx{-3pt}\else\setlength\dcr@rx{\dcr@border}\fi
-      \draw[dcr/dmn icon]
-        ([xshift=-\dcr@rx-\dcr@dmnsize,yshift=-\dcr@header]#3.north east) rectangle
-        ([xshift=-\dcr@rx,yshift=-\dcr@header-\dcr@dmnsize]#3.north east);
+    \ifdcr@dmn    % DMN = a computation by decision table: a blue table
+                  % grid where the "=" of a computation would be
       \begin{scope}[shift={([xshift=-\dcr@rx-0.5\dcr@dmnsize,
-                            yshift=-\dcr@header-0.5\dcr@dmnsize]#3.north east)},
-                    x=0.2\dcr@dmnsize, y=0.2\dcr@dmnsize]
+                            yshift=-\dcr@header-3pt-0.4\dcr@dmnsize]#3.north east)},
+                    x=0.5\dcr@dmnsize, y=0.4\dcr@dmnsize]
         \draw[dcr/dmn grid] (-1,-1) rectangle (1,1) (-1,0.33) -- (1,0.33)
-          (-1,-0.33) -- (1,-0.33) (-0.2,-1) -- (-0.2,1);
+          (-1,-0.33) -- (1,-0.33) (-0.25,-1) -- (-0.25,1);
       \end{scope}
       \addtolength\dcr@rx{\dcr@dmnsize}\addtolength\dcr@rx{3pt}%
     \fi
@@ -1185,6 +1180,9 @@
 local M = {}
 
 local PX_PER_CM = 50   -- 130px wide DCR-js box = 2.6cm, the package default
+local DEFAULT_W, DEFAULT_H = 130, 150   -- box size when the file has none
+-- activity backgrounds that count as "default" (no bgcolor emitted)
+local DEFAULT_BG = { f9f7ed = true, f9f7ee = true }
 
 -- ------------------------------------------------------------------
 --  Messages (TeX log when inside LuaLaTeX, stderr on the command line)
@@ -1247,7 +1245,9 @@ end
 --    graph.nodes      list, children before parents:
 --                     {id, label, roles, x, y, w, h (px, y down),
 --                      kind = "activity"|"nesting"|"subprocess",
---                      children = {ids}, executed, pending, excluded}
+--                      children = {ids}, executed, pending, excluded,
+--                      data, computation, dmn, global (event types),
+--                      bg = "RRGGBB" or nil (non-default background)}
 --    graph.relations  list: {kind, from, to, waypoints = {{x,y},...},
 --                            delay}
 -- ------------------------------------------------------------------
@@ -1261,7 +1261,9 @@ local relation_kinds = {
 }
 
 local function read_dcrjs(text)
-  local dom = require("luaxml-domobject").parse(text)
+  -- {} = no HTML void elements: pure XML (else <meta>...</meta>, used by
+  -- the DCR portal, is rejected as unbalanced)
+  local dom = require("luaxml-domobject").parse(text, {})
   local root = child(dom:root_node(), "dcrgraph")
   if not root then fail("no <dcrgraph> element found") end
   local spec = child(root, "specification")
@@ -1271,6 +1273,12 @@ local function read_dcrjs(text)
   local labels = {}
   for _, m in ipairs(elements(child(res, "labelMappings"), "labelMapping")) do
     labels[attr(m, "eventId")] = attr(m, "labelId")
+  end
+
+  -- expressions: id -> type (computations; type="DMN" for DMN events)
+  local exprtype = {}
+  for _, e in ipairs(elements(child(res, "expressions"), "expression")) do
+    exprtype[attr(e, "id")] = attr(e, "type") or ""
   end
 
   -- marking
@@ -1308,16 +1316,33 @@ local function read_dcrjs(text)
     if #kids > 0 or etype == "nesting" or etype == "subprocess" then
       kind = (etype == "subprocess") and "subprocess" or "nesting"
     end
+    -- event types: data (has a data type), computation / DMN (has a
+    -- computation expression; DMN if the expression is of type DMN),
+    -- global (event scope)
+    local comp = attr(ev, "computation")
+    local ctype = comp and comp ~= "" and (exprtype[comp] or "")
+    local scope = child(custom, "eventScope")
+    -- background colour, if not the default cream
+    local colors = child(custom, "visualization", "colors")
+    local bg = colors and attr(colors, "bg")
+    bg = bg and bg:match("^#?(%x%x%x%x%x%x)$")
+    if bg and DEFAULT_BG[bg:lower()] then bg = nil end
     graph.nodes[#graph.nodes + 1] = {
       id = id, label = labels[id] or id, roles = roles, kind = kind,
       children = kids,
       x = num(loc and attr(loc, "xLoc")),
       y = num(loc and attr(loc, "yLoc")),
-      w = num(size and attr(size, "width")),
-      h = num(size and attr(size, "height")),
+      -- the portal stores no size: default box
+      w = size and num(attr(size, "width")) or DEFAULT_W,
+      h = size and num(attr(size, "height")) or DEFAULT_H,
       executed = executed[id], pending = pending[id],
       -- the marking lists activities only; nestings are never excluded
       excluded = kind == "activity" and included ~= nil and not included[id],
+      data = child(custom, "eventData", "dataType") ~= nil,
+      computation = ctype and ctype:upper() ~= "DMN",
+      dmn = ctype and ctype:upper() == "DMN",
+      global = scope ~= nil and (scope:get_text() or ""):match("^%s*global%s*$") ~= nil,
+      bg = bg and bg:upper(),
     }
     return id
   end
@@ -1380,22 +1405,65 @@ local function fmt(v)
   return s
 end
 
-local function emit(graph, opts)
+-- ------------------------------------------------------------------
+--  Layout: model -> geometry in cm (y up), used by the emitter and by the
+--  layout tests. Kept apart from the content so that a change of
+--  positions only affects this step.
+--    lay.ids[id]      node name in the LaTeX code
+--    lay.node[id]     activities: {x, y (centre), w, h}
+--                     nestings:   {x1, y1, x2, y2} (area corners)
+--    lay.via[r]       relation r (index): list of {x, y}, or nil
+-- ------------------------------------------------------------------
+local function layout(graph, opts)
   local s = opts.scale / PX_PER_CM          -- px -> cm (positions)
-  local function pt(x, y) return "(" .. fmt(x * s) .. "," .. fmt(-y * s) .. ")" end
+  local lay = { ids = {}, node = {}, via = {} }
 
   -- node ids: letters, digits, _ only; kept unique
-  local ids, used = {}, {}
+  local used = {}
   for _, n in ipairs(graph.nodes) do
     local base = n.id:gsub("[^%w_]", "_")
     local id, k = base, 1
     while used[id] do k = k + 1; id = base .. "_" .. k end
     used[id] = true
-    ids[n.id] = id
+    lay.ids[n.id] = id
   end
+
+  for _, n in ipairs(graph.nodes) do
+    -- centre scaled, size kept (text does not scale either)
+    local cx, cy = (n.x + n.w / 2) * s, -(n.y + n.h / 2) * s
+    local w, h = n.w / PX_PER_CM, n.h / PX_PER_CM
+    if n.kind == "activity" then
+      lay.node[n.id] = { x = cx, y = cy, w = w, h = h }
+    else
+      lay.node[n.id] = { x1 = cx - w / 2, y1 = cy + h / 2,
+                         x2 = cx + w / 2, y2 = cy - h / 2 }
+    end
+  end
+
+  for i, r in ipairs(graph.relations) do
+    if r.from ~= r.to and #r.waypoints > 0 then
+      local p = {}
+      for _, w in ipairs(r.waypoints) do p[#p + 1] = { w[1] * s, -w[2] * s } end
+      lay.via[i] = p
+    end
+  end
+  return lay
+end
+
+local function emit(graph, opts, lay)
+  local ids = lay.ids
+  local function pt(p) return "(" .. fmt(p[1]) .. "," .. fmt(p[2]) .. ")" end
 
   local out = {}
   local function add(line) out[#out + 1] = line end
+  -- background colours from the file, defined once each
+  local seen = {}
+  for _, n in ipairs(graph.nodes) do
+    if n.bg and not seen[n.bg] then
+      seen[n.bg] = true
+      add("\\definecolor{dcrbg" .. n.bg .. "}{HTML}{" .. n.bg .. "}")
+    end
+  end
   local env = {}
   if opts.notation then env[#env + 1] = "dcr/notation=" .. opts.notation end
   add("\\begin{dcrgraph}" .. (#env > 0 and "[" .. table.concat(env, ", ") .. "]" or ""))
@@ -1412,19 +1480,20 @@ local function emit(graph, opts)
       if n.pending then o[#o + 1] = "pending" end
       if n.excluded then o[#o + 1] = "excluded" end
     end
+    for _, flag in ipairs({ "data", "computation", "dmn", "global" }) do
+      if n[flag] then o[#o + 1] = flag end
+    end
+    if n.bg then o[#o + 1] = "bgcolor=dcrbg" .. n.bg end
+    local g = lay.node[n.id]
     if n.kind == "activity" then
-      o[#o + 1] = "at={" .. pt(n.x + n.w / 2, n.y + n.h / 2) .. "}"
-      o[#o + 1] = "minimum width=" .. fmt(n.w / PX_PER_CM) .. "cm"
-      o[#o + 1] = "minimum height=" .. fmt(n.h / PX_PER_CM) .. "cm"
+      o[#o + 1] = "at={" .. pt({ g.x, g.y }) .. "}"
+      o[#o + 1] = "minimum width=" .. fmt(g.w) .. "cm"
+      o[#o + 1] = "minimum height=" .. fmt(g.h) .. "cm"
       add(string.format("  \\activity[%s]{%s}{%s}",
         table.concat(o, ", "), escape(n.label), ids[n.id]))
     else
-      -- the box from the file: centre scaled like the activities, the
-      -- size kept (as for activities)
-      local cx, cy = (n.x + n.w / 2) * s, -(n.y + n.h / 2) * s
-      local hw, hh = n.w / 2 / PX_PER_CM, n.h / 2 / PX_PER_CM
-      o[#o + 1] = string.format("area={(%s,%s)(%s,%s)}",
-        fmt(cx - hw), fmt(cy + hh), fmt(cx + hw), fmt(cy - hh))
+      -- the box from the file (exact size)
+      o[#o + 1] = "area={" .. pt({ g.x1, g.y1 }) .. pt({ g.x2, g.y2 }) .. "}"
       local kids = {}
       for _, c in ipairs(n.children) do kids[#kids + 1] = ids[c] end
       add(string.format("  \\%s[%s]{%s}{%s}{%s}", n.kind,
@@ -1432,7 +1501,7 @@ local function emit(graph, opts)
     end
   end
 
-  for _, r in ipairs(graph.relations) do
+  for i, r in ipairs(graph.relations) do
     local from, to = ids[r.from], ids[r.to]
     if not from or not to then
       warn(r.kind .. " from `" .. tostring(r.from) .. "' to `" .. tostring(r.to)
@@ -1440,9 +1509,9 @@ local function emit(graph, opts)
     else
       local o = {}
       if r.delay then o[#o + 1] = "delay=" .. r.delay end
-      if opts.waypoints and from ~= to and #r.waypoints > 0 then
+      if opts.waypoints and lay.via[i] then
         local p = {}
-        for _, w in ipairs(r.waypoints) do p[#p + 1] = pt(w[1], w[2]) end
+        for _, w in ipairs(lay.via[i]) do p[#p + 1] = pt(w) end
         o[#o + 1] = "via={" .. table.concat(p, ",") .. "}"
       end
       add(string.format("  \\%s%s{%s}{%s}", r.kind,
@@ -1506,12 +1575,73 @@ local function read_file(name)
   return text
 end
 
--- file name + option string -> list of lines, options
-function M.convert(file, optstring)
+-- file name + option string -> model, options
+function M.read(file, optstring)
   local opts = parse_options(optstring)
   local reader = front_ends[opts.format]
   if not reader then fail("unknown format `" .. tostring(opts.format) .. "'") end
-  return emit(reader(read_file(file)), opts), opts
+  return reader(read_file(file)), opts
+end
+
+-- file name + option string -> list of lines, options
+function M.convert(file, optstring)
+  local graph, opts = M.read(file, optstring)
+  return emit(graph, opts, layout(graph, opts)), opts
+end
+
+-- ------------------------------------------------------------------
+--  Descriptions for the tests: the content (what the graph says) and the
+--  layout (where it is drawn), as sorted text lines, separately.
+-- ------------------------------------------------------------------
+local node_flags = { "executed", "pending", "excluded",
+                     "data", "computation", "dmn", "global" }
+
+function M.describe_content(graph)
+  local lines = {}
+  for _, n in ipairs(graph.nodes) do
+    local t = { n.kind, n.id, string.format("label=%q", n.label) }
+    if #n.roles > 0 then t[#t + 1] = "roles=" .. table.concat(n.roles, "|") end
+    for _, f in ipairs(node_flags) do if n[f] then t[#t + 1] = f end end
+    if n.bg then t[#t + 1] = "bg=" .. n.bg end
+    if #n.children > 0 then
+      local kids = { table.unpack(n.children) }
+      table.sort(kids)
+      t[#t + 1] = "children=" .. table.concat(kids, ",")
+    end
+    lines[#lines + 1] = table.concat(t, " ")
+  end
+  for _, r in ipairs(graph.relations) do
+    local t = { "relation", r.kind, r.from, "->", r.to }
+    if r.delay then t[#t + 1] = "delay=" .. r.delay end
+    lines[#lines + 1] = table.concat(t, " ")
+  end
+  table.sort(lines)
+  return lines
+end
+
+function M.describe_layout(graph, opts)
+  local lay = layout(graph, opts)
+  local lines = {}
+  for _, n in ipairs(graph.nodes) do
+    local g = lay.node[n.id]
+    if n.kind == "activity" then
+      lines[#lines + 1] = string.format("%s at=(%s,%s) size=%sx%s", n.id,
+        fmt(g.x), fmt(g.y), fmt(g.w), fmt(g.h))
+    else
+      lines[#lines + 1] = string.format("%s area=(%s,%s)(%s,%s)", n.id,
+        fmt(g.x1), fmt(g.y1), fmt(g.x2), fmt(g.y2))
+    end
+  end
+  for i, r in ipairs(graph.relations) do
+    if lay.via[i] then
+      local p = {}
+      for _, w in ipairs(lay.via[i]) do p[#p + 1] = "(" .. fmt(w[1]) .. "," .. fmt(w[2]) .. ")" end
+      lines[#lines + 1] = string.format("%s %s -> %s via=%s", r.kind, r.from, r.to,
+        table.concat(p, ""))
+    end
+  end
+  table.sort(lines)
+  return lines
 end
 
 local function export_header(file)

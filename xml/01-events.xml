@@ -1,0 +1,298 @@
+<dcrgraph title="01-events" dataTypesStatus="hide" filterLevel="-1" insightFilter="false" zoomLevel="0" formGroupStyle="Normal" formLayoutStyle="Horizontal" formShowPendingCount="true" graphBG="#f1f6fe" graphType="0" exercise="false" version="1.1">
+    <meta>
+        <graph id="2013583" hash="55be0b0d3ce498add2a0aeb1324b497a9681dd7dbea3f2a7bf212919d54bab4b" guid="4E583A0C-F10B-4173-9B12-9FC00E788EA6" OwnerName="Tilman Zuckmantel" OwnerId="150304" categoryId="15026" categoryTitle="Default" Keywords=""/>
+        <revision id="5799508" type="minor" date="2026-09-29T14:09:18.0000000+02:00" title="" comment=""/>
+        <organization id="1157" name="DCR Hackathon"/>
+    </meta>
+    <specification>
+        <resources>
+            <events>
+                <event id="A1">
+                    <precondition message=""/>
+                    <custom>
+                        <visualization>
+                            <location xLoc="277" yLoc="134"/>
+                            <colors bg="#f9f7ed" textStroke="#000000" stroke="#cccccc"/>
+                        </visualization>
+                        <roles/>
+                        <readRoles/>
+                        <groups>
+                            <group/>
+                        </groups>
+                        <phases>
+                            <phase/>
+                        </phases>
+                        <eventType/>
+                        <eventScope>private</eventScope>
+                        <eventTypeData/>
+                        <eventDescription/>
+                        <purpose/>
+                        <guide/>
+                        <insight use="false"/>
+                        <level>100</level>
+                        <sequence>1</sequence>
+                        <costs>0</costs>
+                        <eventData>
+                            <styles/>
+                        </eventData>
+                        <interfaces/>
+                    </custom>
+                </event>
+                <event id="A2">
+                    <precondition message=""/>
+                    <custom>
+                        <visualization>
+                            <location xLoc="300" yLoc="320"/>
+                            <colors bg="#f9f7ed" textStroke="#000000" stroke="#cccccc"/>
+                        </visualization>
+                        <roles>
+                            <role description="" specification="">Role1</role>
+                            <role description="" specification="">Role2</role>
+                        </roles>
+                        <readRoles/>
+                        <groups>
+                            <group/>
+                        </groups>
+                        <phases>
+                            <phase/>
+                        </phases>
+                        <eventType/>
+                        <eventScope>private</eventScope>
+                        <eventTypeData/>
+                        <eventDescription/>
+                        <purpose/>
+                        <guide/>
+                        <insight use="false"/>
+                        <level>100</level>
+                        <sequence>2</sequence>
+                        <costs>0</costs>
+                        <eventData>
+                            <dataType sequence="2" width="small" min="NaN" max="NaN" placeholder="" hinttext="">int</dataType>
+                            <validationRules/>
+                            <styles/>
+                        </eventData>
+                        <interfaces/>
+                    </custom>
+                </event>
+                <event computation="A3-computation" id="A3">
+                    <precondition message=""/>
+                    <custom>
+                        <visualization>
+                            <location xLoc="500" yLoc="120"/>
+                            <colors bg="#f9f7ed" textStroke="#000000" stroke="#cccccc"/>
+                        </visualization>
+                        <roles>
+                            <role description="" specification="">Role1</role>
+                        </roles>
+                        <readRoles/>
+                        <groups>
+                            <group/>
+                        </groups>
+                        <phases>
+                            <phase/>
+                        </phases>
+                        <eventType/>
+                        <eventScope>private</eventScope>
+                        <eventTypeData/>
+                        <eventDescription/>
+                        <purpose/>
+                        <guide/>
+                        <insight use="false"/>
+                        <level>100</level>
+                        <sequence>3</sequence>
+                        <costs>0</costs>
+                        <eventData>
+                            <styles/>
+                        </eventData>
+                        <interfaces/>
+                    </custom>
+                </event>
+                <event computation="A4-computation" id="A4">
+                    <precondition message=""/>
+                    <custom>
+                        <visualization>
+                            <location xLoc="500" yLoc="320"/>
+                            <colors bg="#f9f7ed" textStroke="#000000" stroke="#cccccc"/>
+                        </visualization>
+                        <roles>
+                            <role description="" specification="">Role2</role>
+                        </roles>
+                        <readRoles/>
+                        <groups>
+                            <group/>
+                        </groups>
+                        <phases>
+                            <phase/>
+                        </phases>
+                        <eventType/>
+                        <eventScope>private</eventScope>
+                        <eventTypeData/>
+                        <eventDescription/>
+                        <purpose/>
+                        <guide/>
+                        <insight use="false"/>
+                        <level>100</level>
+                        <sequence>4</sequence>
+                        <costs>0</costs>
+                        <eventData>
+                            <styles/>
+                        </eventData>
+                        <interfaces/>
+                    </custom>
+                </event>
+                <event computation="A5-computation" id="A5">
+                    <precondition message=""/>
+                    <custom>
+                        <visualization>
+                            <location xLoc="650" yLoc="220"/>
+                            <colors bg="#f9f7ed" textStroke="#000000" stroke="#cccccc"/>
+                        </visualization>
+                        <roles/>
+                        <readRoles/>
+                        <groups>
+                            <group/>
+                        </groups>
+                        <phases>
+                            <phase/>
+                        </phases>
+                        <eventType/>
+                        <eventScope>private</eventScope>
+                        <eventTypeData/>
+                        <eventDescription/>
+                        <purpose/>
+                        <guide/>
+                        <insight use="false"/>
+                        <level>100</level>
+                        <sequence>5</sequence>
+                        <costs>0</costs>
+                        <eventData>
+                            <dataType sequence="5" width="small" min="NaN" max="NaN" placeholder="" hinttext="">float</dataType>
+                            <validationRules/>
+                            <styles/>
+                        </eventData>
+                        <interfaces/>
+                    </custom>
+                </event>
+                <event computation="A6-computation" id="A6">
+                    <precondition message=""/>
+                    <custom>
+                        <visualization>
+                            <location xLoc="650" yLoc="420"/>
+                            <colors bg="#f9f7ed" textStroke="#000000" stroke="#cccccc"/>
+                        </visualization>
+                        <roles/>
+                        <readRoles/>
+                        <groups>
+                            <group/>
+                        </groups>
+                        <phases>
+                            <phase/>
+                        </phases>
+                        <eventType/>
+                        <eventScope>private</eventScope>
+                        <eventTypeData/>
+                        <eventDescription/>
+                        <purpose/>
+                        <guide/>
+                        <insight use="false"/>
+                        <level>100</level>
+                        <sequence>6</sequence>
+                        <costs>0</costs>
+                        <eventData>
+                            <dataType sequence="6" width="small" min="" max="" placeholder="" hinttext="">list</dataType>
+                            <validationRules/>
+                            <styles/>
+                        </eventData>
+                        <interfaces/>
+                    </custom>
+                </event>
+            </events>
+            <subProcesses/>
+            <labels>
+                <label id="A1"/>
+                <label id="A2"/>
+                <label id="A3"/>
+                <label id="A4"/>
+                <label id="A5"/>
+                <label id="A6"/>
+            </labels>
+            <labelMappings>
+                <labelMapping eventId="A1" labelId="A1"/>
+                <labelMapping eventId="A2" labelId="A2"/>
+                <labelMapping eventId="A3" labelId="A3"/>
+                <labelMapping eventId="A4" labelId="A4"/>
+                <labelMapping eventId="A5" labelId="A5"/>
+                <labelMapping eventId="A6" labelId="A6"/>
+            </labelMappings>
+            <expressions>
+                <expression id="A3-computation" value=" [[1,&quot;a&quot;]]"/>
+                <expression id="A4-computation" value="( If( (A1 = &quot;A&quot;) ) THEN ( &quot;B&quot; ) ELSE ( null ) )" type="DMN"/>
+                <expression id="A5-computation" value="( If( (A1 = &quot;A&quot;) ) THEN ( &quot;B&quot; ) ELSE ( null ) )" type="DMN"/>
+                <expression id="A6-computation" value="true"/>
+            </expressions>
+            <variables/>
+            <variableAccesses>
+                <writeAccesses/>
+            </variableAccesses>
+            <custom>
+                <keywords/>
+                <roles>
+                    <role description="" specification="">Role1</role>
+                    <role description="" specification="">Role2</role>
+                </roles>
+                <groups/>
+                <phases/>
+                <eventTypes/>
+                <eventParameters/>
+                <graphDetails>DCR Process</graphDetails>
+                <graphDocumentation/>
+                <graphLanguage>en-US</graphLanguage>
+                <graphDomain>process</graphDomain>
+                <graphFilters>
+                    <filteredGroups/>
+                    <filteredRoles/>
+                    <filteredPhases/>
+                </graphFilters>
+                <highlighterMarkup>
+                    <highlightLayers/>
+                    <highlights/>
+                </highlighterMarkup>
+            </custom>
+        </resources>
+        <constraints>
+            <conditions/>
+            <responses/>
+            <coresponses/>
+            <includes/>
+            <excludes/>
+            <milestones/>
+            <spawns/>
+            <templateSpawns/>
+            <updates/>
+        </constraints>
+    </specification>
+    <runtime accepting="false">
+        <custom>
+            <globalMarking>
+                <enabled/>
+                <enabledSubprocesses/>
+                <executed/>
+                <pending/>
+                <included/>
+            </globalMarking>
+        </custom>
+        <marking>
+            <globalStore/>
+            <executed/>
+            <included>
+                <event id="A1"/>
+                <event id="A2"/>
+                <event id="A3"/>
+                <event id="A4"/>
+                <event id="A5"/>
+                <event id="A6"/>
+            </included>
+            <pendingResponses/>
+        </marking>
+    </runtime>
+</dcrgraph>

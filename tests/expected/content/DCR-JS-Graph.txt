@@ -1,0 +1,15 @@
+activity Event_05ru0on label="Has lived in Denmark for at least three years between 15 and pension age" roles=Citizen
+activity Event_0cbmdxj label="Has lived in Denmark for the last 8 years" roles=Citizen excluded
+activity Event_0tc3bqe label="Grant public pension" roles=Municipality pending
+activity Event_13yrxob label="Has danish citizenship" roles=Citizen
+activity Event_18xy8vi label="Has reached pension age" roles=Citizen executed
+activity Event_1omcj5d label="Lives in Denmark" roles=Citizen
+relation condition Event_05ru0on -> Event_0tc3bqe
+relation condition Event_0cbmdxj -> Event_0tc3bqe
+relation condition Event_13yrxob -> Event_0tc3bqe
+relation condition Event_18xy8vi -> Event_0tc3bqe
+relation condition Event_1omcj5d -> Event_0tc3bqe
+relation exclude Event_05ru0on -> Event_0cbmdxj
+relation exclude Event_0cbmdxj -> Event_05ru0on
+relation include Event_1omcj5d -> Event_0cbmdxj
+relation response Event_18xy8vi -> Event_0tc3bqe

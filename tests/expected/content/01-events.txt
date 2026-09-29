@@ -1,0 +1,6 @@
+activity A1 label="A1"
+activity A2 label="A2" roles=Role1|Role2 data
+activity A3 label="A3" roles=Role1 computation
+activity A4 label="A4" roles=Role2 dmn
+activity A5 label="A5" data dmn
+activity A6 label="A6" data computation

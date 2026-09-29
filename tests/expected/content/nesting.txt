@@ -1,0 +1,20 @@
+activity Event_0nym0la label="Propose dates" roles=Organization B
+activity Event_0tmbhob label="Accept dates" roles=Organization A
+activity Event_1125kuo label="Accept dates" roles=Organization B
+activity Event_1mid6b7 label="Propose dates" roles=Organization A
+activity Event_1vph62a label="Create case" roles=User
+activity Event_1wmhvbv label="Hold meeting" roles=Organization A
+nesting Nesting_0cbyns1 label="Arrange Meeting" children=Event_0nym0la,Event_0tmbhob,Event_1125kuo,Event_1mid6b7
+relation condition Event_1mid6b7 -> Event_0nym0la
+relation condition Event_1vph62a -> Event_1mid6b7
+relation exclude Event_0tmbhob -> Event_0tmbhob
+relation exclude Event_0tmbhob -> Event_1125kuo
+relation exclude Event_1125kuo -> Event_0tmbhob
+relation exclude Event_1125kuo -> Event_1125kuo
+relation include Event_0nym0la -> Event_1125kuo
+relation include Event_1mid6b7 -> Event_0tmbhob
+relation milestone Nesting_0cbyns1 -> Event_1wmhvbv
+relation response Event_0nym0la -> Event_1125kuo
+relation response Event_1mid6b7 -> Event_0tmbhob
+relation response Event_1vph62a -> Event_1mid6b7
+relation response Nesting_0cbyns1 -> Event_1wmhvbv
