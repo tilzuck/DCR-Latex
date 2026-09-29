@@ -1,0 +1,71 @@
+\documentclass[border=10pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage[scaled=0.92]{helvet}
+\usepackage{dcrgraph}
+% background colours from the DCR portal
+\definecolor{autogrey}{HTML}{EFEFEF}
+\definecolor{systemblue}{HTML}{CEE1E4}
+\definecolor{restartpink}{HTML}{F6CFCF}
+\definecolor{closegreen}{HTML}{B3D7AC}
+\begin{document}
+\begin{dcrgraph}[dcr/bgcolor=autogrey]   % default for all activities in this graph
+  % ---------------- activities: column by column ----------------
+  \activity[role=L-AUTO, at={(0,-4.45)}]{Forsinkelse - intet brev}{fintet}
+  \activity[role=L-AUTO, at={(0,-8.9)}]{Ingen breve fundet}{ingen}
+
+  \activity[role=L-AUTO, at={(4.45,0)}]{Forsinkelse - brev fundet}{fbrev}
+  \activity[role=System, bgcolor=systemblue, data, subtitle=GetValue,
+            at={(4.45,-4.45)}]{Hent BrevID}{hentbrev}
+  \activity[role=System, bgcolor=systemblue, data, excluded, subtitle=GetValue,
+            at={(4.45,-8.9)}]{Hent SagsID}{hentsags}
+
+  \activity[role=L-AUTO, at={(8.9,0)}]{Nulstil værdier}{nulstil}
+  \activity[role=System, bgcolor=systemblue, data, excluded, subtitle=GetValue,
+            at={(9.3,-4.45)}]{Tilstand Input}{tinput}
+  \activity[role=L-AUTO, at={(9.3,-8.9)}]{Tilstand Output}{toutput}
+
+  \activity[role=L-AUTO, computation, subtitle=SetValue,
+            at={(15.2,-1.1)}]{Sæt RecordGrp}{recordgrp}
+  \activity[role=L-AUTO, subtitle=UpdateEntities,
+            at={(15.2,-5.5)}]{Sæt Tilstand}{saettilstand}
+  \subprocess{Flere ``gør noget'' her}{flere}{recordgrp, saettilstand}
+
+  \nesting{Logik}{logik}{fintet, ingen, fbrev, hentbrev, hentsags,
+                         nulstil, tinput, toutput, flere}
+
+  \activity[role=Kunderådgiver, bgcolor=white, at={(22.4,0)}]{Start ny Sagsaktivitet}{startny}
+  \activity[role=L-AUTO, bgcolor=restartpink, excluded, subtitle=StartProcess,
+            at={(22.4,-4.45)}]{Genstart Sagsaktivitet}{genstart}
+  \activity[role=L-AUTO, bgcolor=closegreen, excluded, subtitle=CompleteGraph,
+            at={(22.4,-8.9)}]{Luk Graf}{lukgraf}
+  \nesting{Logik: genstart af graf}{genstartgraf}{startny, genstart, lukgraf}
+
+  % ---------------- relations ----------------
+  \response{nulstil}{fbrev}
+  \condition[delay=PT10S]{nulstil}{fbrev}     % timed condition
+  \include{fbrev}{hentbrev}
+  \include{fintet}{hentbrev}
+  \response{ingen}{fintet}
+  \condition[delay=PT30M]{ingen}{fintet}
+
+  \update{nulstil}{hentbrev}
+  \update{nulstil}{hentsags}
+  \update{nulstil}{tinput}
+  \response{recordgrp}{nulstil}
+
+  \exclude{hentbrev}{hentbrev}
+  \exclude{tinput}{tinput}
+  \exclude{hentsags}{hentsags}
+  \response[guard]{hentbrev}{ingen}           % relation with a guard
+  \include[guard]{hentbrev}{hentsags}
+  \include{hentsags}{tinput}
+  \response{tinput}{toutput}
+  \response{toutput}{saettilstand}
+  \response{toutput}{flere}
+  \response{saettilstand}{recordgrp}
+
+  \milestone{flere}{genstart}
+  \response{startny}{genstart}
+  \response{genstart}{lukgraf}
+\end{dcrgraph}
+\end{document}

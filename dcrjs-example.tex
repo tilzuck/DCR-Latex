@@ -1,0 +1,45 @@
+% Graphs included from a DCR-js XML file. Needs LuaLaTeX.
+\documentclass{article}
+\usepackage[a4paper, margin=1.5cm, landscape]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[scaled=0.92]{helvet}
+\usepackage{dcrgraph}
+\begin{document}
+
+\begin{figure}[p]
+  \centering
+  \includedcrgraph[format=dcrjs]{xml/DCR-JS Graph.xml}
+  \caption{Default: straight relations between the boxes.}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \includedcrgraph[waypoints, export=dcrjs-export.tex]{xml/DCR-JS Graph.xml}
+  \caption{With \texttt{waypoints}: the routes stored in the file.}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \includedcrgraph[waypoints, notation=classic]{xml/DCR-JS Graph.xml}
+  \caption{\texttt{waypoints} in the classic notation.}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \includedcrgraph[notation=classic, marking=false]{xml/DCR-JS Graph.xml}
+  \caption{Classic notation, straight relations, without the marking.}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \includedcrgraph{xml/nesting.xml}
+  \caption{A nesting, at its size from the file; straight relations.}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \includedcrgraph[waypoints]{xml/nesting.xml}
+  \caption{The same with \texttt{waypoints}.}
+\end{figure}
+
+\end{document}

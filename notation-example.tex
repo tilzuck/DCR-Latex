@@ -1,0 +1,64 @@
+% All DCR elements in one graph (after "Figure 2: DCR graphs: notation
+% example"). Positions are the box centres in pixels of that figure.
+\documentclass[border=10pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage[scaled=0.92]{helvet}
+\usepackage{dcrgraph}
+\begin{document}
+\begin{dcrgraph}[x=0.0394cm, y=-0.0394cm]
+  % ---------------- events ----------------
+  \activity[at={(85,94)}]{A}{A}                                   % atomic
+  \activity[excluded, at={(183,98)}]{B}{B}
+  \activity[pending, at={(298,94)}]{C}{C}
+  \activity[executed, at={(511,94)}]{D}{D}
+  \activity[role=Role1, at={(85,191)}]{T}{T}
+  \activity[role={Role1,Role2}, at={(183,213)}]{S}{S}
+  \activity[computation, at={(298,213)}]{G}{G}                    % computational
+  \activity[excluded, pending, at={(411,148)}]{E}{E}
+  \activity[access, at={(429,246)}]{H}{H}                         % access control
+  \activity[excluded, pending, executed, at={(643,246)}]{F}{F}
+  \activity[data, at={(643,344)}]{X}{X}                           % data
+  \activity[computation, at={(643,443)}]{Y}{Y}
+  \activity[dmn, at={(233,311)}]{I}{I}                            % DMN
+  \activity[global, form, at={(216,410)}]{R}{R}                   % global, with form
+
+  % ---------------- collections (after their children) ----------------
+  \activity[at={(626,111)}]{V}{V}
+  \subprocess[multi]{U}{U}{V}                                     % multi-instance
+
+  \activity[data, at={(544,262)}]{O}{O}
+  \activity[at={(544,361)}]{N}{N}
+  \subprocess{M}{M}{O, N}                                         % single-instance
+
+  \activity[at={(101,361)}]{Q}{Q}
+  \form{P}{P}{Q}                                                  % form
+
+  \activity[at={(330,377)}]{K}{K}
+  \activity[at={(429,377)}]{L}{L}
+  \nesting{J}{J}{K, L}                                            % nesting
+
+  % ---------------- relations ----------------
+  \condition{A}{B}                                                % 6
+  \precondition{B}{C}                                             % 13
+  \response{B}{C}
+  \include{T}{B}                                                  % 8
+  \response{S}{B}                                                 % 7
+  \milestone{S}{C}                                                % 10
+  \noresponse{G}{C}                                               % 15
+  \condition[delay=PT1S]{C}{D}
+  \spawn{D}{U}                                                    % 11
+  \logicalinclude[guard={A>10}]{G}{E}                             % 12
+  \response[delay=PT5S]{D}{H}                                     % 24
+  \update{G}{H}                                                   % 14 (value)
+  \condition{V}{M}
+  \response{O}{J}
+  \response{K}{I}
+  \response{K}{R}
+  \exclude{K}{L}                                                  % 9
+  \condition[guard={i=1}]{I}{P}                                   % 25
+  \condition{R}{P}
+  \response{X}{N}
+  \response{N}{Y}
+  \exclude{B}{B}                                                  % self
+\end{dcrgraph}
+\end{document}

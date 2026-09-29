@@ -1,0 +1,1604 @@
+% dcrgraph.sty -- Drawing DCR graphs with TikZ
+%
+% Copyright (C) 2026 tilzuck
+%
+% This work may be distributed and/or modified under the conditions of the
+% LaTeX Project Public License, either version 1.3c of this license or (at
+% your option) any later version. The latest version of this license is in
+%   https://www.latex-project.org/lppl.txt
+% and version 1.3c or later is part of all distributions of LaTeX version
+% 2008 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+% The Current Maintainer of this work is tilzuck.
+% This work consists of the files dcrgraph.sty and dcrgraph-cli.lua.
+%
+% Usage:
+%   \begin{dcrgraph}
+%     \activity[role=Employee, pending]{Fill out an expense report}{A}
+%     \activity[role=Manager, right=3cm of A]{Approve}{B}
+%     \condition{A}{B}
+%     \response{B}{A}
+%   \end{dcrgraph}
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{dcrgraph}[2026/09/27 v0.2 DCR graphs with TikZ]
+
+% Notation of the RELATIONS (activities, nestings etc. look the same):
+%   \usepackage{dcrgraph}           DCR portal markers (default)
+%   \usepackage[classic]{dcrgraph}  traditional arrows from the literature
+%                                   (->•, •->, ->+, ->%, ->◇)
+% It can also be switched per document or per graph with notation=...
+\newif\ifdcr@classic
+\DeclareOption{classic}{\dcr@classictrue}
+\DeclareOption{portal}{\dcr@classicfalse}
+\ProcessOptions\relax
+
+\RequirePackage{tikz}
+\PassOptionsToPackage{breakall}{truncate}  % allow cutting inside words
+\RequirePackage{truncate}                   % "DCRAgent.Crea..." subtitles
+\usetikzlibrary{arrows.meta,positioning,calc,fit,shapes.geometric}
+
+% ------------------------------------------------------------------
+%  Colours and user-facing styles (override with \dcrset or \tikzset)
+% ------------------------------------------------------------------
+\definecolor{dcr condition}{HTML}{F5A030}
+\definecolor{dcr response}{HTML}{1E88E5}
+\definecolor{dcr border}{HTML}{C8C8C8}
+\definecolor{dcr executed}{HTML}{00A837}
+\definecolor{dcr activity}{HTML}{F9F7EE}  % cream fill, as in the DCR portal
+\definecolor{dcr nesting}{HTML}{F9F7EE}
+\definecolor{dcr include}{HTML}{10A33A}
+\definecolor{dcr exclude}{HTML}{E8112D}
+\definecolor{dcr milestone}{HTML}{C711EA}
+\definecolor{dcr update}{HTML}{AFBFC2}
+\definecolor{dcr noresponse}{HTML}{7B554A}
+\definecolor{dcr subtitle}{HTML}{9A9A9A}
+\definecolor{dcr delay}{HTML}{EBAA49}
+\definecolor{dcr spawn}{HTML}{34495E}
+\colorlet{dcr precondition}{dcr condition}
+\colorlet{dcr logical include}{dcr include}
+\definecolor{dcr multi}{HTML}{8CC4F8}          % multi-instance subprocess
+\definecolor{dcr multi border}{HTML}{3D96EC}
+\colorlet{dcr icon}{black!45}                 % global, #, f, n, s, |||
+\colorlet{dcr dmn}{dcr response}
+
+\newlength\dcr@header  \setlength\dcr@header{0.45cm}
+\newlength\dcr@csize   \setlength\dcr@csize{8pt}  % condition dot diameter
+\newlength\dcr@rsize   \setlength\dcr@rsize{8pt}  % response square side
+\newlength\dcr@gap     \setlength\dcr@gap{0pt}
+\newlength\dcr@border  \setlength\dcr@border{1.5pt}  % box line width
+\newlength\dcr@datasize \setlength\dcr@datasize{0.36cm} % data page icon
+\newlength\dcr@rx
+\newlength\dcr@dmnsize \setlength\dcr@dmnsize{0.36cm}  % DMN table icon
+\newlength\dcr@rwidth  \setlength\dcr@rwidth{1.3pt}   % relation line width
+
+% font used for everything inside a DCR graph (default: sans serif,
+% like the DCR portal). Change with \dcrset{font=...}
+\def\dcr@font{\sffamily}
+\def\dcr@subfont{\footnotesize\itshape}
+
+\tikzset{
+  dcr/.is family,
+  dcr/font/.code={\def\dcr@font{#1}},
+  % default background of activities and of nestings/subprocesses, for a
+  % whole graph or document; single activities can still use bgcolor=...
+  dcr/bgcolor/.code={\colorlet{dcr activity}{#1}},
+  dcr/nesting bgcolor/.code={\colorlet{dcr nesting}{#1}},
+  dcr/header height/.code={\setlength\dcr@header{#1}},
+  % the activity box
+  dcr/activity/.style={
+    draw=dcr border, line width=\dcr@border, rounded corners=4pt,
+    fill=dcr activity, minimum width=2.6cm, minimum height=2.8cm,
+    inner sep=0pt},
+  dcr/role/.style={font=\dcr@font\bfseries\small},
+  dcr/label/.style={font=\dcr@font\small, text width=2.3cm, align=center,
+    execute at begin node={\hyphenpenalty=10000\exhyphenpenalty=10000}},
+  dcr/excluded/.style={dashed},
+  % nestings
+  dcr/nesting/.style={draw=dcr border, line width=\dcr@border,
+    rounded corners=4pt, fill=dcr nesting, inner sep=0.45cm},
+  dcr/nesting label/.style={font=\dcr@font\small},
+  dcr/nesting marker/.style={font=\dcr@font\bfseries\small, text=black!45},
+  dcr/pending marker/.style={text=dcr response, font=\dcr@font\bfseries\large},
+  dcr/executed marker/.style={text=dcr executed, font=\bfseries},
+  % the relations
+  dcr/relation/.style={line width=\dcr@rwidth},
+  dcr/relation width/.code={\setlength\dcr@rwidth{#1}},
+  dcr/border width/.code={\setlength\dcr@border{#1}},
+  dcr/condition/.style={dcr/relation, color=dcr condition},
+  dcr/response/.style={dcr/relation, color=dcr response},
+  % end markers: their size is set with the keys below, not here
+  % condition: open orange circle; its outer diameter is the marker size
+  dcr/condition marker/.style={circle, fill=white, draw=dcr condition,
+    line width=0.15\dcr@csize, inner sep=0pt, minimum size=0.85\dcr@csize},
+  % square markers: same box for all; the white symbol is drawn as
+  % shapes (not font glyphs), so "!", "+" and "-" match exactly
+  dcr/square marker/.style={rectangle, draw=none, inner sep=0pt,
+    minimum width=\dcr@rsize, minimum height=\dcr@rsize, rounded corners=1pt},
+  dcr/response marker/.style={dcr/square marker, fill=dcr response,
+    path picture={%
+      \dcr@glyph{-0.08}{-0.02}{0.08}{0.32}%   bar of the "!"
+      \dcr@glyph{-0.08}{-0.32}{0.08}{-0.16}}}, % dot of the "!"
+  dcr/include marker/.style={dcr/square marker, fill=dcr include,
+    path picture={%
+      \dcr@glyph{-0.30}{-0.08}{0.30}{0.08}%
+      \dcr@glyph{-0.08}{-0.30}{0.08}{0.30}}},
+  dcr/exclude marker/.style={dcr/square marker, fill=dcr exclude,
+    path picture={\dcr@glyph{-0.30}{-0.08}{0.30}{0.08}}},
+  dcr/milestone marker/.style={circle, fill=dcr milestone, draw=none,
+    inner sep=0pt, minimum size=\dcr@csize,
+    path picture={%
+      \dcr@glyph{-0.08}{-0.02}{0.08}{0.32}%
+      \dcr@glyph{-0.08}{-0.32}{0.08}{-0.16}}},
+  dcr/update marker/.style={dcr/square marker, fill=dcr update,
+    path picture={%
+      \dcr@glyph{-0.28}{0.06}{0.28}{0.20}%
+      \dcr@glyph{-0.28}{-0.20}{0.28}{-0.06}}},
+  dcr/noresponse marker/.style={dcr/square marker, fill=dcr noresponse,
+    path picture={%
+      \draw[white, line width=0.16\dcr@rsize, line cap=butt]
+        ([shift={(-0.22\dcr@rsize,-0.22\dcr@rsize)}]path picture bounding box.center) --
+        ([shift={(0.22\dcr@rsize,0.22\dcr@rsize)}]path picture bounding box.center)
+        ([shift={(-0.22\dcr@rsize,0.22\dcr@rsize)}]path picture bounding box.center) --
+        ([shift={(0.22\dcr@rsize,-0.22\dcr@rsize)}]path picture bounding box.center);}},
+  dcr/noresponse/.style={dcr/relation, color=dcr noresponse},
+  % pre-condition: filled orange dot
+  dcr/precondition/.style={dcr/relation, color=dcr precondition},
+  dcr/precondition marker/.style={circle, fill=dcr precondition, draw=none,
+    inner sep=0pt, minimum size=\dcr@csize},
+  % spawn: square with a white asterisk (three crossing bars)
+  dcr/spawn/.style={dcr/relation, color=dcr spawn},
+  dcr/spawn marker/.style={dcr/square marker, fill=dcr spawn,
+    path picture={%
+      \foreach \dcr@a in {90,30,-30}{%
+        \draw[white, line width=0.14\dcr@rsize, line cap=butt]
+          ([shift={(\dcr@a:0.32\dcr@rsize)}]path picture bounding box.center) --
+          ([shift={(\dcr@a+180:0.32\dcr@rsize)}]path picture bounding box.center);}}},
+  % logical include: "+" with a bar directly above it
+  dcr/logical include/.style={dcr/relation, color=dcr logical include},
+  dcr/logical include marker/.style={dcr/square marker, fill=dcr logical include,
+    path picture={%
+      \dcr@glyph{-0.30}{0.24}{0.30}{0.36}%     bar
+      \dcr@glyph{-0.26}{-0.13}{0.26}{-0.01}%   + horizontal
+      \dcr@glyph{-0.06}{-0.33}{0.06}{0.19}}},% + vertical
+  % event and collection icons
+  dcr/access marker/.style={text=dcr icon, font=\dcr@font\small, inner sep=1pt},
+  dcr/dmn size/.code={\setlength\dcr@dmnsize{#1}},
+  dcr/dmn icon/.style={draw=dcr border, line width=0.6\dcr@border, fill=white},
+  dcr/dmn grid/.style={draw=dcr dmn, line width=0.5pt},
+  dcr/global icon/.style={draw=dcr icon, line width=0.6pt, fill=white},
+  dcr/form marker/.style={dcr/nesting marker},
+  dcr/multi marker/.style={draw=dcr icon, line width=0.9pt},
+  dcr/milestone/.style={dcr/relation, color=dcr milestone},
+  dcr/update/.style={dcr/relation, color=dcr update},
+  dcr/subtitle font/.code={\def\dcr@subfont{#1}},
+  dcr/include/.style={dcr/relation, color=dcr include},
+  dcr/exclude/.style={dcr/relation, color=dcr exclude},
+  dcr/marker symbol/.style={fill=white, sharp corners},
+  % activity decorations
+  dcr/data size/.code={\setlength\dcr@datasize{#1}},
+  dcr/data icon/.style={draw=dcr border, line width=0.6\dcr@border},
+  dcr/computation marker/.style={text=dcr response, font=\dcr@font\bfseries\small},
+  % one size for all end markers (dot diameter = square side)
+  dcr/marker size/.code={\setlength\dcr@csize{#1}\setlength\dcr@rsize{#1}},
+  dcr/condition marker size/.code={\setlength\dcr@csize{#1}},
+  dcr/response marker size/.code={\setlength\dcr@rsize{#1}},
+  % distance between a marker and the box outline (0pt = touching)
+  dcr/marker gap/.code={\setlength\dcr@gap{#1}},
+}
+
+\newcommand\dcrset[1]{\tikzset{dcr/.cd,#1}}
+
+\tikzset{
+  dcr/notation/.is choice,
+  dcr/notation/portal/.code={\dcr@classicfalse},
+  dcr/notation/classic/.code={\dcr@classictrue},
+  % arrows and symbols in the classic notation
+  dcr/classic arrow/.style={},   % extra style for classic arrows (e.g. thinner lines)
+}
+
+% the executed tick, drawn as a path; #1 = its lower left corner
+% (on the baseline). Size: dcr/tick size (default 7pt).
+\newlength\dcr@ticksize \setlength\dcr@ticksize{7pt}
+\tikzset{
+  dcr/executed tick/.style={draw=dcr executed, line width=0.2\dcr@ticksize,
+    line cap=round, line join=round},
+  dcr/tick size/.code={\setlength\dcr@ticksize{#1}}}
+\newcommand\dcr@tick[2][0pt]{% #1 extra x offset, #2 lower left corner
+  \draw[dcr/executed tick]
+    ([shift={(#1+0.08\dcr@ticksize,0.45\dcr@ticksize)}]#2) --
+    ([shift={(#1+0.38\dcr@ticksize,0.1\dcr@ticksize)}]#2) --
+    ([shift={(#1+\dcr@ticksize,0.95\dcr@ticksize)}]#2);}
+
+% clock hands (12 and 4 o'clock) in colour #1 inside a marker of size #2
+\newcommand\dcr@clockhands[2]{%
+  \draw[#1, line width=0.09#2, line cap=round]
+    ([yshift=0.2#2]path picture bounding box.center) --
+    (path picture bounding box.center) --
+    ([xshift=0.13#2,yshift=-0.11#2]path picture bounding box.center);}
+
+% white rectangle inside a square marker; #1..#4 = x1,y1,x2,y2 as
+% fractions of the marker size, measured from its centre
+\newcommand\dcr@glyph[4]{%
+  \fill[dcr/marker symbol]
+    ([shift={(#1\dcr@rsize,#2\dcr@rsize)}]path picture bounding box.center)
+    rectangle
+    ([shift={(#3\dcr@rsize,#4\dcr@rsize)}]path picture bounding box.center);}
+
+% ------------------------------------------------------------------
+%  Option parsing for \activity: DCR keys are handled here, every
+%  other key (at=, right=of, xshift=, ...) is forwarded to the node.
+% ------------------------------------------------------------------
+\newif\ifdcr@pending
+\newif\ifdcr@executed
+\newif\ifdcr@excluded
+\newif\ifdcr@data
+\newif\ifdcr@computation
+\newif\ifdcr@global
+\newif\ifdcr@dmn
+\newif\ifdcr@access
+\newif\ifdcr@form
+\newif\ifdcr@multi
+% all flags off (start of \activity and of nestings)
+\def\dcr@resetflags{\dcr@pendingfalse\dcr@executedfalse\dcr@excludedfalse
+  \dcr@datafalse\dcr@computationfalse\dcr@globalfalse\dcr@dmnfalse
+  \dcr@accessfalse\dcr@formfalse\dcr@multifalse}
+
+\pgfkeys{
+  /dcr@act/.is family, /dcr@act,
+  role/.store in=\dcr@role,
+  subtitle/.store in=\dcr@subtitle,
+  bgcolor/.store in=\dcr@bg,          % background colour, any xcolor colour
+  pending/.code=\dcr@pendingtrue,
+  executed/.code=\dcr@executedtrue,
+  data/.code=\dcr@datatrue,
+  computation/.code=\dcr@computationtrue,
+  global/.code=\dcr@globaltrue,       % global event: icon bottom left
+  dmn/.code=\dcr@dmntrue,             % DMN event: decision table icon
+  access/.code=\dcr@accesstrue,       % access control: "#"
+  form/.code=\dcr@formtrue,           % event with a form: "f" bottom right
+  multi/.code=\dcr@multitrue,         % subprocesses: multi-instance
+  area/.store in=\dcr@area,           % nestings: exact box {(x1,y1)(x2,y2)}
+  excluded/.code=\dcr@excludedtrue,
+  included/.code=\dcr@excludedfalse,
+  .unknown/.code={%
+    \let\dcr@key\pgfkeyscurrentname
+    \def\dcr@val{#1}%
+    \ifx\dcr@val\pgfkeysnovalue@text
+      \edef\dcr@tikzopts{\unexpanded\expandafter{\dcr@tikzopts}\dcr@key,}%
+    \else
+      \edef\dcr@tikzopts{\unexpanded\expandafter{\dcr@tikzopts}%
+        \dcr@key={\unexpanded{#1}},}%
+    \fi},
+}
+
+% ------------------------------------------------------------------
+%  Commands (only defined inside the dcrgraph environment, so they
+%  cannot clash with other packages)
+% ------------------------------------------------------------------
+
+% \activity[options]{label}{id}
+\newcommand\dcr@activity[3][]{%
+  \begingroup
+    \def\dcr@role{}\def\dcr@subtitle{}\def\dcr@bg{}\def\dcr@tikzopts{}%
+    \dcr@resetflags
+    \pgfkeys{/dcr@act,#1}%
+    \edef\dcr@do{\noexpand\node[dcr/activity,
+      \ifx\dcr@bg\@empty\else fill=\dcr@bg,\fi
+      \ifdcr@excluded dcr/excluded,\fi
+      \unexpanded\expandafter{\dcr@tikzopts}] (#3)}%
+    \dcr@do {};
+    % header: always drawn, as in the DCR portal; role text if given
+    \draw[draw=dcr border, line width=\dcr@border,
+          \ifdcr@excluded dcr/excluded\fi]
+      ([yshift=-\dcr@header]#3.north west) --
+      ([yshift=-\dcr@header]#3.north east);
+    \ifx\dcr@role\@empty\else
+      \node[dcr/role] at ([yshift=-0.5\dcr@header]#3.north) {\dcr@role};
+    \fi
+    % label, centred in the body below the header
+    \ifx\dcr@subtitle\@empty
+      \node[dcr/label] at ([yshift=-0.5\dcr@header]#3.center) {#2};
+    \else  % label, and below it a grey subtitle cut off with "..."
+      \node[dcr/label] at ([yshift=-0.5\dcr@header]#3.center)
+        {#2\\[3pt]{\dcr@font\dcr@subfont\color{dcr subtitle}%
+          \truncate{2.2cm}{\dcr@subtitle}}};
+    \fi
+    % state markers, top left: "!" (pending), then the tick (executed),
+    % standing on the baseline of the "!"; without "!" the tick takes its
+    % place (an invisible "!" keeps the geometry the same)
+    \ifdcr@pending
+      \node[dcr/pending marker, inner xsep=0pt, anchor=north west]
+        (#3@pending) at ([xshift=7pt,yshift=-\dcr@header-1pt]#3.north west) {!};
+      \ifdcr@executed \dcr@tick[2.5pt]{#3@pending.base east}\fi
+    \else\ifdcr@executed
+      \node[dcr/pending marker, inner xsep=0pt, anchor=north west]
+        (#3@pending) at ([xshift=7pt,yshift=-\dcr@header-1pt]#3.north west)
+        {\phantom{!}};
+      \dcr@tick{#3@pending.base west}%
+    \fi\fi
+    % right-hand icons, placed right to left: data page, DMN table, =, #
+    \setlength\dcr@rx{3pt}%
+    \ifdcr@data   % a "page" tucked into the corner under the header
+      \draw[dcr/data icon, \ifdcr@excluded dcr/excluded\fi]
+        ([xshift=-\dcr@datasize,yshift=-\dcr@header]#3.north east) --
+        ([xshift=-\dcr@datasize,yshift=-\dcr@header-\dcr@datasize]#3.north east) --
+        ([yshift=-\dcr@header-\dcr@datasize]#3.north east);
+      \addtolength\dcr@rx{\dcr@datasize}%
+    \fi
+    \ifdcr@dmn    % a small box with a blue table grid, in the corner
+      % flush with the box outline (the anchor lies outside the line)
+      \ifdcr@data\addtolength\dcr@rx{-3pt}\else\setlength\dcr@rx{\dcr@border}\fi
+      \draw[dcr/dmn icon]
+        ([xshift=-\dcr@rx-\dcr@dmnsize,yshift=-\dcr@header]#3.north east) rectangle
+        ([xshift=-\dcr@rx,yshift=-\dcr@header-\dcr@dmnsize]#3.north east);
+      \begin{scope}[shift={([xshift=-\dcr@rx-0.5\dcr@dmnsize,
+                            yshift=-\dcr@header-0.5\dcr@dmnsize]#3.north east)},
+                    x=0.2\dcr@dmnsize, y=0.2\dcr@dmnsize]
+        \draw[dcr/dmn grid] (-1,-1) rectangle (1,1) (-1,0.33) -- (1,0.33)
+          (-1,-0.33) -- (1,-0.33) (-0.2,-1) -- (-0.2,1);
+      \end{scope}
+      \addtolength\dcr@rx{\dcr@dmnsize}\addtolength\dcr@rx{3pt}%
+    \fi
+    \ifdcr@computation
+      \node[dcr/computation marker, anchor=north east, inner sep=1pt]
+        at ([xshift=-\dcr@rx,yshift=-\dcr@header-1pt]#3.north east) {=};
+      \addtolength\dcr@rx{8pt}%
+    \fi
+    \ifdcr@access
+      \node[dcr/access marker, anchor=north east]
+        at ([xshift=-\dcr@rx,yshift=-\dcr@header-1pt]#3.north east) {\#};
+      \addtolength\dcr@rx{8pt}%
+    \fi
+    % bottom corners: global event (two overlapping pages), form ("f")
+    \ifdcr@global
+      \begin{scope}[shift={([xshift=6pt,yshift=6pt]#3.south west)}]
+        \draw[dcr/global icon] (-2.5pt,-1pt) rectangle (1pt,2.5pt);
+        \draw[dcr/global icon] (-1pt,-2.5pt) rectangle (2.5pt,1pt);
+      \end{scope}
+    \fi
+    \ifdcr@form
+      \node[dcr/form marker, anchor=south east]
+        at ([xshift=-3pt,yshift=1pt]#3.south east) {f};
+    \fi
+  \endgroup
+}
+
+% ------------------------------------------------------------------
+%  Relations
+%
+%  Every relation ends in a marker (dot, "!", ...) that must sit flush
+%  against the outside of the target box, whatever the angle of the edge.
+%  Procedure:
+%    1. trace the edge invisibly to find where it hits the target border
+%       (dcr@b) and which way it points there (dcr@a, a bit earlier);
+%    2. find which side of the box was hit, and move the marker back
+%       along the edge until its half-size fits between it and that side;
+%    3. draw the edge up to the marker's centre, then draw the marker.
+% ------------------------------------------------------------------
+\newdimen\dcr@ax \newdimen\dcr@ay \newdimen\dcr@bx \newdimen\dcr@by
+\newdimen\dcr@cx \newdimen\dcr@cy \newdimen\dcr@nx \newdimen\dcr@ny
+\newdimen\dcr@t
+
+% "node.anchor" -> "node"
+\def\dcr@split#1.#2\@nil{\def\dcr@node{#1}}
+
+% #1 = target (node or node.anchor), #2 = half size of the marker
+% result: \dcr@t (distance marker centre -> border point along the edge)
+%         \dcr@px, \dcr@py (marker centre)
+\newcommand\dcr@computeend[2]{%
+  \dcr@split#1.\@nil
+  \pgfpointanchor{dcr@b}{center}\dcr@bx=\pgf@x \dcr@by=\pgf@y
+  \pgfpointanchor{dcr@a}{center}\dcr@ax=\pgf@x \dcr@ay=\pgf@y
+  \pgfpointanchor{\dcr@node}{center}\dcr@cx=\pgf@x \dcr@cy=\pgf@y
+  \pgfpointanchor{\dcr@node}{north east}\dcr@nx=\pgf@x \dcr@ny=\pgf@y
+  % unit vector pointing from the border back along the edge
+  \pgfmathsetmacro\dcr@ux{\dcr@ax-\dcr@bx}%
+  \pgfmathsetmacro\dcr@uy{\dcr@ay-\dcr@by}%
+  \pgfmathsetmacro\dcr@l{max(veclen(\dcr@ux,\dcr@uy),0.001)}%
+  \pgfmathsetmacro\dcr@ux{\dcr@ux/\dcr@l}%
+  \pgfmathsetmacro\dcr@uy{\dcr@uy/\dcr@l}%
+  % which side was hit? compare the relative position of the border
+  % point horizontally and vertically (1 = on that side)
+  \pgfmathsetmacro\dcr@sx{abs(\dcr@bx-\dcr@cx)/max(\dcr@nx-\dcr@cx,0.01)}%
+  \pgfmathsetmacro\dcr@sy{abs(\dcr@by-\dcr@cy)/max(\dcr@ny-\dcr@cy,0.01)}%
+  % component of the edge direction perpendicular to that side
+  \pgfmathsetmacro\dcr@perp{\dcr@sx>\dcr@sy ? abs(\dcr@ux) : abs(\dcr@uy)}%
+  % distance needed so the marker clears the side (+ half box line + gap);
+  % capped for edges that graze the box almost parallel to a side
+  \pgfmathsetmacro\dcr@h{#2+0.5*\dcr@border+\dcr@gap}%
+  \pgfmathsetmacro\dcr@tt{min(\dcr@h/max(\dcr@perp,0.2), 4*\dcr@h)}%
+  \dcr@t=\dcr@tt pt\relax
+  \pgfmathsetmacro\dcr@px{\dcr@bx+\dcr@tt*\dcr@ux}%
+  \pgfmathsetmacro\dcr@py{\dcr@by+\dcr@tt*\dcr@uy}%
+}
+
+% #1 line style, #2 marker style, #3 marker text, #4 marker half size,
+% #5 user options, #6 from, #7 to
+% Relation options: DCR keys are handled here, everything else goes to
+% TikZ (bend left, out=..., etc.).
+%   delay=PT10S   timed condition: clock marker + duration label
+%   guard         shield icon next to the marker (relation has a guard)
+%   guard=expr    the guard written on the line: [ expr ]
+%   via={(x1,y1),(x2,y2),...}   route the line through these points
+\newif\ifdcr@guard
+\newif\ifdcr@routed
+\pgfkeys{
+  /dcr@rel/.is family, /dcr@rel,
+  delay/.store in=\dcr@delay,
+  via/.store in=\dcr@via,
+  guard/.code={\dcr@guardtrue\def\dcr@gexpr{#1}},
+  guard/.default={},
+  .unknown/.code={%
+    \let\dcr@key\pgfkeyscurrentname
+    \def\dcr@val{#1}%
+    \ifx\dcr@val\pgfkeysnovalue@text
+      \edef\dcr@ropts{\unexpanded\expandafter{\dcr@ropts}\dcr@key,}%
+    \else
+      \edef\dcr@ropts{\unexpanded\expandafter{\dcr@ropts}%
+        \dcr@key={\unexpanded{#1}},}%
+    \fi},
+}
+
+\newcommand\dcr@relation[7]{%
+  \begingroup
+  \def\dcr@from{#6}\def\dcr@to{#7}%
+  \def\dcr@ropts{}\def\dcr@delay{}\def\dcr@via{}\dcr@guardfalse\def\dcr@gexpr{}\def\dcr@off{0}%
+  \pgfkeys{/dcr@rel,#5}%
+  \ifx\dcr@via\@empty\dcr@routedfalse\else\dcr@routedtrue\fi
+  % a delayed relation uses a clock marker instead of its usual one: the
+  % style "<marker> delayed" if the relation has one (response: blue square
+  % with a clock), else the general clock circle
+  \def\dcr@mstyle{#2}%
+  \ifx\dcr@delay\@empty\else
+    \pgfkeysifdefined{/tikz/#2 delayed/.@cmd}%
+      {\def\dcr@mstyle{#2 delayed}}{\def\dcr@mstyle{dcr/delay marker}}%
+  \fi
+  \ifdcr@classic
+    \edef\dcr@next{\noexpand\dcr@classicrelation{\unexpanded{#1}}%
+      {\unexpanded\expandafter{\dcr@ropts}}{\unexpanded{#6}}{\unexpanded{#7}}}%
+  \else
+    \edef\dcr@next{\noexpand\dcr@portalrelation{\unexpanded{#1}}%
+      {\unexpanded\expandafter{\dcr@mstyle}}{\unexpanded{#3}}{\unexpanded{#4}}%
+      {\unexpanded\expandafter{\dcr@ropts}}{\unexpanded{#6}}{\unexpanded{#7}}}%
+  \fi
+  \dcr@next
+  \endgroup}
+
+% ------------------------------------------------------------------
+%  Decorations next to a relation marker. Uses the marker centre
+%  (\dcr@px,\dcr@py) and the direction pointing away from the box
+%  (\dcr@ux,\dcr@uy), both left behind by \dcr@computeend.
+%    - delay label, beside the line, just past the marker
+%    - guard shield, a bit further along
+% ------------------------------------------------------------------
+\newlength\dcr@guardsize \setlength\dcr@guardsize{3pt}
+\tikzset{
+  dcr/delay marker/.style={circle, draw=dcr delay, fill=white,
+    line width=0.8pt, inner sep=0pt, minimum size=\dcr@csize,
+    path picture={%
+      \draw[dcr delay, line width=0.7pt, line cap=round]
+        ([yshift=0.28\dcr@csize]path picture bounding box.center) --
+        (path picture bounding box.center) --
+        ([xshift=0.2\dcr@csize]path picture bounding box.center);}},
+  dcr/delay label/.style={font=\dcr@font\bfseries\scriptsize, text=dcr delay,
+    inner sep=1pt},
+  % timed response (deadline): blue square with a white clock face
+  dcr/response marker delayed/.style={dcr/square marker, fill=dcr response,
+    path picture={%
+      \fill[white] (path picture bounding box.center)
+        circle[radius=0.34\dcr@rsize];
+      \dcr@clockhands{dcr response}{\dcr@rsize}}},
+  dcr/response delay label/.style={text=dcr response},
+  % timed condition: the open circle with clock hands inside
+  dcr/condition marker delayed/.style={dcr/condition marker,
+    path picture={\dcr@clockhands{dcr condition}{\dcr@csize}}},
+  % timed pre-condition: the filled dot with a thin white ring and white hands
+  dcr/precondition marker delayed/.style={dcr/precondition marker,
+    path picture={%
+      \draw[white, line width=0.08\dcr@csize] (path picture bounding box.center)
+        circle[radius=0.3\dcr@csize];
+      \dcr@clockhands{white}{\dcr@csize}}},
+  dcr/guard/.style={line width=0.6pt},
+  dcr/guard size/.code={\setlength\dcr@guardsize{#1}},
+}
+\newcommand\dcr@decorate[2]{% #1 relation style, #2 marker half size
+  % side for the decorations: the outer side of a bundle of parallel
+  % relations (so they don't land on a neighbouring line), otherwise the
+  % right-hand side of the line
+  \ifdim\dcr@off pt=0pt
+    \pgfmathsetmacro\dcr@nx{\dcr@uy}\pgfmathsetmacro\dcr@ny{-\dcr@ux}%
+  \else
+    \pgfmathsetmacro\dcr@nx{\dcr@ox/abs(\dcr@off)}%
+    \pgfmathsetmacro\dcr@ny{\dcr@oy/abs(\dcr@off)}%
+  \fi
+  \ifx\dcr@delay\@empty\else
+    \pgfmathsetmacro\dcr@lx{\dcr@px+(#2+2)*\dcr@ux+5*\dcr@nx}%
+    \pgfmathsetmacro\dcr@ly{\dcr@py+(#2+2)*\dcr@uy+5*\dcr@ny}%
+    \pgfmathsetmacro\dcr@la{atan2(-\dcr@ny-\dcr@uy,-\dcr@nx-\dcr@ux)}%
+    % colour: "<relation> delay label" if defined (response: blue)
+    \pgfkeysifdefined{/tikz/#1 delay label/.@cmd}%
+      {\tikzset{dcr/this delay label/.style={#1 delay label}}}%
+      {\tikzset{dcr/this delay label/.style={}}}%
+    \node[dcr/delay label, dcr/this delay label, anchor=\dcr@la]
+      at (\dcr@lx pt,\dcr@ly pt) {\dcr@delay};
+  \fi
+  \ifdcr@guard\ifx\dcr@gexpr\@empty
+    \pgfmathsetmacro\dcr@gx{\dcr@px+(#2+\dcr@guardsize+1.5)*\dcr@ux+(#2+\dcr@guardsize)*\dcr@nx}%
+    \pgfmathsetmacro\dcr@gy{\dcr@py+(#2+\dcr@guardsize+1.5)*\dcr@uy+(#2+\dcr@guardsize)*\dcr@ny}%
+    \dcr@shield{#1}{\dcr@gx pt}{\dcr@gy pt}%
+  \fi\fi}
+
+% guard expression written halfway along the line, beside it
+\newcommand\dcrguardformat[1]{[\,#1\,]}
+\tikzset{dcr/guard label/.style={font=\dcr@font\scriptsize, inner sep=2pt,
+  midway, auto, sloped=false}}
+\newcommand\dcr@guardlabel[4]{% #1 style, #2 tikz options, #3 from, #4 to
+  \ifdcr@guard\ifx\dcr@gexpr\@empty\else
+    \ifdcr@auto
+      \path (dcr@s) -- node[#1, dcr/guard label] {\dcrguardformat{\dcr@gexpr}} (dcr@e);
+    \else\ifdcr@routed
+      % routed relation: halfway along the middle segment
+      \dcr@i=\numexpr(\dcr@np-1)/2\relax
+      \path (dcr@p\the\dcr@i) -- node[#1, dcr/guard label]
+        {\dcrguardformat{\dcr@gexpr}} (dcr@p\the\numexpr\dcr@i+1\relax);
+    \else
+      \path[#2] (#3) to node[#1, dcr/guard label] {\dcrguardformat{\dcr@gexpr}} (#4);
+    \fi\fi
+  \fi\fi}
+
+% a small shield, half filled, centred at (#2,#3) in the colour of style #1
+\newcommand\dcr@shield[3]{%
+  \begin{scope}[shift={(#2,#3)}, x=\dcr@guardsize, y=\dcr@guardsize]
+    \draw[#1, dcr/guard, fill=white]
+      (-1,1) -- (1,1) -- (1,0) .. controls (1,-0.7) and (0.4,-1.1) .. (0,-1.35)
+      .. controls (-0.4,-1.1) and (-1,-0.7) .. (-1,0) -- cycle;
+    \fill[#1]
+      (0,1) -- (1,1) -- (1,0) .. controls (1,-0.7) and (0.4,-1.1) .. (0,-1.35) -- cycle;
+  \end{scope}}
+
+\newcommand\dcr@portalrelation[7]{%
+  \ifx\dcr@from\dcr@to
+    \dcr@selfrelation{#2}{#3}{#6}%
+  \else
+    % automatic layout of parallel edges: only for plain node names and
+    % no user options (with options such as bend, the user is in charge)
+    \dcr@split#6.\@nil\let\dcr@fromnode\dcr@node
+    \dcr@split#7.\@nil\let\dcr@tonode\dcr@node
+    \dcr@autofalse
+    \if\relax\detokenize{#5}\relax\ifdcr@routed\else
+      \ifx\dcr@fromnode\dcr@from\ifx\dcr@tonode\dcr@to\dcr@autotrue\fi\fi
+    \fi\fi
+    % the marker sits at the target, except for relations flagged with
+    % \dcr@atsourcetrue (response: "!" on the activity that causes it)
+    \ifdcr@routed
+      \dcr@route{#6}{#7}%
+      \ifdcr@atsource
+        \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@p0}{center}}%
+        \pgfcoordinate{dcr@a}{\pgfpointanchor{dcr@p1}{center}}%
+        \dcr@computeend{#6}{#4}%
+        \draw[#1,#5,shorten <=\dcr@t] \dcr@ppath;
+      \else
+        \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@p\the\dcr@np}{center}}%
+        \pgfcoordinate{dcr@a}{\pgfpointanchor{dcr@p\the\numexpr\dcr@np-1\relax}{center}}%
+        \dcr@computeend{#7}{#4}%
+        \draw[#1,#5,shorten >=\dcr@t] \dcr@ppath;
+      \fi
+    \else\ifdcr@auto
+      \dcr@parallel{#6}{#7}%
+      \ifdcr@atsource
+        \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@s}{center}}%
+        \pgfcoordinate{dcr@a}{\pgfpoint{\dcr@sx pt+5*\dcr@dx pt}{\dcr@sy pt+5*\dcr@dy pt}}%
+        \dcr@computeend{#6}{#4}%
+        \draw[#1,shorten <=\dcr@t] (dcr@s) -- (dcr@e);
+      \else
+        \dcr@computeend{#7}{#4}%
+        \draw[#1,shorten >=\dcr@t] (dcr@s) -- (dcr@e);
+      \fi
+    \else
+      \ifdcr@atsource
+        \path[#5] (#6) to coordinate[pos=0.03] (dcr@a) coordinate[pos=0] (dcr@b) (#7);
+        \dcr@computeend{#6}{#4}%
+        \draw[#1,#5,shorten <=\dcr@t] (#6) to (#7);
+      \else
+        \path[#5] (#6) to coordinate[pos=0.97] (dcr@a) coordinate[pos=1] (dcr@b) (#7);
+        \dcr@computeend{#7}{#4}%
+        \draw[#1,#5,shorten >=\dcr@t] (#6) to (#7);
+      \fi
+    \fi\fi
+    \node[#2] at (\dcr@px pt,\dcr@py pt) {#3};
+    \dcr@decorate{#1}{#4}%
+    \dcr@guardlabel{#1}{#5}{#6}{#7}%
+  \fi
+}
+
+% ------------------------------------------------------------------
+%  Parallel edges. Relations between the same two nodes (in either
+%  direction) are numbered; the n-th one is shifted sideways by
+%  0, +d, -d, +2d, -2d, ... so lines and markers never overlap.
+%  The shifted line is clipped to both boxes, giving
+%  (dcr@s) start, (dcr@b) end, (dcr@a) a point just before the end.
+% ------------------------------------------------------------------
+\newif\ifdcr@auto
+\newif\ifdcr@rerun
+\newcount\dcr@graph
+% totals of parallel relations, read back from the .aux file
+\def\dcr@auxtot#1#2{\expandafter\gdef\csname dcr@tot@#1\endcsname{#2}}
+\AtBeginDocument{\immediate\write\@auxout{\string\providecommand\string\dcr@auxtot[2]{}}}
+\AtEndDocument{\ifdcr@rerun\PackageWarningNoLine{dcrgraph}{Parallel relations
+  have changed. Rerun LaTeX to get them right}\fi}
+\newif\ifdcr@atsource
+\newlength\dcr@pardist \setlength\dcr@pardist{11pt}
+\tikzset{dcr/parallel distance/.code={\setlength\dcr@pardist{#1}}}
+\newcount\dcr@n
+\newdimen\dcr@wA \newdimen\dcr@hA \newdimen\dcr@wB \newdimen\dcr@hB
+
+\newcommand\dcr@parallel[2]{%
+  % which relation between these two is this, and in which direction?
+  % (counters are per graph, so node names can be reused in other graphs)
+  \def\dcr@sign{1}%
+  \ifcsname dcr@pair@\the\dcr@graph|#1|#2\endcsname
+    \dcr@n=\csname dcr@pair@\the\dcr@graph|#1|#2\endcsname\relax
+    \edef\dcr@key{\the\dcr@graph|#1|#2}%
+  \else\ifcsname dcr@pair@\the\dcr@graph|#2|#1\endcsname
+    \dcr@n=\csname dcr@pair@\the\dcr@graph|#2|#1\endcsname\relax
+    \edef\dcr@key{\the\dcr@graph|#2|#1}\def\dcr@sign{-1}%
+  \else
+    \dcr@n=0 \edef\dcr@key{\the\dcr@graph|#1|#2}%
+  \fi\fi
+  % The total number of relations between the pair comes from the last
+  % run (.aux), so the bundle can be centred: the first relation written
+  % is on one side, the last on the other, in the order of the source.
+  \ifcsname dcr@tot@\dcr@key\endcsname
+    \edef\dcr@total{\csname dcr@tot@\dcr@key\endcsname}%
+    \ifnum\dcr@n<\dcr@total\relax\else\global\dcr@reruntrue\fi
+  \else
+    \edef\dcr@total{\the\numexpr\dcr@n+1\relax}\global\dcr@reruntrue
+  \fi
+  \pgfmathsetmacro\dcr@off{\dcr@sign*((\dcr@total-1)/2-\dcr@n)*\dcr@pardist}%
+  \advance\dcr@n 1
+  \expandafter\xdef\csname dcr@pair@\dcr@key\endcsname{\the\dcr@n}%
+  \immediate\write\@auxout{\string\dcr@auxtot{\dcr@key}{\the\dcr@n}}%
+  % centres and half sizes of both boxes
+  \pgfpointanchor{#1}{center}\dcr@ax=\pgf@x \dcr@ay=\pgf@y
+  \pgfpointanchor{#1}{north east}\dcr@wA=\pgf@x \dcr@hA=\pgf@y
+  \advance\dcr@wA-\dcr@ax \advance\dcr@hA-\dcr@ay
+  \pgfpointanchor{#2}{center}\dcr@bx=\pgf@x \dcr@by=\pgf@y
+  \pgfpointanchor{#2}{north east}\dcr@wB=\pgf@x \dcr@hB=\pgf@y
+  \advance\dcr@wB-\dcr@bx \advance\dcr@hB-\dcr@by
+  % direction A -> B and sideways shift
+  \pgfmathsetmacro\dcr@dx{\dcr@bx-\dcr@ax}%
+  \pgfmathsetmacro\dcr@dy{\dcr@by-\dcr@ay}%
+  \pgfmathsetmacro\dcr@l{max(veclen(\dcr@dx,\dcr@dy),0.001)}%
+  \pgfmathsetmacro\dcr@dx{\dcr@dx/\dcr@l}%
+  \pgfmathsetmacro\dcr@dy{\dcr@dy/\dcr@l}%
+  \pgfmathsetmacro\dcr@ox{-\dcr@dy*\dcr@off}%
+  \pgfmathsetmacro\dcr@oy{\dcr@dx*\dcr@off}%
+  % leave box A: distance along the line from the shifted centre
+  \dcr@exit{\dcr@wA}{\dcr@hA}{\dcr@dx}{\dcr@dy}%
+  \pgfmathsetmacro\dcr@sx{\dcr@ax+\dcr@ox+\dcr@te*\dcr@dx}%
+  \pgfmathsetmacro\dcr@sy{\dcr@ay+\dcr@oy+\dcr@te*\dcr@dy}%
+  % enter box B (= leave it going backwards)
+  \dcr@exit{\dcr@wB}{\dcr@hB}{-\dcr@dx}{-\dcr@dy}%
+  \pgfmathsetmacro\dcr@ex{\dcr@bx+\dcr@ox-\dcr@te*\dcr@dx}%
+  \pgfmathsetmacro\dcr@ey{\dcr@by+\dcr@oy-\dcr@te*\dcr@dy}%
+  \pgfcoordinate{dcr@s}{\pgfpoint{\dcr@sx pt}{\dcr@sy pt}}%
+  \pgfcoordinate{dcr@b}{\pgfpoint{\dcr@ex pt}{\dcr@ey pt}}%
+  \pgfcoordinate{dcr@e}{\pgfpoint{\dcr@ex pt}{\dcr@ey pt}}%
+  \pgfcoordinate{dcr@a}{\pgfpoint{\dcr@ex pt-5*\dcr@dx pt}{\dcr@ey pt-5*\dcr@dy pt}}%
+}
+
+% distance from (centre + sideways shift) to the border of a box with
+% half sizes #1 x #2, going in direction (#3,#4); result in \dcr@te
+\newcommand\dcr@exit[4]{%
+  \pgfmathsetmacro\dcr@ux{#3}\pgfmathsetmacro\dcr@uy{#4}%
+  \ifdim\dimexpr\ifdim\dcr@ux pt<0pt -\fi\dcr@ux pt\relax<0.0001pt
+    \def\dcr@tx{10000}%
+  \else
+    \pgfmathsetmacro\dcr@tx{((\dcr@ux>0 ? #1 : -#1)-\dcr@ox)/\dcr@ux}%
+  \fi
+  \ifdim\dimexpr\ifdim\dcr@uy pt<0pt -\fi\dcr@uy pt\relax<0.0001pt
+    \def\dcr@ty{10000}%
+  \else
+    \pgfmathsetmacro\dcr@ty{((\dcr@uy>0 ? #2 : -#2)-\dcr@oy)/\dcr@uy}%
+  \fi
+  \pgfmathsetmacro\dcr@te{max(min(\dcr@tx,\dcr@ty),0)}%
+}
+
+% ------------------------------------------------------------------
+%  Routed relations:  \condition[via={(x1,y1),(x2,y2)}]{A}{B}
+%  The line runs from box A through the given points to box B. A first
+%  or last point that lies on a box outline (within 2pt, as in files
+%  from DCR-js) is where the line leaves/enters that box, so right-angled
+%  routes stay right-angled. Result: the polyline as coordinates
+%  dcr@p0 (on A) ... dcr@p<\dcr@np> (on B), and \dcr@ppath to draw it.
+%  Points are plain coordinates, (1,2) or (A.north); no ($...$).
+% ------------------------------------------------------------------
+\newcount\dcr@nv \newcount\dcr@np \newcount\dcr@i \newcount\dcr@vlast
+\def\dcr@vp@next{\@ifnextchar(\dcr@vp@one\dcr@vp@stop}
+\def\dcr@vp@one(#1){\advance\dcr@nv 1
+  \coordinate (dcr@v\the\dcr@nv) at (#1);%
+  \@ifnextchar,\dcr@vp@comma\dcr@vp@next}
+\def\dcr@vp@comma,{\dcr@vp@next}
+\def\dcr@vp@stop#1\dcr@vp@end{}
+% coordinate #1 -> x, y in pt (without unit) into #2, #3
+\def\dcr@xy#1#2#3{\pgfpointanchor{#1}{center}%
+  \edef#2{\strip@pt\pgf@x}\edef#3{\strip@pt\pgf@y}}
+% #1 = point on (or near) a box outline, #2 = its neighbour on the route,
+% #3 = the box border point towards #1, #4 = name of the new coordinate.
+% If #1 is on the outline, #4 = #1 moved onto the node border (outer sep)
+% in the direction of the route, and \dcr@onbordertrue; else #4 = #3.
+\newif\ifdcr@onborder
+\newcommand\dcr@endpoint[4]{%
+  \dcr@xy{#1}\dcr@wx\dcr@wy \dcr@xy{#3}\dcr@wbx\dcr@wby
+  \pgfmathsetmacro\dcr@wd{veclen(\dcr@wx-\dcr@wbx,\dcr@wy-\dcr@wby)}%
+  \ifdim\dcr@wd pt<2pt
+    \dcr@onbordertrue
+    \dcr@xy{#2}\dcr@wqx\dcr@wqy
+    \pgfmathsetmacro\dcr@wl{max(veclen(\dcr@wx-\dcr@wqx,\dcr@wy-\dcr@wqy),0.001)}%
+    \pgfmathsetmacro\dcr@wx{\dcr@wx+\dcr@wd*(\dcr@wx-\dcr@wqx)/\dcr@wl}%
+    \pgfmathsetmacro\dcr@wy{\dcr@wy+\dcr@wd*(\dcr@wy-\dcr@wqy)/\dcr@wl}%
+    \coordinate (#4) at (\dcr@wx pt,\dcr@wy pt);
+  \else
+    \dcr@onborderfalse
+    \coordinate (#4) at (#3);
+  \fi}
+\newcommand\dcr@route[2]{% #1 from, #2 to
+  \dcr@nv=0 \expandafter\dcr@vp@next\dcr@via\dcr@vp@end
+  % where the outlines are on the way to the first and last point
+  \path (dcr@v1) -- coordinate[pos=1] (dcr@sb) (#1);
+  \path (dcr@v\the\dcr@nv) -- coordinate[pos=1] (dcr@eb) (#2);
+  % start
+  \ifnum\dcr@nv>1 \def\dcr@wn{dcr@v2}\else\def\dcr@wn{dcr@eb}\fi
+  \dcr@endpoint{dcr@v1}{\dcr@wn}{dcr@sb}{dcr@p0}%
+  \ifdcr@onborder\dcr@i=2 \else\dcr@i=1 \fi
+  % end: is the last point on the outline of the target?
+  \ifnum\dcr@nv>1 \def\dcr@wn{dcr@v\the\numexpr\dcr@nv-1\relax}\else\def\dcr@wn{dcr@p0}\fi
+  \dcr@endpoint{dcr@v\the\dcr@nv}{\dcr@wn}{dcr@eb}{dcr@we}%
+  \dcr@vlast=\dcr@nv \ifdcr@onborder\advance\dcr@vlast-1 \fi
+  % points in between
+  \dcr@np=0 \def\dcr@ppath{(dcr@p0)}%
+  \loop\ifnum\dcr@i>\dcr@vlast\else
+    \advance\dcr@np 1
+    \coordinate (dcr@p\the\dcr@np) at (dcr@v\the\dcr@i);
+    \edef\dcr@ppath{\dcr@ppath -- (dcr@p\the\dcr@np)}%
+    \advance\dcr@i 1
+  \repeat
+  \advance\dcr@np 1
+  \coordinate (dcr@p\the\dcr@np) at (dcr@we);
+  \edef\dcr@ppath{\dcr@ppath -- (dcr@p\the\dcr@np)}%
+}
+
+% Relation from an activity to itself (e.g. \exclude{A}{A}): no line, just
+% the marker above the top-left corner, as in the DCR portal. Several
+% self-relations on one activity are lined up left to right.
+\newdimen\dcr@selfx
+\newcommand\dcr@selfrelation[3]{%
+  \ifdcr@classic\expandafter\dcr@classicself\else\expandafter\dcr@portalself\fi
+  {#1}{#2}{#3}}
+\newcommand\dcr@portalself[3]{%
+  \ifcsname dcr@self@\the\dcr@graph @#3\endcsname
+    \dcr@selfx=\csname dcr@self@\the\dcr@graph @#3\endcsname\relax
+  \else
+    \dcr@selfx=0pt
+  \fi
+  \node[#1, anchor=south west]
+    at ([xshift=\dcr@selfx, yshift=0.5\dcr@border+2pt]#3.north west) {#2};
+  \advance\dcr@selfx by \dcr@rsize
+  \advance\dcr@selfx by 2pt
+  \expandafter\xdef\csname dcr@self@\the\dcr@graph @#3\endcsname{\the\dcr@selfx}%
+}
+
+
+% ------------------------------------------------------------------
+%  Classic notation (relations only). An arrow with a filled triangle
+%  head; the relation symbol sits AFTER the arrowhead, flush against the
+%  target box (->•, ->+, ->%, ->◇), and the response dot sits flush
+%  against the source box (•->). Each relation command sets
+%    \dcr@csrc   dot | (empty)            marker at the source
+%    \dcr@ctgt   dot | diamond | sym | (empty)  marker at the target
+%    \dcr@csym   the text for sym (+, %, =, x)
+%  Symbols stay upright and use the same flush placement as the portal
+%  markers, so they never float away from the line.
+% ------------------------------------------------------------------
+\def\dcr@csrc{}\def\dcr@ctgt{}\def\dcr@csym{}
+\newlength\dcr@tend \newlength\dcr@tstart
+\tikzset{
+  dcr/classic tip/.style={-{Triangle[length=7pt,width=6.5pt]}},
+  dcr/classic dot/.style={circle, fill, draw=none, inner sep=0pt,
+    minimum size=2\dcr@chalf},
+  dcr/classic diamond/.style={diamond, draw, fill=white, inner sep=0pt,
+    minimum width=2.5\dcr@chalf, minimum height=2.5\dcr@chalf, line width=0.9pt},
+  dcr/classic symbol/.style={font=\dcr@font\bfseries\small, inner sep=0pt},
+  dcr/classic marker size/.code={\setlength\dcr@chalf{0.5\dimexpr#1\relax}},
+}
+\newlength\dcr@chalf \setlength\dcr@chalf{3.2pt}   % half size of the symbols
+
+% draw the target marker (\dcr@ctgt) at the flush position computed by
+% \dcr@computeend; #1 = relation style
+% The marker is turned to the angle of the line at its end (\dcr@ang),
+% so it sits on the line like an arrow tip, also on diagonal and bent edges.
+\def\dcr@ang{0}
+\newcommand\dcr@classictgtnode[1]{%
+  \def\dcr@tmp{dot}\ifx\dcr@ctgt\dcr@tmp
+    \node[#1, dcr/classic dot] at (\dcr@px pt,\dcr@py pt) {};\fi
+  \def\dcr@tmp{diamond}\ifx\dcr@ctgt\dcr@tmp
+    \node[#1, dcr/classic diamond, rotate=\dcr@ang] at (\dcr@px pt,\dcr@py pt) {};\fi
+  \def\dcr@tmp{sym}\ifx\dcr@ctgt\dcr@tmp
+    \node[#1, dcr/classic symbol, rotate=\dcr@ang] at (\dcr@px pt,\dcr@py pt) {\dcr@csym};\fi
+}
+
+\newcommand\dcr@classicrelation[4]{% #1 line style, #2 options, #3 from, #4 to
+  \ifx\dcr@from\dcr@to
+    \dcr@classicself{#1}{}{#3}%
+  \else
+    \dcr@split#3.\@nil\let\dcr@fromnode\dcr@node
+    \dcr@split#4.\@nil\let\dcr@tonode\dcr@node
+    \dcr@autofalse
+    \if\relax\detokenize{#2}\relax\ifdcr@routed\else
+      \ifx\dcr@fromnode\dcr@from\ifx\dcr@tonode\dcr@to\dcr@autotrue\fi\fi
+    \fi\fi
+    % ---- geometry: start/end on the borders and points just inside ----
+    \ifdcr@routed
+      \dcr@route{#3}{#4}%
+      \coordinate (dcr@s) at (dcr@p0);
+      \coordinate (dcr@s2) at (dcr@p1);
+      \coordinate (dcr@e) at (dcr@p\the\dcr@np);
+      \coordinate (dcr@e2) at (dcr@p\the\numexpr\dcr@np-1\relax);
+    \else\ifdcr@auto
+      \dcr@parallel{#3}{#4}%
+      \pgfcoordinate{dcr@s2}{\pgfpointadd{\pgfpointanchor{dcr@s}{center}}%
+        {\pgfpoint{5*\dcr@dx pt}{5*\dcr@dy pt}}}%
+      \pgfcoordinate{dcr@e2}{\pgfpointadd{\pgfpointanchor{dcr@e}{center}}%
+        {\pgfpoint{-5*\dcr@dx pt}{-5*\dcr@dy pt}}}%
+    \else
+      \path[#2] (#3) to coordinate[pos=0] (dcr@s) coordinate[pos=0.03] (dcr@s2)
+                        coordinate[pos=0.97] (dcr@e2) coordinate[pos=1] (dcr@e) (#4);
+    \fi\fi
+    % ---- source dot (response, no-response) ----
+    \setlength\dcr@tstart{0.5\dcr@border}%
+    \ifx\dcr@csrc\@empty\else
+      \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@s}{center}}%
+      \pgfcoordinate{dcr@a}{\pgfpointanchor{dcr@s2}{center}}%
+      \dcr@computeend{#3}{\dcr@chalf}%
+      \node[#1, dcr/classic dot] at (\dcr@px pt,\dcr@py pt) {};
+      \setlength\dcr@tstart{\dcr@t}%
+      \ifx\dcr@ctgt\@empty\dcr@decorate{#1}{\dcr@chalf}\fi
+    \fi
+    % ---- target symbol after the arrowhead ----
+    \setlength\dcr@tend{0.5\dcr@border}%
+    \ifx\dcr@ctgt\@empty\else
+      \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@e}{center}}%
+      \pgfcoordinate{dcr@a}{\pgfpointanchor{dcr@e2}{center}}%
+      \dcr@computeend{#4}{\dcr@chalf}%
+      \pgfmathsetmacro\dcr@ang{atan2(-\dcr@uy,-\dcr@ux)}%
+      \dcr@classictgtnode{#1}%
+      \dcr@decorate{#1}{\dcr@chalf}%
+      \setlength\dcr@tend{\dimexpr\dcr@t+\dcr@chalf+0.6pt\relax}%
+    \fi
+    % ---- the arrow ----
+    \ifdcr@routed
+      \draw[#1, dcr/classic tip, dcr/classic arrow, #2,
+            shorten >=\dcr@tend, shorten <=\dcr@tstart] \dcr@ppath;
+    \else\ifdcr@auto
+      \draw[#1, dcr/classic tip, dcr/classic arrow,
+            shorten >=\dcr@tend, shorten <=\dcr@tstart] (dcr@s) -- (dcr@e);
+    \else
+      \draw[#1, dcr/classic tip, dcr/classic arrow, #2,
+            shorten >=\dcr@tend, shorten <=\dcr@tstart] (#3) to (#4);
+    \fi\fi
+    \dcr@guardlabel{#1}{#2}{#3}{#4}%
+  \fi}
+
+% Self-relations in classic notation: a loop at a corner, from the top
+% (or bottom) edge round to the side edge; markers flush as above. The
+% corners are used in turn (top right, top left, bottom right, bottom left).
+\newcount\dcr@k
+\newcommand\dcr@classicself[3]{%
+  \ifcsname dcr@cself@\the\dcr@graph @#3\endcsname
+    \dcr@k=\csname dcr@cself@\the\dcr@graph @#3\endcsname\relax
+  \else \dcr@k=0 \fi
+  \ifcase\dcr@k \def\dcr@c{north east}\def\dcr@sx{1}\def\dcr@sy{1}%
+  \or           \def\dcr@c{north west}\def\dcr@sx{-1}\def\dcr@sy{1}%
+  \or           \def\dcr@c{south east}\def\dcr@sx{1}\def\dcr@sy{-1}%
+  \else         \def\dcr@c{south west}\def\dcr@sx{-1}\def\dcr@sy{-1}\fi
+  \coordinate (dcr@ls) at ([xshift=-\dcr@sx*0.5cm]#3.\dcr@c);  % on top/bottom edge
+  \coordinate (dcr@le) at ([yshift=-\dcr@sy*0.5cm]#3.\dcr@c);  % on the side edge
+  \setlength\dcr@tstart{0.5\dcr@border}%
+  \ifx\dcr@csrc\@empty\else
+    \node[#1, dcr/classic dot]
+      at ([yshift=\dcr@sy*(\dcr@chalf+0.5\dcr@border)]dcr@ls) {};
+    \setlength\dcr@tstart{\dimexpr\dcr@chalf+0.5\dcr@border\relax}%
+  \fi
+  \setlength\dcr@tend{0.5\dcr@border}%
+  \ifx\dcr@ctgt\@empty\else
+    \pgfpointanchor{dcr@le}{center}%
+    \pgfmathsetmacro\dcr@px{\pgf@x+\dcr@sx*(\dcr@chalf+0.5*\dcr@border)}%
+    \pgfmathsetmacro\dcr@py{\pgf@y}%
+    \pgfmathsetmacro\dcr@ang{\dcr@sx>0 ? 180 : 0}%
+    \dcr@classictgtnode{#1}%
+    \setlength\dcr@tend{\dimexpr2\dcr@chalf+0.5\dcr@border+0.6pt\relax}%
+  \fi
+  \draw[#1, dcr/classic tip, dcr/classic arrow,
+        shorten >=\dcr@tend, shorten <=\dcr@tstart]
+    (dcr@ls) .. controls +(0,\dcr@sy*1.1cm) and +(\dcr@sx*1.1cm,0) .. (dcr@le);
+  \advance\dcr@k 1
+  \expandafter\xdef\csname dcr@cself@\the\dcr@graph @#3\endcsname{\the\dcr@k}%
+}
+
+% Direction: every relation is written \relation{from}{to}.
+%   condition, milestone : symbol at the TARGET (the activity that is blocked)
+%   all others           : symbol at the SOURCE (the activity that acts),
+%                            as in the DCR portal
+\newcommand\dcr@srcrelation[7]{%
+  \begingroup\dcr@atsourcetrue\dcr@relation{#1}{#2}{#3}{#4}{#5}{#6}{#7}\endgroup}
+
+% \condition[opts]{from}{to}  : open orange circle at to
+\newcommand\dcr@condition[3][]{%
+  \def\dcr@csrc{}\def\dcr@ctgt{dot}\def\dcr@csym{}%
+  \dcr@relation{dcr/condition}{dcr/condition marker}{}{0.5\dcr@csize}{#1}{#2}{#3}}
+
+% \response[opts]{from}{to}   : blue "!" at from; from makes to pending
+\newcommand\dcr@response[3][]{%
+  \def\dcr@csrc{dot}\def\dcr@ctgt{}\def\dcr@csym{}%
+  \dcr@srcrelation{dcr/response}{dcr/response marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
+
+% \include[opts]{from}{to}    : green "+" at from; from includes to
+\newcommand\dcr@include[3][]{%
+  \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{+}%
+  \dcr@srcrelation{dcr/include}{dcr/include marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
+
+% \exclude[opts]{from}{to}    : red "-" at from; from excludes to
+\newcommand\dcr@exclude[3][]{%
+  \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{\%}%
+  \dcr@srcrelation{dcr/exclude}{dcr/exclude marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
+
+% \milestone[opts]{from}{to}  : purple circled "!" at to; to cannot
+%   execute while from is pending
+\newcommand\dcr@milestone[3][]{%
+  \def\dcr@csrc{}\def\dcr@ctgt{diamond}\def\dcr@csym{}%
+  \dcr@relation{dcr/milestone}{dcr/milestone marker}{}{0.5\dcr@csize}{#1}{#2}{#3}}
+
+% \update[opts]{from}{to}     : grey "=" at from
+\newcommand\dcr@update[3][]{%
+  \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{=}%
+  \dcr@srcrelation{dcr/update}{dcr/update marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
+
+% \precondition[opts]{from}{to} : filled orange dot at to
+\newcommand\dcr@precondition[3][]{%
+  \def\dcr@csrc{}\def\dcr@ctgt{diamond}\def\dcr@csym{}%
+  \dcr@relation{dcr/precondition}{dcr/precondition marker}{}{0.5\dcr@csize}{#1}{#2}{#3}}
+
+% \spawn[opts]{from}{to}      : dark blue asterisk at from; from spawns to
+\newcommand\dcr@spawn[3][]{%
+  \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{\Large$\ast$}%
+  \dcr@srcrelation{dcr/spawn}{dcr/spawn marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
+
+% \logicalinclude[opts]{from}{to} : green "+" with a bar above, at from
+\newcommand\dcr@logicalinclude[3][]{%
+  \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{$\overline{+}$}%
+  \dcr@srcrelation{dcr/logical include}{dcr/logical include marker}{}{0.5\dcr@rsize}%
+    {#1}{#2}{#3}}
+
+% \noresponse[opts]{from}{to} : brown "x" at from; from removes to's pending
+\newcommand\dcr@noresponse[3][]{%
+  \def\dcr@csrc{dot}\def\dcr@ctgt{sym}\def\dcr@csym{$\times$}%
+  \dcr@srcrelation{dcr/noresponse}{dcr/noresponse marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
+
+% ------------------------------------------------------------------
+%  Nesting:  \nesting[options]{label}{id}{child1, child2, ...}
+%
+%  A box drawn around the children (activities or other nestings), with
+%  the label at the top and an "n" in the lower right corner. It is a
+%  normal node, so relations can start or end at it.
+%  With area={(x1,y1)(x2,y2)} the box is exactly that rectangle instead
+%  (used by \includedcrgraph to keep the size from the file).
+%
+%  Nestings are drawn behind activities on their own layers. Each nesting
+%  remembers its depth (1 + deepest child), and deeper = further back,
+%  so an outer nesting never covers an inner one.
+% ------------------------------------------------------------------
+\def\dcr@maxdepth{6}
+\pgfdeclarelayer{dcrnest1}\pgfdeclarelayer{dcrnest2}\pgfdeclarelayer{dcrnest3}
+\pgfdeclarelayer{dcrnest4}\pgfdeclarelayer{dcrnest5}\pgfdeclarelayer{dcrnest6}
+
+\newcount\dcr@depth
+% \nesting[options]{label}{id}{children}     : "n" in the corner
+% \subprocess[options]{label}{id}{children}  : "s" in the corner;
+%   with the key multi: multi-instance, blue, "|||" at the bottom
+% \form[options]{label}{id}{children}        : "f" in the corner
+\newcommand\dcr@nesting[4][]{\dcr@group{n}{#1}{#2}{#3}{#4}}
+\newcommand\dcr@subprocess[4][]{\dcr@group{s}{#1}{#2}{#3}{#4}}
+\newcommand\dcr@form[4][]{\dcr@group{f}{#1}{#2}{#3}{#4}}
+\newcommand\dcr@group[5]{% #1 corner letter, #2 options, #3 label, #4 id, #5 children
+  \begingroup
+    \def\dcr@role{}\def\dcr@subtitle{}\def\dcr@bg{}\def\dcr@tikzopts{}\def\dcr@area{}%
+    \dcr@resetflags
+    \pgfkeys{/dcr@act,#2}%
+    % children -> "(A)(B)(C)" for fit, and the depth of this nesting
+    \edef\dcr@list{\zap@space#5 \@empty}%
+    \def\dcr@fit{}\dcr@depth=0
+    \@for\dcr@c:=\dcr@list\do{%
+      \edef\dcr@fit{\dcr@fit(\dcr@c)}%
+      \ifcsname dcr@depth@\the\dcr@graph @\dcr@c\endcsname
+        \ifnum\csname dcr@depth@\the\dcr@graph @\dcr@c\endcsname>\dcr@depth
+          \dcr@depth=\csname dcr@depth@\the\dcr@graph @\dcr@c\endcsname\relax
+        \fi
+      \fi}%
+    \advance\dcr@depth 1
+    \ifnum\dcr@depth>\dcr@maxdepth
+      \PackageWarning{dcrgraph}{Nesting `#4' is deeper than
+        \dcr@maxdepth\space levels; it may be drawn over an inner nesting}%
+      \dcr@depth=\dcr@maxdepth\relax
+    \fi
+    \expandafter\xdef\csname dcr@depth@\the\dcr@graph @#4\endcsname{\the\dcr@depth}%
+    \begin{pgfonlayer}{dcrnest\the\dcr@depth}
+      % 1) the area around the children (invisible), with the normal padding,
+      %    or exactly the given area={(x1,y1)(x2,y2)}
+      \ifx\dcr@area\@empty
+        \edef\dcr@do{\noexpand\path node[dcr/nesting, draw=none, fill=none,
+          fit={\dcr@fit}, \unexpanded\expandafter{\dcr@tikzopts}] (#4@box)}%
+      \else
+        \edef\dcr@do{\noexpand\path node[dcr/nesting, draw=none, fill=none,
+          inner sep=0pt, outer sep=0pt, fit={\unexpanded\expandafter{\dcr@area}},
+          \unexpanded\expandafter{\dcr@tikzopts}] (#4@box)}%
+      \fi
+      \dcr@do {};
+      % 2) the visible box: extra room on top for a role header, and at
+      %    the bottom for a subtitle (not with area=, which is exact)
+      \dimen@=0pt \dimen2=0pt
+      \ifx\dcr@area\@empty
+        \ifx\dcr@role\@empty\else\dimen@=\dcr@header\fi
+        \ifx\dcr@subtitle\@empty\else\dimen2=0.35cm\fi
+      \fi
+      \edef\dcr@do{\noexpand\node[dcr/nesting, inner sep=0pt,
+        fit={(#4@box.north west)(#4@box.south east)
+             ([yshift=\the\dimen@]#4@box.north)([yshift=-\the\dimen2]#4@box.south)},
+        \ifdcr@multi fill=dcr multi, draw=dcr multi border,\fi
+        \ifx\dcr@bg\@empty\else fill=\dcr@bg,\fi
+        \ifdcr@excluded dcr/excluded,\fi] (#4)}%
+      \dcr@do {};
+      \ifx\dcr@role\@empty
+        \if\relax\detokenize{#3}\relax\else
+          \node[dcr/nesting label, anchor=north] at ([yshift=-2pt]#4.north) {#3};
+        \fi
+      \else
+        % header like an activity: role on top, label just below the line
+        \draw[draw=dcr border, line width=\dcr@border,
+              \ifdcr@excluded dcr/excluded\fi]
+          ([yshift=-\dcr@header]#4.north west) -- ([yshift=-\dcr@header]#4.north east);
+        \node[dcr/role] at ([yshift=-0.5\dcr@header]#4.north) {\dcr@role};
+        \if\relax\detokenize{#3}\relax\else
+          \node[dcr/nesting label, anchor=north]
+            at ([yshift=-\dcr@header-2pt]#4.north) {#3};
+        \fi
+      \fi
+      \ifx\dcr@subtitle\@empty\else
+        \node[anchor=south, inner sep=0pt, font=\dcr@font\dcr@subfont,
+              text=dcr subtitle] at ([yshift=4pt]#4.south) {\dcr@subtitle};
+      \fi
+      \ifdcr@multi   % multi-instance: three bars at the bottom centre
+        \draw[dcr/multi marker] \foreach \dcr@x in {-2.5pt,0pt,2.5pt}
+          {([xshift=\dcr@x,yshift=4pt]#4.south) -- ++(0,7pt)};
+      \else
+        \node[dcr/nesting marker, anchor=south east]
+          at ([xshift=-3pt,yshift=1pt]#4.south east) {#1};
+      \fi
+    \end{pgfonlayer}
+  \endgroup
+}
+
+\providecommand\checkmark{\ensuremath{\surd}}
+
+\newenvironment{dcrgraph}[1][]{%
+  \let\activity\dcr@activity
+  \let\condition\dcr@condition
+  \let\response\dcr@response
+  \let\nesting\dcr@nesting
+  \let\subprocess\dcr@subprocess
+  \let\milestone\dcr@milestone
+  \let\update\dcr@update
+  \let\noresponse\dcr@noresponse
+  \let\precondition\dcr@precondition
+  \let\spawn\dcr@spawn
+  \let\logicalinclude\dcr@logicalinclude
+  \let\form\dcr@form
+  \global\advance\dcr@graph 1
+  \let\include\dcr@include   % only inside dcrgraph; \include works as
+  \let\exclude\dcr@exclude   % usual in the rest of the document
+  \pgfsetlayers{dcrnest6,dcrnest5,dcrnest4,dcrnest3,dcrnest2,dcrnest1,main}%
+  \begin{tikzpicture}[#1]%
+}{%
+  \end{tikzpicture}%
+}
+
+% ------------------------------------------------------------------
+%  Relation symbols for running text and formulas, e.g.
+%     $A \dcrcondition B$   A ->• B
+%  They work in math mode and are usable anywhere in the document.
+% ------------------------------------------------------------------
+\DeclareRobustCommand\dcrcondition{\mathrel{\rightarrow\mkern-5mu\bullet}}
+\DeclareRobustCommand\dcrresponse{\mathrel{\bullet\mkern-5mu\rightarrow}}
+\DeclareRobustCommand\dcrinclude{\mathrel{\rightarrow\mkern-2mu{+}}}
+\DeclareRobustCommand\dcrexclude{\mathrel{\rightarrow\mkern-2mu\%}}
+\DeclareRobustCommand\dcrmilestone{\mathrel{\rightarrow\mkern-3mu\diamond}}
+
+% ------------------------------------------------------------------
+%  \includedcrgraph[options]{file}  -- draw a graph from a file, converted
+%  by dcrgraphs.lua into dcrgraph commands. Options:
+%    format=dcrjs        input format (DCR-js / DCR portal XML)
+%    waypoints           draw relations along the routes stored in the file
+%                        (default: straight lines between the boxes)
+%    notation=classic    notation, as for the dcrgraph environment
+%    scale=0.8           scale positions (box sizes and text stay the same)
+%    marking=false       leave out executed / pending / excluded
+%    export=file.tex     also write the generated code to file.tex (in the
+%                        output directory; on Overleaf under "Logs and output
+%                        files"), and a copy of it into the .log
+%  For now LuaLaTeX only.
+% ------------------------------------------------------------------
+% The converter is the Lua code at the end of this file (after \endinput,
+% so TeX never reads it); under LuaLaTeX it is loaded from there now.
+\ifdefined\directlua
+  \directlua{
+    local path = kpse.find_file("dcrgraph.sty")
+    local f = path and io.open(path, "rb")
+    if f then
+      local text = f:read("*a")
+      f:close()
+      local s = text:find("-- DCRGRAPHS " .. "LUA BEGIN", 1, true)
+      if s then
+        local _, lines = text:sub(1, s):gsub(string.char(10), "")
+        dcrgraphs = load(string.rep(string.char(10), lines) .. text:sub(s),
+          "@" .. path)()
+      end
+    end
+  }
+\fi
+\newwrite\dcr@export   % for export=file.tex
+\newcommand\includedcrgraph[2][]{%
+  \ifdefined\directlua
+    \directlua{
+      if dcrgraphs then
+        dcrgraphs.include("\luaescapestring{\detokenize{#1}}",
+                          "\luaescapestring{\detokenize{#2}}")
+      else
+        tex.error("dcrgraph: could not load the converter from dcrgraph.sty")
+      end}%
+  \else
+    \PackageError{dcrgraph}{\string\includedcrgraph\space needs LuaLaTeX}%
+      {Compile with lualatex (on Overleaf: Menu > Compiler > LuaLaTeX).}%
+  \fi}
+
+\endinput
+-- DCRGRAPHS LUA BEGIN
+-- The converter behind \includedcrgraph: DCR graph files -> dcrgraph code.
+-- It lives here, after \endinput, so the package is a single file; the
+-- TeX part above loads it under LuaLaTeX. Loaded as one chunk returning
+-- the module table.
+--
+-- Front ends (one per input format) build a common graph model; one
+-- emitter writes it as dcrgraph commands.
+--
+-- On the command line (development): texlua dcrgraph-cli.lua file.xml
+
+local M = {}
+
+local PX_PER_CM = 50   -- 130px wide DCR-js box = 2.6cm, the package default
+
+-- ------------------------------------------------------------------
+--  Messages (TeX log when inside LuaLaTeX, stderr on the command line)
+-- ------------------------------------------------------------------
+local in_tex = false
+
+local function warn(msg)
+  if in_tex then
+    texio.write_nl("term and log", "Package dcrgraph Warning: " .. msg)
+    texio.write_nl("term and log", "")
+  else
+    io.stderr:write("dcrgraphs warning: " .. msg .. "\n")
+  end
+end
+
+local function fail(msg)
+  error("dcrgraphs: " .. msg, 0)
+end
+
+-- ------------------------------------------------------------------
+--  Small DOM helpers (luaxml-domobject). luaxml lowercases attribute
+--  names, so names are compared in lower case.
+-- ------------------------------------------------------------------
+local function ename(el)
+  return el:get_element_name():lower()
+end
+
+local function attr(el, name)
+  return el:get_attribute(name:lower())
+end
+
+local function elements(el, name)
+  local list = {}
+  if not el then return list end
+  for _, c in ipairs(el:get_children()) do
+    if c:is_element() and (name == nil or ename(c) == name:lower()) then
+      list[#list + 1] = c
+    end
+  end
+  return list
+end
+
+-- first child element along a path of names, or nil
+local function child(el, ...)
+  for _, name in ipairs({...}) do
+    if not el then return nil end
+    el = elements(el, name)[1]
+  end
+  return el
+end
+
+local function num(s)
+  return tonumber(s) or 0
+end
+
+-- ------------------------------------------------------------------
+--  Front end: DCR-js XML (compatible with the DCR portal export)
+--
+--  Model:
+--    graph.nodes      list, children before parents:
+--                     {id, label, roles, x, y, w, h (px, y down),
+--                      kind = "activity"|"nesting"|"subprocess",
+--                      children = {ids}, executed, pending, excluded}
+--    graph.relations  list: {kind, from, to, waypoints = {{x,y},...},
+--                            delay}
+-- ------------------------------------------------------------------
+local relation_kinds = {
+  conditions = { elem = "condition", kind = "condition" },
+  responses  = { elem = "response",  kind = "response" },
+  excludes   = { elem = "exclude",   kind = "exclude" },
+  includes   = { elem = "include",   kind = "include" },
+  milestones = { elem = "milestone", kind = "milestone" },
+  updates    = { elem = "update",    kind = "update" },
+}
+
+local function read_dcrjs(text)
+  local dom = require("luaxml-domobject").parse(text)
+  local root = child(dom:root_node(), "dcrgraph")
+  if not root then fail("no <dcrgraph> element found") end
+  local spec = child(root, "specification")
+  local res = child(spec, "resources")
+
+  -- labels: <labelMapping eventId=... labelId=...>, the label id is the text
+  local labels = {}
+  for _, m in ipairs(elements(child(res, "labelMappings"), "labelMapping")) do
+    labels[attr(m, "eventId")] = attr(m, "labelId")
+  end
+
+  -- marking
+  local function idset(el)
+    local s = {}
+    for _, e in ipairs(elements(el, "event")) do s[attr(e, "id")] = true end
+    return s
+  end
+  local marking = child(root, "runtime", "marking")
+  local executed = idset(child(marking, "executed"))
+  local pending = idset(child(marking, "pendingResponses"))
+  local included_el = child(marking, "included")
+  local included = included_el and idset(included_el)
+
+  local graph = { nodes = {}, relations = {} }
+
+  -- events, recursively: an event containing events is a nesting
+  local function read_event(ev)
+    local id = attr(ev, "id")
+    local kids = {}
+    for _, sub in ipairs(elements(ev, "event")) do
+      kids[#kids + 1] = read_event(sub)
+    end
+    local custom = child(ev, "custom")
+    local roles = {}
+    for _, r in ipairs(elements(child(custom, "roles"), "role")) do
+      local t = r:get_text()
+      if t and t ~= "" then roles[#roles + 1] = t end
+    end
+    local loc = child(custom, "visualization", "location")
+    local size = child(custom, "visualization", "size")
+    if not loc then warn("event `" .. id .. "' has no position; placed at (0,0)") end
+    local kind = "activity"
+    local etype = attr(ev, "type")
+    if #kids > 0 or etype == "nesting" or etype == "subprocess" then
+      kind = (etype == "subprocess") and "subprocess" or "nesting"
+    end
+    graph.nodes[#graph.nodes + 1] = {
+      id = id, label = labels[id] or id, roles = roles, kind = kind,
+      children = kids,
+      x = num(loc and attr(loc, "xLoc")),
+      y = num(loc and attr(loc, "yLoc")),
+      w = num(size and attr(size, "width")),
+      h = num(size and attr(size, "height")),
+      executed = executed[id], pending = pending[id],
+      -- the marking lists activities only; nestings are never excluded
+      excluded = kind == "activity" and included ~= nil and not included[id],
+    }
+    return id
+  end
+  for _, ev in ipairs(elements(child(res, "events"), "event")) do
+    read_event(ev)
+  end
+  if #elements(child(res, "subProcesses")) > 0 then
+    warn("<subProcesses> are not supported yet; skipped")
+  end
+
+  -- relations
+  for _, group in ipairs(elements(child(spec, "constraints"))) do
+    local gname = ename(group)
+    local rk = relation_kinds[gname]
+    local rels = elements(group)
+    if not rk then
+      if #rels > 0 then
+        warn(#rels .. " relation(s) of type <" .. gname .. "> not supported; skipped")
+      end
+    else
+      for _, r in ipairs(rels) do
+        local wps = {}
+        for _, w in ipairs(elements(child(r, "custom", "waypoints"), "waypoint")) do
+          wps[#wps + 1] = { num(attr(w, "x")), num(attr(w, "y")) }
+        end
+        local delay = attr(r, "time")
+        graph.relations[#graph.relations + 1] = {
+          kind = rk.kind,
+          from = attr(r, "sourceId"), to = attr(r, "targetId"),
+          waypoints = wps,
+          delay = (delay and delay ~= "") and delay or nil,
+        }
+      end
+    end
+  end
+  return graph
+end
+
+local front_ends = {
+  dcrjs = read_dcrjs,
+  dcrsolutionsxml = read_dcrjs,   -- same format
+}
+
+-- ------------------------------------------------------------------
+--  Emitter: model -> dcrgraph code (list of lines)
+-- ------------------------------------------------------------------
+local escapes = {
+  ["\\"] = "\\textbackslash{}", ["{"] = "\\{", ["}"] = "\\}",
+  ["&"] = "\\&", ["%"] = "\\%", ["#"] = "\\#", ["$"] = "\\$", ["_"] = "\\_",
+  ["~"] = "\\textasciitilde{}", ["^"] = "\\textasciicircum{}",
+}
+local function escape(s)
+  return (s:gsub("[\\{}&%%#$_~^]", escapes))
+end
+
+-- 1.230000 -> 1.23
+local function fmt(v)
+  local s = string.format("%.3f", v):gsub("0+$", ""):gsub("%.$", "")
+  if s == "-0" then s = "0" end
+  return s
+end
+
+local function emit(graph, opts)
+  local s = opts.scale / PX_PER_CM          -- px -> cm (positions)
+  local function pt(x, y) return "(" .. fmt(x * s) .. "," .. fmt(-y * s) .. ")" end
+
+  -- node ids: letters, digits, _ only; kept unique
+  local ids, used = {}, {}
+  for _, n in ipairs(graph.nodes) do
+    local base = n.id:gsub("[^%w_]", "_")
+    local id, k = base, 1
+    while used[id] do k = k + 1; id = base .. "_" .. k end
+    used[id] = true
+    ids[n.id] = id
+  end
+
+  local out = {}
+  local function add(line) out[#out + 1] = line end
+  local env = {}
+  if opts.notation then env[#env + 1] = "dcr/notation=" .. opts.notation end
+  add("\\begin{dcrgraph}" .. (#env > 0 and "[" .. table.concat(env, ", ") .. "]" or ""))
+
+  for _, n in ipairs(graph.nodes) do
+    local o = {}
+    if #n.roles > 0 then
+      local role = escape(table.concat(n.roles, ", "))
+      if role:find("[,=]") then role = "{" .. role .. "}" end
+      o[#o + 1] = "role=" .. role
+    end
+    if opts.marking then
+      if n.executed then o[#o + 1] = "executed" end
+      if n.pending then o[#o + 1] = "pending" end
+      if n.excluded then o[#o + 1] = "excluded" end
+    end
+    if n.kind == "activity" then
+      o[#o + 1] = "at={" .. pt(n.x + n.w / 2, n.y + n.h / 2) .. "}"
+      o[#o + 1] = "minimum width=" .. fmt(n.w / PX_PER_CM) .. "cm"
+      o[#o + 1] = "minimum height=" .. fmt(n.h / PX_PER_CM) .. "cm"
+      add(string.format("  \\activity[%s]{%s}{%s}",
+        table.concat(o, ", "), escape(n.label), ids[n.id]))
+    else
+      -- the box from the file: centre scaled like the activities, the
+      -- size kept (as for activities)
+      local cx, cy = (n.x + n.w / 2) * s, -(n.y + n.h / 2) * s
+      local hw, hh = n.w / 2 / PX_PER_CM, n.h / 2 / PX_PER_CM
+      o[#o + 1] = string.format("area={(%s,%s)(%s,%s)}",
+        fmt(cx - hw), fmt(cy + hh), fmt(cx + hw), fmt(cy - hh))
+      local kids = {}
+      for _, c in ipairs(n.children) do kids[#kids + 1] = ids[c] end
+      add(string.format("  \\%s[%s]{%s}{%s}{%s}", n.kind,
+        table.concat(o, ", "), escape(n.label), ids[n.id], table.concat(kids, ", ")))
+    end
+  end
+
+  for _, r in ipairs(graph.relations) do
+    local from, to = ids[r.from], ids[r.to]
+    if not from or not to then
+      warn(r.kind .. " from `" .. tostring(r.from) .. "' to `" .. tostring(r.to)
+        .. "': unknown event; skipped")
+    else
+      local o = {}
+      if r.delay then o[#o + 1] = "delay=" .. r.delay end
+      if opts.waypoints and from ~= to and #r.waypoints > 0 then
+        local p = {}
+        for _, w in ipairs(r.waypoints) do p[#p + 1] = pt(w[1], w[2]) end
+        o[#o + 1] = "via={" .. table.concat(p, ",") .. "}"
+      end
+      add(string.format("  \\%s%s{%s}{%s}", r.kind,
+        #o > 0 and "[" .. table.concat(o, ", ") .. "]" or "", from, to))
+    end
+  end
+  add("\\end{dcrgraph}")
+  return out
+end
+
+-- ------------------------------------------------------------------
+--  Options
+-- ------------------------------------------------------------------
+local function trim(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
+
+local function truthy(v)
+  return v == nil or v == "" or v == "true" or v == "yes" or v == "1"
+end
+
+-- "a, b=c, d={e,f}" -> table; top-level commas only
+local function parse_options(str)
+  local opts = { format = "dcrjs", scale = 1, marking = true, waypoints = false }
+  local parts, depth, cur = {}, 0, ""
+  for c in (str or ""):gmatch(".") do
+    if c == "{" then depth = depth + 1 elseif c == "}" then depth = depth - 1 end
+    if c == "," and depth == 0 then parts[#parts + 1] = cur; cur = ""
+    else cur = cur .. c end
+  end
+  parts[#parts + 1] = cur
+  for _, p in ipairs(parts) do
+    p = trim(p)
+    if p ~= "" then
+      local k, v = p:match("^([^=]-)%s*=%s*(.*)$")
+      if not k then k = p end
+      k = trim(k)
+      if v then v = trim(v):gsub("^{(.*)}$", "%1") end
+      if k == "format" then opts.format = v
+      elseif k == "notation" then opts.notation = v
+      elseif k == "scale" then opts.scale = tonumber(v) or fail("scale=" .. tostring(v) .. " is not a number")
+      elseif k == "waypoints" then opts.waypoints = truthy(v)
+      elseif k == "marking" then opts.marking = truthy(v)
+      elseif k == "export" then opts.export = v
+      else warn("unknown option `" .. k .. "' ignored") end
+    end
+  end
+  return opts
+end
+
+-- ------------------------------------------------------------------
+--  Entry points
+-- ------------------------------------------------------------------
+local function read_file(name)
+  local f = io.open(name, "rb")
+  if not f and kpse and kpse.find_file then
+    local found = kpse.find_file(name)
+    if found then f = io.open(found, "rb") end
+  end
+  if not f then fail("cannot open file `" .. name .. "'") end
+  local text = f:read("*a")
+  f:close()
+  return text
+end
+
+-- file name + option string -> list of lines, options
+function M.convert(file, optstring)
+  local opts = parse_options(optstring)
+  local reader = front_ends[opts.format]
+  if not reader then fail("unknown format `" .. tostring(opts.format) .. "'") end
+  return emit(reader(read_file(file)), opts), opts
+end
+
+local function export_header(file)
+  return "% generated by dcrgraph.sty from " .. file
+end
+
+-- called by \includedcrgraph
+function M.include(optstring, file)
+  in_tex = true
+  local ok, lines, opts = pcall(M.convert, file, optstring)
+  if not ok then
+    tex.error(tostring(lines))
+    return
+  end
+  tex.print(lines)
+  if opts.export then
+    -- written by TeX (\openout), not by Lua, so the file goes where TeX
+    -- writes its output (-output-directory); that is where Overleaf
+    -- looks for generated files. Text is passed as catcode 12 (-2), so
+    -- \write copies it unchanged.
+    local out = { export_header(file) }
+    for _, l in ipairs(lines) do out[#out + 1] = l end
+    tex.sprint("\\immediate\\openout\\csname dcr@export\\endcsname=\"")
+    tex.sprint(-2, opts.export)
+    tex.sprint("\"\\relax")
+    for _, l in ipairs(out) do
+      -- leading spaces as \space, since TeX merges spaces in the text
+      local indent, text = l:match("^( *)(.*)$")
+      tex.sprint("\\immediate\\write\\csname dcr@export\\endcsname{"
+        .. string.rep("\\space", #indent))
+      tex.sprint(-2, text)
+      tex.sprint("}")
+    end
+    tex.sprint("\\immediate\\closeout\\csname dcr@export\\endcsname")
+    M.pending_export = opts.export
+    tex.sprint("\\directlua{dcrgraphs.check_export()}")
+    -- and a copy in the log, which can always be reached (e.g. Overleaf:
+    -- Logs and output files > Raw logs)
+    texio.write_nl("log", "dcrgraph: exported to " .. opts.export .. " -- copy:")
+    texio.write_nl("log", "----- begin dcrgraph export " .. opts.export .. " -----")
+    for _, l in ipairs(out) do texio.write_nl("log", l) end
+    texio.write_nl("log", "----- end dcrgraph export -----")
+    texio.write_nl("log", "")
+  end
+end
+
+-- after \closeout: report where the export went, or that it is missing
+-- (as a package warning, which Overleaf shows in its log panel)
+function M.check_export()
+  local name = M.pending_export
+  M.pending_export = nil
+  if not name then return end
+  local dir = status.output_directory
+  local path = (dir and dir ~= "") and (dir .. "/" .. name) or name
+  local cwd = lfs and lfs.currentdir() or "?"
+  local f = io.open(path, "rb")
+  if f then
+    f:close()
+    warn("export written to `" .. path .. "' (working directory `" .. cwd .. "')")
+  else
+    warn("export file `" .. name .. "' was NOT written (looked for `" .. path
+      .. "' in `" .. cwd .. "', openout_any=" .. tostring(kpse.var_value("openout_any"))
+      .. "). The code is in the .log, between the dcrgraph export markers")
+  end
+end
+
+-- command line (see dcrgraph-cli.lua): args = {"--key[=value]", ..., file}
+function M.main(args)
+  local optlist, file = {}, nil
+  for _, a in ipairs(args) do
+    local o = a:match("^%-%-(.*)$")
+    if o then optlist[#optlist + 1] = o else file = a end
+  end
+  if not file then
+    io.stderr:write("usage: texlua dcrgraph-cli.lua [--waypoints] [--notation=classic]\n"
+      .. "         [--scale=N] [--marking=false] [--format=dcrjs] [--export=out.tex] file\n")
+    os.exit(1)
+  end
+  local ok, lines, opts = pcall(M.convert, file, table.concat(optlist, ","))
+  if not ok then io.stderr:write(tostring(lines), "\n"); os.exit(1) end
+  if opts.export then
+    local f = io.open(opts.export, "w")
+    if not f then io.stderr:write("cannot write `" .. opts.export .. "'\n"); os.exit(1) end
+    f:write(export_header(file), "\n", table.concat(lines, "\n"), "\n")
+    f:close()
+  end
+  print(table.concat(lines, "\n"))
+end
+
+return M
