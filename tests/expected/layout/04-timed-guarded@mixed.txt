@@ -1,0 +1,10 @@
+A1 at=(4.691,-4.126) size=2.6x2.826
+A2 at=(8.083,-4.126) size=2.6x2.826
+A3 at=(4.691,-7.517) size=2.6x2.826
+A4 at=(8.083,-7.517) size=2.6x2.826
+A5 at=(11.474,-4.126) size=2.6x2.826
+A6 at=(12.604,-7.517) size=2.6x2.826
+A7 at=(12.604,-12.039) size=2.6x2.826
+show deadline response A2 -> A5
+show delay condition A1 -> A2
+show guard response A4 -> A6

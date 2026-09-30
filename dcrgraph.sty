@@ -43,10 +43,11 @@
 % ------------------------------------------------------------------
 \definecolor{dcr condition}{HTML}{F5A030}
 \definecolor{dcr response}{HTML}{1E88E5}
-\definecolor{dcr border}{HTML}{C8C8C8}
+\definecolor{dcr border}{HTML}{CCCCCC}     % as in the DCR portal
 \definecolor{dcr executed}{HTML}{00A837}
-\definecolor{dcr activity}{HTML}{F9F7EE}  % cream fill, as in the DCR portal
-\definecolor{dcr nesting}{HTML}{F9F7EE}
+\definecolor{dcr activity}{HTML}{F9F7ED}  % cream fill, as in the DCR portal
+\definecolor{dcr nesting}{HTML}{F9F7ED}
+\colorlet{dcr text}{black}                  % label and role text
 \definecolor{dcr include}{HTML}{10A33A}
 \definecolor{dcr exclude}{HTML}{E8112D}
 \definecolor{dcr milestone}{HTML}{C711EA}
@@ -54,7 +55,9 @@
 \definecolor{dcr noresponse}{HTML}{7B554A}
 \definecolor{dcr subtitle}{HTML}{9A9A9A}
 \definecolor{dcr delay}{HTML}{EBAA49}
-\definecolor{dcr spawn}{HTML}{34495E}
+\colorlet{dcr spawn}{black}                  % as in the DCR portal
+\definecolor{dcr subgraph}{HTML}{3386BB}      % "|||" of an (empty) subgraph event
+\definecolor{dcr subgraph collection}{HTML}{A06860}  % "|||" of a subgraph with events
 \colorlet{dcr precondition}{dcr condition}
 \colorlet{dcr logical include}{dcr include}
 \definecolor{dcr multi}{HTML}{8CC4F8}          % multi-instance subprocess
@@ -63,8 +66,9 @@
 \colorlet{dcr dmn}{dcr response}
 
 \newlength\dcr@header  \setlength\dcr@header{0.45cm}
-\newlength\dcr@csize   \setlength\dcr@csize{8pt}  % condition dot diameter
-\newlength\dcr@rsize   \setlength\dcr@rsize{8pt}  % response square side
+% marker sizes as in the DCR portal: 16px at 115px box width (2.6cm)
+\newlength\dcr@csize   \setlength\dcr@csize{10.3pt}  % condition dot diameter
+\newlength\dcr@rsize   \setlength\dcr@rsize{10.3pt}  % response square side
 \newlength\dcr@gap     \setlength\dcr@gap{0pt}
 \newlength\dcr@border  \setlength\dcr@border{1.5pt}  % box line width
 \newlength\dcr@datasize \setlength\dcr@datasize{0.36cm} % data page icon
@@ -154,13 +158,13 @@
         \draw[white, line width=0.14\dcr@rsize, line cap=butt]
           ([shift={(\dcr@a:0.32\dcr@rsize)}]path picture bounding box.center) --
           ([shift={(\dcr@a+180:0.32\dcr@rsize)}]path picture bounding box.center);}}},
-  % logical include: "+" with a bar directly above it
+  % logical include: "+" with a bar below it ("±"), as in the DCR portal
   dcr/logical include/.style={dcr/relation, color=dcr logical include},
   dcr/logical include marker/.style={dcr/square marker, fill=dcr logical include,
     path picture={%
-      \dcr@glyph{-0.30}{0.24}{0.30}{0.36}%     bar
-      \dcr@glyph{-0.26}{-0.13}{0.26}{-0.01}%   + horizontal
-      \dcr@glyph{-0.06}{-0.33}{0.06}{0.19}}},% + vertical
+      \dcr@glyph{-0.26}{0.07}{0.26}{0.19}%     + horizontal
+      \dcr@glyph{-0.06}{-0.13}{0.06}{0.39}%    + vertical
+      \dcr@glyph{-0.30}{-0.36}{0.30}{-0.24}}},% bar
   % event and collection icons
   dcr/access marker/.style={text=dcr icon, font=\dcr@font\small, inner sep=1pt},
   dcr/dmn size/.code={\setlength\dcr@dmnsize{#1}},
@@ -168,6 +172,10 @@
   dcr/global icon/.style={draw=dcr icon, line width=0.6pt, fill=white},
   dcr/form marker/.style={dcr/nesting marker},
   dcr/multi marker/.style={draw=dcr icon, line width=0.9pt},
+  % subgraph (template) event: fine dotted outline, blue "|||"
+  dcr/subgraph/.style={dash pattern=on 0pt off 3pt, line cap=round},
+  dcr/subgraph bars/.style={draw=dcr subgraph, line width=0.9pt},
+  dcr/subgraph collection bars/.style={draw=dcr subgraph collection, line width=0.9pt},
   dcr/milestone/.style={dcr/relation, color=dcr milestone},
   dcr/update/.style={dcr/relation, color=dcr update},
   dcr/subtitle font/.code={\def\dcr@subfont{#1}},
@@ -238,16 +246,19 @@
 \newif\ifdcr@access
 \newif\ifdcr@form
 \newif\ifdcr@multi
+\newif\ifdcr@subgraph
 % all flags off (start of \activity and of nestings)
 \def\dcr@resetflags{\dcr@pendingfalse\dcr@executedfalse\dcr@excludedfalse
   \dcr@datafalse\dcr@computationfalse\dcr@globalfalse\dcr@dmnfalse
-  \dcr@accessfalse\dcr@formfalse\dcr@multifalse}
+  \dcr@accessfalse\dcr@formfalse\dcr@multifalse\dcr@subgraphfalse}
 
 \pgfkeys{
   /dcr@act/.is family, /dcr@act,
   role/.store in=\dcr@role,
   subtitle/.store in=\dcr@subtitle,
   bgcolor/.store in=\dcr@bg,          % background colour, any xcolor colour
+  bordercolor/.store in=\dcr@bc,      % outline and header line
+  textcolor/.store in=\dcr@tc,        % label and role
   pending/.code=\dcr@pendingtrue,
   executed/.code=\dcr@executedtrue,
   data/.code=\dcr@datatrue,
@@ -257,6 +268,8 @@
   access/.code=\dcr@accesstrue,       % access control: "#"
   form/.code=\dcr@formtrue,           % event with a form: "f" bottom right
   multi/.code=\dcr@multitrue,         % subprocesses: multi-instance
+  subgraph/.code=\dcr@subgraphtrue,   % subgraph (template) event, target
+                                      % of spawns: dotted, "|||" and "g"
   area/.store in=\dcr@area,           % nestings: exact box {(x1,y1)(x2,y2)}
   excluded/.code=\dcr@excludedtrue,
   included/.code=\dcr@excludedfalse,
@@ -280,32 +293,41 @@
 \newcommand\dcr@activity[3][]{%
   \begingroup
     \def\dcr@role{}\def\dcr@subtitle{}\def\dcr@bg{}\def\dcr@tikzopts{}%
+    \def\dcr@bc{dcr border}\def\dcr@tc{dcr text}%
     \dcr@resetflags
     \pgfkeys{/dcr@act,#1}%
-    \edef\dcr@do{\noexpand\node[dcr/activity,
+    \edef\dcr@do{\noexpand\node[dcr/activity, draw=\dcr@bc,
       \ifx\dcr@bg\@empty\else fill=\dcr@bg,\fi
       \ifdcr@excluded dcr/excluded,\fi
+      \ifdcr@subgraph dcr/subgraph,\fi
       \unexpanded\expandafter{\dcr@tikzopts}] (#3)}%
     \dcr@do {};
-    % header: always drawn, as in the DCR portal; role text if given
-    \draw[draw=dcr border, line width=\dcr@border,
-          \ifdcr@excluded dcr/excluded\fi]
-      ([yshift=-\dcr@header]#3.north west) --
-      ([yshift=-\dcr@header]#3.north east);
-    \ifx\dcr@role\@empty\else
-      \node[dcr/role] at ([yshift=-0.5\dcr@header]#3.north) {\dcr@role};
+    % header: always drawn, as in the DCR portal; role text if given.
+    % A subgraph (template) has no header; its label is centred in the box.
+    \ifdcr@subgraph
+      \def\dcr@ly{0pt}%
+    \else
+      \def\dcr@ly{-0.5\dcr@header}%
+      \draw[draw=\dcr@bc, line width=\dcr@border,
+            \ifdcr@excluded dcr/excluded\fi]
+        ([yshift=-\dcr@header]#3.north west) --
+        ([yshift=-\dcr@header]#3.north east);
+      \ifx\dcr@role\@empty\else
+        \node[dcr/role, text=\dcr@tc] at ([yshift=-0.5\dcr@header]#3.north) {\dcr@role};
+      \fi
     \fi
     % label, centred in the body below the header
     \ifx\dcr@subtitle\@empty
-      \node[dcr/label] at ([yshift=-0.5\dcr@header]#3.center) {#2};
+      \node[dcr/label, text=\dcr@tc] at ([yshift=\dcr@ly]#3.center) {#2};
     \else  % label, and below it a grey subtitle cut off with "..."
-      \node[dcr/label] at ([yshift=-0.5\dcr@header]#3.center)
+      \node[dcr/label, text=\dcr@tc] at ([yshift=\dcr@ly]#3.center)
         {#2\\[3pt]{\dcr@font\dcr@subfont\color{dcr subtitle}%
           \truncate{2.2cm}{\dcr@subtitle}}};
     \fi
     % state markers, top left: "!" (pending), then the tick (executed),
-    % standing on the baseline of the "!"; without "!" the tick takes its
-    % place (an invisible "!" keeps the geometry the same)
+    % standing on the baseline of the "!". As in the DCR portal, the tick
+    % always has the same place, also without "!" (an invisible "!" keeps
+    % the geometry the same).
     \ifdcr@pending
       \node[dcr/pending marker, inner xsep=0pt, anchor=north west]
         (#3@pending) at ([xshift=7pt,yshift=-\dcr@header-1pt]#3.north west) {!};
@@ -314,7 +336,7 @@
       \node[dcr/pending marker, inner xsep=0pt, anchor=north west]
         (#3@pending) at ([xshift=7pt,yshift=-\dcr@header-1pt]#3.north west)
         {\phantom{!}};
-      \dcr@tick{#3@pending.base west}%
+      \dcr@tick[2.5pt]{#3@pending.base east}%
     \fi\fi
     % right-hand icons, placed right to left: data page, DMN table, =, #
     \setlength\dcr@rx{3pt}%
@@ -355,6 +377,13 @@
     \ifdcr@form
       \node[dcr/form marker, anchor=south east]
         at ([xshift=-3pt,yshift=1pt]#3.south east) {f};
+    \fi
+    % subgraph: blue "|||" at the bottom centre, grey "g" bottom right
+    \ifdcr@subgraph
+      \draw[dcr/subgraph bars] \foreach \dcr@x in {-2.5pt,0pt,2.5pt}
+        {([xshift=\dcr@x,yshift=4pt]#3.south) -- ++(0,7pt)};
+      \node[dcr/nesting marker, anchor=south east]
+        at ([xshift=-3pt,yshift=1pt]#3.south east) {g};
     \fi
   \endgroup
 }
@@ -412,18 +441,35 @@
 % #5 user options, #6 from, #7 to
 % Relation options: DCR keys are handled here, everything else goes to
 % TikZ (bend left, out=..., etc.).
-%   delay=PT10S   timed condition: clock marker + duration label
+%   delay=PT10S   timed relation: clock marker (+ the duration as text,
+%                 see delays= / deadlines= below)
 %   guard         shield icon next to the marker (relation has a guard)
-%   guard=expr    the guard written on the line: [ expr ]
+%   guard=expr    a guard with its expression (shown as shield or as text
+%                 [ expr ] on the line, see guards= below)
+%   explicit={guard,delay,deadline}   show these values of this relation as
+%                 text, whatever the settings for the graph say (delay: the
+%                 time of a condition etc., deadline: the time of a
+%                 response); plain `explicit' = all three
 %   via={(x1,y1),(x2,y2),...}   route the line through these points
 \newif\ifdcr@guard
 \newif\ifdcr@routed
+\newif\ifdcr@xguard \newif\ifdcr@xdelay \newif\ifdcr@xdeadline
+\pgfkeys{
+  /dcr@expl/.is family, /dcr@expl,
+  guard/.code=\dcr@xguardtrue,
+  delay/.code=\dcr@xdelaytrue,
+  deadline/.code=\dcr@xdeadlinetrue,
+  .unknown/.code={\PackageError{dcrgraph}{explicit=\pgfkeyscurrentname:
+    use guard, delay or deadline}{}},
+}
 \pgfkeys{
   /dcr@rel/.is family, /dcr@rel,
   delay/.store in=\dcr@delay,
   via/.store in=\dcr@via,
   guard/.code={\dcr@guardtrue\def\dcr@gexpr{#1}},
   guard/.default={},
+  explicit/.code={\pgfkeys{/dcr@expl,#1}},
+  explicit/.default={guard,delay,deadline},
   .unknown/.code={%
     \let\dcr@key\pgfkeyscurrentname
     \def\dcr@val{#1}%
@@ -439,8 +485,23 @@
   \begingroup
   \def\dcr@from{#6}\def\dcr@to{#7}%
   \def\dcr@ropts{}\def\dcr@delay{}\def\dcr@via{}\dcr@guardfalse\def\dcr@gexpr{}\def\dcr@off{0}%
+  \dcr@xguardfalse\dcr@xdelayfalse\dcr@xdeadlinefalse
   \pgfkeys{/dcr@rel,#5}%
   \ifx\dcr@via\@empty\dcr@routedfalse\else\dcr@routedtrue\fi
+  % what is written as text for this relation: its guard, and its time
+  % (a deadline for responses, a delay for the others) -- from the
+  % settings of the graph, or per relation with explicit={...}
+  \ifdcr@guardtext\dcr@gtexttrue\else\dcr@gtextfalse\fi
+  \ifdcr@guardshield\dcr@gshieldtrue\else\dcr@gshieldfalse\fi
+  \ifdcr@xguard\dcr@gtexttrue\dcr@gshieldfalse\fi
+  \def\dcr@tmp{#1}\def\dcr@tmpb{dcr/response}%
+  \ifx\dcr@tmp\dcr@tmpb
+    \ifdcr@deadlinetext\dcr@ttexttrue\else\dcr@ttextfalse\fi
+    \ifdcr@xdeadline\dcr@ttexttrue\fi
+  \else
+    \ifdcr@delaytext\dcr@ttexttrue\else\dcr@ttextfalse\fi
+    \ifdcr@xdelay\dcr@ttexttrue\fi
+  \fi
   % a delayed relation uses a clock marker instead of its usual one: the
   % style "<marker> delayed" if the relation has one (response: blue square
   % with a clock), else the general clock circle
@@ -507,7 +568,7 @@
     \pgfmathsetmacro\dcr@nx{\dcr@ox/abs(\dcr@off)}%
     \pgfmathsetmacro\dcr@ny{\dcr@oy/abs(\dcr@off)}%
   \fi
-  \ifx\dcr@delay\@empty\else
+  \ifx\dcr@delay\@empty\else\ifdcr@ttext   % the time as text, if wanted
     \pgfmathsetmacro\dcr@lx{\dcr@px+(#2+2)*\dcr@ux+5*\dcr@nx}%
     \pgfmathsetmacro\dcr@ly{\dcr@py+(#2+2)*\dcr@uy+5*\dcr@ny}%
     \pgfmathsetmacro\dcr@la{atan2(-\dcr@ny-\dcr@uy,-\dcr@nx-\dcr@ux)}%
@@ -517,19 +578,56 @@
       {\tikzset{dcr/this delay label/.style={}}}%
     \node[dcr/delay label, dcr/this delay label, anchor=\dcr@la]
       at (\dcr@lx pt,\dcr@ly pt) {\dcr@delay};
-  \fi
-  \ifdcr@guard\ifx\dcr@gexpr\@empty
-    \pgfmathsetmacro\dcr@gx{\dcr@px+(#2+\dcr@guardsize+1.5)*\dcr@ux+(#2+\dcr@guardsize)*\dcr@nx}%
-    \pgfmathsetmacro\dcr@gy{\dcr@py+(#2+\dcr@guardsize+1.5)*\dcr@uy+(#2+\dcr@guardsize)*\dcr@ny}%
-    \dcr@shield{#1}{\dcr@gx pt}{\dcr@gy pt}%
-  \fi\fi}
+  \fi\fi
+  % the guard shield: for `guard' without expression, and for any guard
+  % when guards are shown as shields (guards=shield or both)
+  \ifdcr@guard
+    \dcr@showshieldfalse
+    \ifx\dcr@gexpr\@empty\dcr@showshieldtrue\fi
+    \ifdcr@gshield\dcr@showshieldtrue\fi
+    \ifdcr@showshield
+      \pgfmathsetmacro\dcr@gx{\dcr@px+(#2+\dcr@guardsize+1.5)*\dcr@ux+(#2+\dcr@guardsize)*\dcr@nx}%
+      \pgfmathsetmacro\dcr@gy{\dcr@py+(#2+\dcr@guardsize+1.5)*\dcr@uy+(#2+\dcr@guardsize)*\dcr@ny}%
+      \dcr@shield{#1}{\dcr@gx pt}{\dcr@gy pt}%
+    \fi
+  \fi}
+
+% What is written as text, for a document (\dcrset) or a graph
+% (\begin{dcrgraph}[dcr/...]). The default is the DCR portal: only the
+% markers (shield, clock), no values.
+%   guards=shield | explicit | both   guard expressions: shield at the
+%                                     marker / [ expr ] on the line / both
+%   delays=marker | explicit          times of conditions etc. as text
+%   deadlines=marker | explicit       times of responses as text
+%   explicit                          all three explicit
+% Single relations: the relation key `explicit'.
+\newif\ifdcr@guardshield \dcr@guardshieldtrue
+\newif\ifdcr@guardtext
+\newif\ifdcr@delaytext
+\newif\ifdcr@deadlinetext
+\newif\ifdcr@showshield
+\newif\ifdcr@gtext \newif\ifdcr@gshield \newif\ifdcr@ttext  % per relation
+\tikzset{
+  dcr/guards/.is choice,
+  dcr/guards/shield/.code={\dcr@guardtextfalse\dcr@guardshieldtrue},
+  dcr/guards/explicit/.code={\dcr@guardtexttrue\dcr@guardshieldfalse},
+  dcr/guards/both/.code={\dcr@guardtexttrue\dcr@guardshieldtrue},
+  dcr/delays/.is choice,
+  dcr/delays/marker/.code=\dcr@delaytextfalse,
+  dcr/delays/explicit/.code=\dcr@delaytexttrue,
+  dcr/deadlines/.is choice,
+  dcr/deadlines/marker/.code=\dcr@deadlinetextfalse,
+  dcr/deadlines/explicit/.code=\dcr@deadlinetexttrue,
+  dcr/explicit/.code={\dcr@guardtexttrue\dcr@guardshieldfalse
+    \dcr@delaytexttrue\dcr@deadlinetexttrue},
+}
 
 % guard expression written halfway along the line, beside it
 \newcommand\dcrguardformat[1]{[\,#1\,]}
 \tikzset{dcr/guard label/.style={font=\dcr@font\scriptsize, inner sep=2pt,
   midway, auto, sloped=false}}
 \newcommand\dcr@guardlabel[4]{% #1 style, #2 tikz options, #3 from, #4 to
-  \ifdcr@guard\ifx\dcr@gexpr\@empty\else
+  \ifdcr@guard\ifdcr@gtext\ifx\dcr@gexpr\@empty\else
     \ifdcr@auto
       \path (dcr@s) -- node[#1, dcr/guard label] {\dcrguardformat{\dcr@gexpr}} (dcr@e);
     \else\ifdcr@routed
@@ -540,7 +638,7 @@
     \else
       \path[#2] (#3) to node[#1, dcr/guard label] {\dcrguardformat{\dcr@gexpr}} (#4);
     \fi\fi
-  \fi\fi}
+  \fi\fi\fi}
 
 % a small shield, half filled, centred at (#2,#3) in the colour of style #1
 \newcommand\dcr@shield[3]{%
@@ -623,7 +721,7 @@
 \AtEndDocument{\ifdcr@rerun\PackageWarningNoLine{dcrgraph}{Parallel relations
   have changed. Rerun LaTeX to get them right}\fi}
 \newif\ifdcr@atsource
-\newlength\dcr@pardist \setlength\dcr@pardist{11pt}
+\newlength\dcr@pardist \setlength\dcr@pardist{13.5pt}  % portal: 21px
 \tikzset{dcr/parallel distance/.code={\setlength\dcr@pardist{#1}}}
 \newcount\dcr@n
 \newdimen\dcr@wA \newdimen\dcr@hA \newdimen\dcr@wB \newdimen\dcr@hB
@@ -1005,9 +1103,13 @@
 \newcommand\dcr@nesting[4][]{\dcr@group{n}{#1}{#2}{#3}{#4}}
 \newcommand\dcr@subprocess[4][]{\dcr@group{s}{#1}{#2}{#3}{#4}}
 \newcommand\dcr@form[4][]{\dcr@group{f}{#1}{#2}{#3}{#4}}
+% \subgraph[options]{label}{id}{children}    : a subgraph (template) with
+%   its own events, target of spawns: dotted, "|||" and "g" (DCR portal)
+\newcommand\dcr@subgraphgroup[4][]{\dcr@group{g}{subgraph,#1}{#2}{#3}{#4}}
 \newcommand\dcr@group[5]{% #1 corner letter, #2 options, #3 label, #4 id, #5 children
   \begingroup
     \def\dcr@role{}\def\dcr@subtitle{}\def\dcr@bg{}\def\dcr@tikzopts{}\def\dcr@area{}%
+    \def\dcr@bc{dcr border}\def\dcr@tc{dcr text}%
     \dcr@resetflags
     \pgfkeys{/dcr@act,#2}%
     % children -> "(A)(B)(C)" for fit, and the depth of this nesting
@@ -1049,22 +1151,25 @@
       \edef\dcr@do{\noexpand\node[dcr/nesting, inner sep=0pt,
         fit={(#4@box.north west)(#4@box.south east)
              ([yshift=\the\dimen@]#4@box.north)([yshift=-\the\dimen2]#4@box.south)},
+        draw=\dcr@bc,
         \ifdcr@multi fill=dcr multi, draw=dcr multi border,\fi
         \ifx\dcr@bg\@empty\else fill=\dcr@bg,\fi
+        \ifdcr@subgraph dcr/subgraph,\fi
         \ifdcr@excluded dcr/excluded,\fi] (#4)}%
       \dcr@do {};
       \ifx\dcr@role\@empty
         \if\relax\detokenize{#3}\relax\else
-          \node[dcr/nesting label, anchor=north] at ([yshift=-2pt]#4.north) {#3};
+          \node[dcr/nesting label, text=\dcr@tc, anchor=north]
+            at ([yshift=-2pt]#4.north) {#3};
         \fi
       \else
         % header like an activity: role on top, label just below the line
-        \draw[draw=dcr border, line width=\dcr@border,
+        \draw[draw=\dcr@bc, line width=\dcr@border,
               \ifdcr@excluded dcr/excluded\fi]
           ([yshift=-\dcr@header]#4.north west) -- ([yshift=-\dcr@header]#4.north east);
-        \node[dcr/role] at ([yshift=-0.5\dcr@header]#4.north) {\dcr@role};
+        \node[dcr/role, text=\dcr@tc] at ([yshift=-0.5\dcr@header]#4.north) {\dcr@role};
         \if\relax\detokenize{#3}\relax\else
-          \node[dcr/nesting label, anchor=north]
+          \node[dcr/nesting label, text=\dcr@tc, anchor=north]
             at ([yshift=-\dcr@header-2pt]#4.north) {#3};
         \fi
       \fi
@@ -1072,13 +1177,18 @@
         \node[anchor=south, inner sep=0pt, font=\dcr@font\dcr@subfont,
               text=dcr subtitle] at ([yshift=4pt]#4.south) {\dcr@subtitle};
       \fi
-      \ifdcr@multi   % multi-instance: three bars at the bottom centre
+      \ifdcr@subgraph  % subgraph: "|||" at the bottom centre and the "g"
+        \draw[dcr/subgraph collection bars] \foreach \dcr@x in {-2.5pt,0pt,2.5pt}
+          {([xshift=\dcr@x,yshift=4pt]#4.south) -- ++(0,7pt)};
+        \node[dcr/nesting marker, anchor=south east]
+          at ([xshift=-3pt,yshift=1pt]#4.south east) {#1};
+      \else\ifdcr@multi   % multi-instance: three bars at the bottom centre
         \draw[dcr/multi marker] \foreach \dcr@x in {-2.5pt,0pt,2.5pt}
           {([xshift=\dcr@x,yshift=4pt]#4.south) -- ++(0,7pt)};
       \else
         \node[dcr/nesting marker, anchor=south east]
           at ([xshift=-3pt,yshift=1pt]#4.south east) {#1};
-      \fi
+      \fi\fi
     \end{pgfonlayer}
   \endgroup
 }
@@ -1098,6 +1208,7 @@
   \let\spawn\dcr@spawn
   \let\logicalinclude\dcr@logicalinclude
   \let\form\dcr@form
+  \let\subgraph\dcr@subgraphgroup
   \global\advance\dcr@graph 1
   \let\include\dcr@include   % only inside dcrgraph; \include works as
   \let\exclude\dcr@exclude   % usual in the rest of the document
@@ -1127,6 +1238,17 @@
 %    notation=classic    notation, as for the dcrgraph environment
 %    scale=0.8           scale positions (box sizes and text stay the same)
 %    marking=false       leave out executed / pending / excluded
+%    By default the graph looks like the DCR portal: guards, delays and
+%    deadlines only as markers (shield, clock), no values. To show values:
+%    guards=explicit     guard expressions as text [ expr ] (or both)
+%    delays=explicit     times of conditions etc. as text
+%    deadlines=explicit  times of responses as text
+%    explicit            all three
+%    guards={A4 response A6, A6 A7}   only for these relations; the same
+%    delays={...}, deadlines={...}    for delays and deadlines. Each entry
+%                        "source type target" or "source target" (ids from
+%                        the file; `value' = \update). Warns about entries
+%                        that match no relation or have no such value.
 %    export=file.tex     also write the generated code to file.tex (in the
 %                        output directory; on Overleaf under "Logs and output
 %                        files"), and a copy of it into the .log
@@ -1136,8 +1258,13 @@
 % so TeX never reads it); under LuaLaTeX it is loaded from there now.
 \ifdefined\directlua
   \directlua{
-    local path = kpse.find_file("dcrgraph.sty")
-    local f = path and io.open(path, "rb")
+    local dir = "\luaescapestring{\CurrentFilePath}"
+    local path = (dir ~= "" and (dir .. "/") or "") .. "dcrgraph.sty"
+    local f = io.open(path, "rb")
+    if not f then
+      path = kpse.find_file("dcrgraph.sty")
+      f = path and io.open(path, "rb")
+    end
     if f then
       local text = f:read("*a")
       f:close()
@@ -1179,17 +1306,34 @@
 
 local M = {}
 
-local PX_PER_CM = 50   -- 130px wide DCR-js box = 2.6cm, the package default
-local DEFAULT_W, DEFAULT_H = 130, 150   -- box size when the file has none
--- activity backgrounds that count as "default" (no bgcolor emitted)
-local DEFAULT_BG = { f9f7ed = true, f9f7ee = true }
+-- Pixels per cm, per tool, chosen so that a default box of the tool comes
+-- out 2.6cm wide, the width of a default \activity:
+--   DCR-js: boxes 130 x 150 px, stored in the file        -> 50 px/cm
+--   DCR portal: boxes 115 x 125 px (measured on a portal
+--   screenshot; header 20 px), no size in the file        -> 44.2 px/cm,
+--   which gives exactly the default \activity (2.6 x 2.8cm)
+local PX_PER_CM = { dcrjs = 50, portal = 115 / 2.6 }
+local DEFAULT_SIZE = { dcrjs = { 130, 150 }, portal = { 115, 125 } }
+-- A subgraph (template) event in the portal is a default box without the
+-- header strip: 20 px lower, same bottom edge (measured on a screenshot)
+local PORTAL_HEADER = 20
+-- A collection (nesting, subprocess, subgraph with events) in the portal:
+-- the box around its children's boxes, 30 px on the left, right and top,
+-- 50 px at the bottom (for "n", "s", "g", "|||"); measured on a screenshot
+local COLLECTION_PAD = { left = 30, right = 30, top = 30, bottom = 50 }
+-- the portal's default event colours; they equal the package defaults
+-- (dcr activity, dcr border, dcr text), so they need not be emitted
+local DEFAULT_COLOR = { bg = "f9f7ed", stroke = "cccccc", textstroke = "000000" }
 
 -- ------------------------------------------------------------------
 --  Messages (TeX log when inside LuaLaTeX, stderr on the command line)
 -- ------------------------------------------------------------------
 local in_tex = false
 
+M.warnings = {}   -- all warnings of the last conversion (for the tests)
+
 local function warn(msg)
+  M.warnings[#M.warnings + 1] = msg
   if in_tex then
     texio.write_nl("term and log", "Package dcrgraph Warning: " .. msg)
     texio.write_nl("term and log", "")
@@ -1252,13 +1396,48 @@ end
 --                            delay}
 -- ------------------------------------------------------------------
 local relation_kinds = {
-  conditions = { elem = "condition", kind = "condition" },
-  responses  = { elem = "response",  kind = "response" },
-  excludes   = { elem = "exclude",   kind = "exclude" },
-  includes   = { elem = "include",   kind = "include" },
-  milestones = { elem = "milestone", kind = "milestone" },
-  updates    = { elem = "update",    kind = "update" },
+  conditions     = { elem = "condition",     kind = "condition" },
+  responses      = { elem = "response",      kind = "response" },
+  excludes       = { elem = "exclude",       kind = "exclude" },
+  includes       = { elem = "include",       kind = "include" },
+  milestones     = { elem = "milestone",     kind = "milestone" },
+  updates        = { elem = "update",        kind = "update" },
+  coresponses    = { elem = "coresponse",    kind = "noresponse" },
+  spawns         = { elem = "spawn",         kind = "spawn" },
+  templateSpawns = { elem = "templateSpawn", kind = "spawn" },   -- to a subgraph
 }
+
+-- The portal stores two relations as a linked pair (same `link' attribute,
+-- same source and target):
+--   condition + milestone -> pre-condition
+--   include   + exclude   -> logical include
+-- Merge them into one relation, at the place of the first of the pair.
+local linked_pairs = {
+  { "condition", "milestone", "precondition" },
+  { "include",   "exclude",   "logicalinclude" },
+}
+local function merge_linked(rels)
+  local drop = {}
+  for _, pair in ipairs(linked_pairs) do
+    local a, b, merged = pair[1], pair[2], pair[3]
+    for _, r in ipairs(rels) do
+      if r.kind == a and r.link then
+        for j, q in ipairs(rels) do
+          if not drop[j] and q.kind == b and q.link == r.link
+             and q.from == r.from and q.to == r.to then
+            r.kind = merged
+            r.delay = r.delay or q.delay
+            drop[j] = true
+            break
+          end
+        end
+      end
+    end
+  end
+  local kept = {}
+  for i, r in ipairs(rels) do if not drop[i] then kept[#kept + 1] = r end end
+  return kept
+end
 
 local function read_dcrjs(text)
   -- {} = no HTML void elements: pure XML (else <meta>...</meta>, used by
@@ -1266,19 +1445,31 @@ local function read_dcrjs(text)
   local dom = require("luaxml-domobject").parse(text, {})
   local root = child(dom:root_node(), "dcrgraph")
   if not root then fail("no <dcrgraph> element found") end
+  -- which tool wrote the file: the DCR portal adds a <meta> block
+  local tool = child(root, "meta") and "portal" or "dcrjs"
+  local graph = { nodes = {}, relations = {}, px_per_cm = PX_PER_CM[tool] }
+
+  -- One <dcrgraph>: its events, relations and marking. A subgraph
+  -- (template) event contains a whole <dcrgraph> of its own, read by the
+  -- same function. `outer' = labels and expressions of the enclosing graph.
+  -- Returns the ids of the top-level events.
+  local function read_graph(root, outer)
   local spec = child(root, "specification")
   local res = child(spec, "resources")
 
   -- labels: <labelMapping eventId=... labelId=...>, the label id is the text
-  local labels = {}
+  local labels = setmetatable({}, { __index = outer.labels })
   for _, m in ipairs(elements(child(res, "labelMappings"), "labelMapping")) do
     labels[attr(m, "eventId")] = attr(m, "labelId")
   end
 
   -- expressions: id -> type (computations; type="DMN" for DMN events)
-  local exprtype = {}
+  -- and id -> value (guards of relations: expressionId)
+  local exprtype = setmetatable({}, { __index = outer.exprtype })
+  local exprvalue = setmetatable({}, { __index = outer.exprvalue })
   for _, e in ipairs(elements(child(res, "expressions"), "expression")) do
     exprtype[attr(e, "id")] = attr(e, "type") or ""
+    exprvalue[attr(e, "id")] = attr(e, "value")
   end
 
   -- marking
@@ -1293,14 +1484,22 @@ local function read_dcrjs(text)
   local included_el = child(marking, "included")
   local included = included_el and idset(included_el)
 
-  local graph = { nodes = {}, relations = {} }
-
   -- events, recursively: an event containing events is a nesting
   local function read_event(ev)
     local id = attr(ev, "id")
     local kids = {}
     for _, sub in ipairs(elements(ev, "event")) do
       kids[#kids + 1] = read_event(sub)
+    end
+    -- a subgraph (template) with its own graph: its events are its children
+    local etype = attr(ev, "type")
+    -- (<event type="template"><template><dcrgraph>...)
+    local inner = etype == "template" and child(ev, "template", "dcrgraph")
+    if inner then
+      for _, k in ipairs(read_graph(inner, { labels = labels,
+          exprtype = exprtype, exprvalue = exprvalue })) do
+        kids[#kids + 1] = k
+      end
     end
     local custom = child(ev, "custom")
     local roles = {}
@@ -1312,9 +1511,9 @@ local function read_dcrjs(text)
     local size = child(custom, "visualization", "size")
     if not loc then warn("event `" .. id .. "' has no position; placed at (0,0)") end
     local kind = "activity"
-    local etype = attr(ev, "type")
     if #kids > 0 or etype == "nesting" or etype == "subprocess" then
-      kind = (etype == "subprocess") and "subprocess" or "nesting"
+      kind = (etype == "subprocess") and "subprocess"
+          or (etype == "template") and "subgraph" or "nesting"
     end
     -- event types: data (has a data type), computation / DMN (has a
     -- computation expression; DMN if the expression is of type DMN),
@@ -1322,19 +1521,23 @@ local function read_dcrjs(text)
     local comp = attr(ev, "computation")
     local ctype = comp and comp ~= "" and (exprtype[comp] or "")
     local scope = child(custom, "eventScope")
-    -- background colour, if not the default cream
+    -- colours from the file (background, border, text), each only if it
+    -- differs from the portal default (= the package default)
     local colors = child(custom, "visualization", "colors")
-    local bg = colors and attr(colors, "bg")
-    bg = bg and bg:match("^#?(%x%x%x%x%x%x)$")
-    if bg and DEFAULT_BG[bg:lower()] then bg = nil end
+    local function color(name)
+      local c = colors and attr(colors, name)
+      c = c and c:match("^#?(%x%x%x%x%x%x)$")
+      if not c or c:lower() == DEFAULT_COLOR[name:lower()] then return nil end
+      return c:upper()
+    end
     graph.nodes[#graph.nodes + 1] = {
       id = id, label = labels[id] or id, roles = roles, kind = kind,
       children = kids,
       x = num(loc and attr(loc, "xLoc")),
       y = num(loc and attr(loc, "yLoc")),
       -- the portal stores no size: default box
-      w = size and num(attr(size, "width")) or DEFAULT_W,
-      h = size and num(attr(size, "height")) or DEFAULT_H,
+      w = size and num(attr(size, "width")) or DEFAULT_SIZE[tool][1],
+      h = size and num(attr(size, "height")) or DEFAULT_SIZE[tool][2],
       executed = executed[id], pending = pending[id],
       -- the marking lists activities only; nestings are never excluded
       excluded = kind == "activity" and included ~= nil and not included[id],
@@ -1342,12 +1545,24 @@ local function read_dcrjs(text)
       computation = ctype and ctype:upper() ~= "DMN",
       dmn = ctype and ctype:upper() == "DMN",
       global = scope ~= nil and (scope:get_text() or ""):match("^%s*global%s*$") ~= nil,
-      bg = bg and bg:upper(),
+      -- an empty subgraph (template, target of spawns) is drawn as an event;
+      -- one with events is a collection (kind "subgraph")
+      subgraph = etype == "template" and kind == "activity",
+      bg = color("bg"), stroke = color("stroke"), text = color("textStroke"),
+      -- collections without a size in the file (portal): box from the
+      -- children, see layout
+      autosize = kind ~= "activity" and not size,
     }
+    local n = graph.nodes[#graph.nodes]
+    if n.subgraph and not size and tool == "portal" then
+      n.y = n.y + PORTAL_HEADER
+      n.h = n.h - PORTAL_HEADER
+    end
     return id
   end
+  local top = {}
   for _, ev in ipairs(elements(child(res, "events"), "event")) do
-    read_event(ev)
+    top[#top + 1] = read_event(ev)
   end
   if #elements(child(res, "subProcesses")) > 0 then
     warn("<subProcesses> are not supported yet; skipped")
@@ -1356,7 +1571,10 @@ local function read_dcrjs(text)
   -- relations
   for _, group in ipairs(elements(child(spec, "constraints"))) do
     local gname = ename(group)
-    local rk = relation_kinds[gname]
+    local rk
+    for k, v in pairs(relation_kinds) do          -- names compared in lower case
+      if k:lower() == gname then rk = v end
+    end
     local rels = elements(group)
     if not rk then
       if #rels > 0 then
@@ -1369,15 +1587,27 @@ local function read_dcrjs(text)
           wps[#wps + 1] = { num(attr(w, "x")), num(attr(w, "y")) }
         end
         local delay = attr(r, "time")
+        local link = attr(r, "link")
+        -- guard: the expression referenced by expressionId
+        local eid = attr(r, "expressionId")
+        local guard = eid and exprvalue[eid]
+        if guard then guard = guard:gsub("^%s+", ""):gsub("%s+$", "") end
         graph.relations[#graph.relations + 1] = {
           kind = rk.kind,
           from = attr(r, "sourceId"), to = attr(r, "targetId"),
           waypoints = wps,
           delay = (delay and delay ~= "") and delay or nil,
+          link = (link and link ~= "") and link or nil,
+          guard = (guard and guard ~= "") and guard or nil,
         }
       end
     end
   end
+  return top
+  end   -- read_graph
+
+  read_graph(root, {})
+  graph.relations = merge_linked(graph.relations)
   return graph
 end
 
@@ -1415,7 +1645,8 @@ end
 --    lay.via[r]       relation r (index): list of {x, y}, or nil
 -- ------------------------------------------------------------------
 local function layout(graph, opts)
-  local s = opts.scale / PX_PER_CM          -- px -> cm (positions)
+  local ppc = graph.px_per_cm
+  local s = opts.scale / ppc                -- px -> cm (positions)
   local lay = { ids = {}, node = {}, via = {} }
 
   -- node ids: letters, digits, _ only; kept unique
@@ -1431,9 +1662,22 @@ local function layout(graph, opts)
   for _, n in ipairs(graph.nodes) do
     -- centre scaled, size kept (text does not scale either)
     local cx, cy = (n.x + n.w / 2) * s, -(n.y + n.h / 2) * s
-    local w, h = n.w / PX_PER_CM, n.h / PX_PER_CM
+    local w, h = n.w / ppc, n.h / ppc
     if n.kind == "activity" then
       lay.node[n.id] = { x = cx, y = cy, w = w, h = h }
+    elseif n.autosize and #n.children > 0 then
+      -- the box around the children (already laid out: they come first)
+      local x1, y1, x2, y2 = math.huge, -math.huge, -math.huge, math.huge
+      for _, c in ipairs(n.children) do
+        local g = lay.node[c]
+        local l, t, r, b
+        if g.w then l, t, r, b = g.x - g.w / 2, g.y + g.h / 2, g.x + g.w / 2, g.y - g.h / 2
+        else l, t, r, b = g.x1, g.y1, g.x2, g.y2 end
+        x1, y1, x2, y2 = math.min(x1, l), math.max(y1, t), math.max(x2, r), math.min(y2, b)
+      end
+      local p = COLLECTION_PAD
+      lay.node[n.id] = { x1 = x1 - p.left / ppc, y1 = y1 + p.top / ppc,
+                         x2 = x2 + p.right / ppc, y2 = y2 - p.bottom / ppc }
     else
       lay.node[n.id] = { x1 = cx - w / 2, y1 = cy + h / 2,
                          x2 = cx + w / 2, y2 = cy - h / 2 }
@@ -1450,22 +1694,74 @@ local function layout(graph, opts)
   return lay
 end
 
+-- Which values of which relation are shown as text, from the options
+-- guards/delays/deadlines={list of relations}. Result: relation index ->
+-- list of "guard", "delay", "deadline". Warns about names that match no
+-- relation, and about relations without such a value.
+local part_of = { guards = "guard", delays = "delay", deadlines = "deadline" }
+function M.explicit_parts(graph, opts)
+  local result = {}
+  for _, key in ipairs({ "guards", "delays", "deadlines" }) do
+    local part = part_of[key]
+    for _, t in ipairs(opts.targets[key] or {}) do
+      local matches = {}
+      for i, r in ipairs(graph.relations) do
+        if r.from == t.from and r.to == t.to and (not t.kind or t.kind == r.kind) then
+          matches[#matches + 1] = i
+        end
+      end
+      if #matches == 0 then
+        warn(key .. ": no relation `" .. t.text .. "' in the file")
+      elseif #matches > 1 and not t.kind then
+        warn(key .. ": `" .. t.text .. "' matches " .. #matches ..
+          " relations; all are used (add the relation type to pick one)")
+      end
+      for _, i in ipairs(matches) do
+        local r = graph.relations[i]
+        local has
+        if part == "guard" then has = r.guard ~= nil
+        elseif part == "deadline" then has = r.delay ~= nil and r.kind == "response"
+        else has = r.delay ~= nil and r.kind ~= "response" end
+        if not has then
+          warn(key .. ": relation `" .. r.from .. " " .. r.kind .. " " .. r.to ..
+            "' has no " .. part .. (part ~= "guard" and r.delay and
+            " (its time is a " .. (r.kind == "response" and "deadline" or "delay") .. ")" or ""))
+        else
+          result[i] = result[i] or {}
+          table.insert(result[i], part)
+        end
+      end
+    end
+  end
+  return result
+end
+
 local function emit(graph, opts, lay)
   local ids = lay.ids
   local function pt(p) return "(" .. fmt(p[1]) .. "," .. fmt(p[2]) .. ")" end
 
   local out = {}
   local function add(line) out[#out + 1] = line end
-  -- background colours from the file, defined once each
+  -- colours from the file, defined once each, named dcrcolRRGGBB
   local seen = {}
   for _, n in ipairs(graph.nodes) do
-    if n.bg and not seen[n.bg] then
-      seen[n.bg] = true
-      add("\\definecolor{dcrbg" .. n.bg .. "}{HTML}{" .. n.bg .. "}")
+    for _, key in ipairs({ "bg", "stroke", "text" }) do
+      local c = n[key]
+      if c and not seen[c] then
+        seen[c] = true
+        add("\\definecolor{dcrcol" .. c .. "}{HTML}{" .. c .. "}")
+      end
     end
   end
   local env = {}
   if opts.notation then env[#env + 1] = "dcr/notation=" .. opts.notation end
+  if opts.explicit_all then env[#env + 1] = "dcr/explicit" end
+  for _, k in ipairs({ "guards", "delays", "deadlines" }) do
+    if opts[k] then env[#env + 1] = "dcr/" .. k .. "=" .. opts[k] end
+  end
+  -- guards/delays/deadlines={...}: mark the named relations; explicit[i]
+  -- = the parts of relation i to show as text
+  local explicit = M.explicit_parts(graph, opts)
   add("\\begin{dcrgraph}" .. (#env > 0 and "[" .. table.concat(env, ", ") .. "]" or ""))
 
   for _, n in ipairs(graph.nodes) do
@@ -1480,10 +1776,12 @@ local function emit(graph, opts, lay)
       if n.pending then o[#o + 1] = "pending" end
       if n.excluded then o[#o + 1] = "excluded" end
     end
-    for _, flag in ipairs({ "data", "computation", "dmn", "global" }) do
+    for _, flag in ipairs({ "data", "computation", "dmn", "global", "subgraph" }) do
       if n[flag] then o[#o + 1] = flag end
     end
-    if n.bg then o[#o + 1] = "bgcolor=dcrbg" .. n.bg end
+    if n.bg then o[#o + 1] = "bgcolor=dcrcol" .. n.bg end
+    if n.stroke then o[#o + 1] = "bordercolor=dcrcol" .. n.stroke end
+    if n.text then o[#o + 1] = "textcolor=dcrcol" .. n.text end
     local g = lay.node[n.id]
     if n.kind == "activity" then
       o[#o + 1] = "at={" .. pt({ g.x, g.y }) .. "}"
@@ -1508,7 +1806,9 @@ local function emit(graph, opts, lay)
         .. "': unknown event; skipped")
     else
       local o = {}
-      if r.delay then o[#o + 1] = "delay=" .. r.delay end
+      if r.delay then o[#o + 1] = "delay={" .. escape(r.delay) .. "}" end
+      if r.guard then o[#o + 1] = "guard={" .. escape(r.guard) .. "}" end
+      if explicit[i] then o[#o + 1] = "explicit={" .. table.concat(explicit[i], ",") .. "}" end
       if opts.waypoints and lay.via[i] then
         local p = {}
         for _, w in ipairs(lay.via[i]) do p[#p + 1] = pt(w) end
@@ -1531,9 +1831,47 @@ local function truthy(v)
   return v == nil or v == "" or v == "true" or v == "yes" or v == "1"
 end
 
+-- Relations named in an option, e.g. guards={A4 response A6, A1 A2}:
+-- "source type target" or "source target" (type optional, needed only
+-- if there are several relations between the two). Ids as in the file;
+-- `value' is the portal's name of \update.
+local relation_types = { condition = 1, response = 1, include = 1, exclude = 1,
+  milestone = 1, update = 1, noresponse = 1, precondition = 1, spawn = 1,
+  logicalinclude = 1 }
+local type_aliases = { value = "update", coresponse = "noresponse",
+  ["pre-condition"] = "precondition", ["logical-include"] = "logicalinclude",
+  ["no-response"] = "noresponse" }
+
+local function parse_targets(key, v)
+  local list = {}
+  for item in ((v or "") .. ","):gmatch("([^,]*),") do
+    item = trim(item)
+    if item ~= "" then
+      local w = {}
+      for word in item:gmatch("%S+") do w[#w + 1] = word end
+      local from, kind, to
+      if #w == 2 then from, to = w[1], w[2]
+      elseif #w == 3 then from, kind, to = w[1], w[2]:lower(), w[3]
+      else
+        fail(key .. "={" .. v .. "}: `" .. item ..
+          "' is not of the form `source type target' or `source target'")
+      end
+      if kind then
+        kind = type_aliases[kind] or kind
+        if not relation_types[kind] then
+          fail(key .. "={" .. v .. "}: unknown relation type `" .. w[2] .. "' in `" .. item .. "'")
+        end
+      end
+      list[#list + 1] = { from = from, kind = kind, to = to, text = item }
+    end
+  end
+  return list
+end
+
 -- "a, b=c, d={e,f}" -> table; top-level commas only
 local function parse_options(str)
-  local opts = { format = "dcrjs", scale = 1, marking = true, waypoints = false }
+  local opts = { format = "dcrjs", scale = 1, marking = true, waypoints = false,
+                 targets = {} }
   local parts, depth, cur = {}, 0, ""
   for c in (str or ""):gmatch(".") do
     if c == "{" then depth = depth + 1 elseif c == "}" then depth = depth - 1 end
@@ -1554,6 +1892,19 @@ local function parse_options(str)
       elseif k == "waypoints" then opts.waypoints = truthy(v)
       elseif k == "marking" then opts.marking = truthy(v)
       elseif k == "export" then opts.export = v
+      elseif k == "guards" or k == "delays" or k == "deadlines" then
+        -- a mode for the whole graph, or a list of relations whose value
+        -- is shown as text: guards={A4 response A6, A6 A7}
+        local modes = (k == "guards") and { shield = 1, explicit = 1, both = 1 }
+                                       or { marker = 1, explicit = 1 }
+        if modes[v] then
+          opts[k] = v
+        else
+          opts.targets[k] = parse_targets(k, v)
+        end
+      elseif k == "explicit" then
+        -- all values as text
+        opts.explicit_all = true
       else warn("unknown option `" .. k .. "' ignored") end
     end
   end
@@ -1577,6 +1928,7 @@ end
 
 -- file name + option string -> model, options
 function M.read(file, optstring)
+  M.warnings = {}
   local opts = parse_options(optstring)
   local reader = front_ends[opts.format]
   if not reader then fail("unknown format `" .. tostring(opts.format) .. "'") end
@@ -1594,7 +1946,7 @@ end
 --  layout (where it is drawn), as sorted text lines, separately.
 -- ------------------------------------------------------------------
 local node_flags = { "executed", "pending", "excluded",
-                     "data", "computation", "dmn", "global" }
+                     "data", "computation", "dmn", "global", "subgraph" }
 
 function M.describe_content(graph)
   local lines = {}
@@ -1603,6 +1955,8 @@ function M.describe_content(graph)
     if #n.roles > 0 then t[#t + 1] = "roles=" .. table.concat(n.roles, "|") end
     for _, f in ipairs(node_flags) do if n[f] then t[#t + 1] = f end end
     if n.bg then t[#t + 1] = "bg=" .. n.bg end
+    if n.stroke then t[#t + 1] = "stroke=" .. n.stroke end
+    if n.text then t[#t + 1] = "text=" .. n.text end
     if #n.children > 0 then
       local kids = { table.unpack(n.children) }
       table.sort(kids)
@@ -1613,6 +1967,7 @@ function M.describe_content(graph)
   for _, r in ipairs(graph.relations) do
     local t = { "relation", r.kind, r.from, "->", r.to }
     if r.delay then t[#t + 1] = "delay=" .. r.delay end
+    if r.guard then t[#t + 1] = string.format("guard=%q", r.guard) end
     lines[#lines + 1] = table.concat(t, " ")
   end
   table.sort(lines)
@@ -1640,6 +1995,29 @@ function M.describe_layout(graph, opts)
         table.concat(p, ""))
     end
   end
+  -- which values are written as text (options guards=, delays=,
+  -- deadlines=, explicit; for the whole graph or single relations)
+  local parts = M.explicit_parts(graph, opts)
+  local all = opts.explicit_all
+  for i, r in ipairs(graph.relations) do
+    local shown = {}
+    for _, p in ipairs(parts[i] or {}) do shown[p] = true end
+    if r.guard and (all or opts.guards == "explicit" or opts.guards == "both") then
+      shown.guard = true
+    end
+    if r.delay and r.kind == "response" and (all or opts.deadlines == "explicit") then
+      shown.deadline = true
+    end
+    if r.delay and r.kind ~= "response" and (all or opts.delays == "explicit") then
+      shown.delay = true
+    end
+    for _, p in ipairs({ "guard", "delay", "deadline" }) do
+      if shown[p] then
+        lines[#lines + 1] = string.format("show %s %s %s -> %s", p, r.kind, r.from, r.to)
+      end
+    end
+  end
+  for _, w in ipairs(M.warnings) do lines[#lines + 1] = "warning: " .. w end
   table.sort(lines)
   return lines
 end

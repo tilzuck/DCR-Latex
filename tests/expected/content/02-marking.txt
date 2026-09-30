@@ -1,0 +1,7 @@
+activity A1 label="A1"
+activity A2 label="A2" pending excluded
+activity A3 label="A3" executed excluded
+activity A4 label="A4" pending
+activity A5 label="A5" executed
+activity A6 label="A6" executed pending excluded
+activity A7 label="A7" executed pending

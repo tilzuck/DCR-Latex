@@ -1,0 +1,7 @@
+\begin{dcrgraph}[dcr/guards=explicit]
+  \activity{A}{a}
+  \activity[right=2cm of a]{B}{b}
+  \activity[right=2cm of b]{C}{c}
+  \response[guard={x > 10}]{a}{b}
+  \condition[delay=PT5M, explicit=delay]{b}{c}
+\end{dcrgraph}

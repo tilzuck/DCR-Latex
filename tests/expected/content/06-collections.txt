@@ -1,0 +1,20 @@
+activity A1 label="A1"
+activity A10 label="A10"
+activity A11 label="A11"
+activity A2 label="A2"
+activity A4 label="A4"
+activity A7 label="A7"
+activity A8 label="A8"
+activity A9 label="A9"
+nesting A3 label="A3" bg=EAD1DC children=A1,A2
+relation precondition A1 -> A2
+relation precondition A11 -> A3
+relation precondition A4 -> A7
+relation precondition A8 -> A9
+relation response A11 -> A3
+relation response A7 -> A10
+relation response A8 -> A9
+relation spawn A10 -> A6
+relation spawn A2 -> A6
+subgraph A6 label="A6" children=A8,A9
+subprocess A5 label="A5" bg=D9EAD3 stroke=073763 text=D5A6BD children=A4,A7

@@ -5,7 +5,8 @@
 \usepackage[scaled=0.92]{helvet}
 \usepackage{dcrgraph}
 \begin{document}
-\begin{dcrgraph}[x=0.0394cm, y=-0.0394cm]
+% dcr/explicit: show the delays and guards as text, as the figure does
+\begin{dcrgraph}[x=0.0394cm, y=-0.0394cm, dcr/explicit]
   % ---------------- events ----------------
   \activity[at={(85,94)}]{A}{A}                                   % atomic
   \activity[excluded, at={(183,98)}]{B}{B}

@@ -8,7 +8,9 @@
 \definecolor{restartpink}{HTML}{F6CFCF}
 \definecolor{closegreen}{HTML}{B3D7AC}
 \begin{document}
-\begin{dcrgraph}[dcr/bgcolor=autogrey]   % default for all activities in this graph
+% bgcolor: default for all activities in this graph;
+% explicit: show the delays (PT10S, PT30M) as text
+\begin{dcrgraph}[dcr/bgcolor=autogrey, dcr/explicit]
   % ---------------- activities: column by column ----------------
   \activity[role=L-AUTO, at={(0,-4.45)}]{Forsinkelse - intet brev}{fintet}
   \activity[role=L-AUTO, at={(0,-8.9)}]{Ingen breve fundet}{ingen}

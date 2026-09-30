@@ -1,0 +1,30 @@
+# Layout variants of 04-timed-guarded.xml: "name: options of \includedcrgraph"
+# Relations in the file: A1 condition A2 (delay), A3 precondition A4 (delay),
+# A2 response A5 (deadline), A4 response A6 (guard "true"),
+# A6 value A7 (guard "A4 < 10").
+
+# whole graph
+all-explicit: explicit
+guards-explicit: guards=explicit
+guards-both: guards=both
+delays-explicit: delays=explicit
+deadlines-explicit: deadlines=explicit
+
+# single relations: "source type target"
+one-guard: guards={A4 response A6}
+one-guard-value: guards={A6 value A7}
+one-delay: delays={A3 precondition A4}
+one-deadline: deadlines={A2 response A5}
+# several relations in one list (comma separated)
+two-guards: guards={A4 response A6, A6 value A7}
+two-delays: delays={A1 condition A2, A3 precondition A4}
+# without type (only one relation between the two)
+no-type: guards={A6 A7}, delays={A1 A2}
+# mixed: one of each kind
+mixed: guards={A4 response A6}, delays={A1 condition A2}, deadlines={A2 response A5}
+
+# wrong names: must give warnings, and show nothing
+unknown-relation: guards={A1 A7}
+wrong-type: guards={A4 condition A6}
+no-guard-there: guards={A1 condition A2}
+deadline-not-delay: delays={A2 response A5}
