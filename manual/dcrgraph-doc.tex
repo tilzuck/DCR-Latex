@@ -119,6 +119,23 @@ colour; own colours are defined with \cs{definecolor}.
 The defaults of a whole document: \cs{dcrset\{bgcolor=\dots, nesting bgcolor=\dots\}},
 \cs{colorlet\{dcr border\}\{\dots\}}, \cs{colorlet\{dcr text\}\{\dots\}}.
 
+\subsection{Adjusting an imported graph}\label{sec:adjust}
+An imported graph can be adjusted by hand without leaving the file behind:
+put the adjustments into a \texttt{dcrgraphfile} environment. Relations are
+named as ``\meta{source} \meta{type} \meta{target}'' (or ``\meta{source}
+\meta{target}'' if there is only one between the two), with the ids from the
+file.
+\example{adjust}
+\cs{adjustrelation} takes \key{from=} and \key{to=}, the point of the box where
+the line starts and ends (\key{north}, \key{south}, \key{east}, \key{west},
+\key{south east}, \dots, or an angle like \key{-60}), and any option of a
+relation: \key{bend left=20}, \key{via=\{(5,-11)\}}, \key{explicit=guard}, \dots\
+\cs{adjustactivity} moves a box with \key{shift=\{(x,y)\}}, \key{xshift=},
+\key{yshift=} (a nesting with everything inside it) and takes any option of
+an activity (colours, \key{subtitle=}, \dots).
+When the graph is changed in the portal and exported again, the adjustments
+still apply; one that names something no longer in the file gives a warning.
+
 \subsection{Positions and routes}
 \draft{at=, positioning, via= with right-angled routes, bend left/right}
 
@@ -222,6 +239,14 @@ Option & Meaning\\
 \key{explicit=\{guard,delay,deadline\}} & write these values of this relation as
   text; \key{explicit} alone: all\\
 \key{via=\{(x1,y1),(x2,y2)\}} & route the line through these points\\
+\key{selfpos=}\meta{length} & for a relation from an event to itself: where its
+  marker sits on the top edge (its centre, from the left edge); without it,
+  the markers are lined up from the left corner (\cs{includedcrgraph} sets
+  it, keeping clear of other relations)\\
+\key{bundle=}\meta{node}\key{:}\meta{name} & spread this relation together with
+  the others of the same bundle, as if they were parallel; for relations
+  with a common end \meta{node} whose lines or markers would lie on top of
+  each other (\cs{includedcrgraph} sets this automatically)\\
 anything else & Ti\emph{k}Z: \key{bend left=20}, \key{out=90}, \dots\\
 \bottomrule
 \end{tabularx}
@@ -307,6 +332,24 @@ Option & Meaning\\
 \key{export=}\meta{file.tex} & also write the generated code to a file, and
   into the \texttt{.log}\\
 \key{format=dcrjs} & input format (the only one so far)\\
+\bottomrule
+\end{tabularx}
+
+\subsection{Adjusting an imported graph}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.47\linewidth}L@{}}
+\toprule
+Command & Meaning\\
+\midrule
+\cs{begin\{dcrgraphfile\}}\oarg{options}\marg{file} & an imported graph with
+  adjustments; options as for \cs{includedcrgraph}; drawn at
+  \cs{end\{dcrgraphfile\}} (Lua\LaTeX)\\
+\cs{adjustactivity}\marg{id}\marg{options} & \key{shift=\{(x,y)\}},
+  \key{xshift=}, \key{yshift=} (in cm, or with a unit): move the box, a
+  collection with everything inside it; other options: as for \cs{activity}\\
+\cs{adjustrelation}\marg{relation}\marg{options} & \meta{relation}:
+  ``\meta{source} \meta{type} \meta{target}'' or ``\meta{source} \meta{target}'';
+  \key{from=}, \key{to=}: anchor of the box where the line starts/ends;
+  other options: as for relations\\
 \bottomrule
 \end{tabularx}
 

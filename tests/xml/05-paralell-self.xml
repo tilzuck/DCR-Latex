@@ -1,0 +1,247 @@
+<dcrgraph title="05-paralell-self" dataTypesStatus="hide" filterLevel="-1" insightFilter="false" zoomLevel="0" formGroupStyle="Normal" formLayoutStyle="Horizontal" formShowPendingCount="true" graphBG="#f1f6fe" graphType="0" exercise="false" version="1.1">
+    <meta>
+        <graph id="2013731" hash="f62df3d94c6a2335aca8c1b62fe09f29d537014ef75015c41de5977d1e1b7c00" guid="11F895E9-DB77-4727-9296-9CF3DD5E5F4B" OwnerName="Tilman Zuckmantel" OwnerId="150304" categoryId="15026" categoryTitle="Default" Keywords=""/>
+        <revision id="5802538" type="minor" date="2026-09-30T13:07:27.0000000+02:00" title="" comment=""/>
+        <organization id="1157" name="DCR Hackathon"/>
+    </meta>
+    <specification>
+        <resources>
+            <events>
+                <event id="A1">
+                    <precondition message=""/>
+                    <custom>
+                        <visualization>
+                            <location xLoc="400" yLoc="320"/>
+                            <colors bg="#f9f7ed" textStroke="#000000" stroke="#cccccc"/>
+                        </visualization>
+                        <roles/>
+                        <readRoles/>
+                        <groups>
+                            <group/>
+                        </groups>
+                        <phases>
+                            <phase/>
+                        </phases>
+                        <eventType/>
+                        <eventScope>private</eventScope>
+                        <eventTypeData/>
+                        <eventDescription/>
+                        <purpose/>
+                        <guide/>
+                        <insight use="false"/>
+                        <level>100</level>
+                        <sequence>1</sequence>
+                        <costs>0</costs>
+                        <eventData>
+                            <styles/>
+                        </eventData>
+                        <interfaces/>
+                    </custom>
+                </event>
+                <event id="A2">
+                    <precondition message=""/>
+                    <custom>
+                        <visualization>
+                            <location xLoc="650" yLoc="320"/>
+                            <colors bg="#f9f7ed" textStroke="#000000" stroke="#cccccc"/>
+                        </visualization>
+                        <roles/>
+                        <readRoles/>
+                        <groups>
+                            <group/>
+                        </groups>
+                        <phases>
+                            <phase/>
+                        </phases>
+                        <eventType/>
+                        <eventScope>private</eventScope>
+                        <eventTypeData/>
+                        <eventDescription/>
+                        <purpose/>
+                        <guide/>
+                        <insight use="false"/>
+                        <level>100</level>
+                        <sequence>2</sequence>
+                        <costs>0</costs>
+                        <eventData>
+                            <styles/>
+                        </eventData>
+                        <interfaces/>
+                    </custom>
+                </event>
+                <event id="A3">
+                    <precondition message=""/>
+                    <custom>
+                        <visualization>
+                            <location xLoc="650" yLoc="520"/>
+                            <colors bg="#f9f7ed" textStroke="#000000" stroke="#cccccc"/>
+                        </visualization>
+                        <roles/>
+                        <readRoles/>
+                        <groups>
+                            <group/>
+                        </groups>
+                        <phases>
+                            <phase/>
+                        </phases>
+                        <eventType/>
+                        <eventScope>private</eventScope>
+                        <eventTypeData/>
+                        <eventDescription/>
+                        <purpose/>
+                        <guide/>
+                        <insight use="false"/>
+                        <level>100</level>
+                        <sequence>3</sequence>
+                        <costs>0</costs>
+                        <eventData>
+                            <styles/>
+                        </eventData>
+                        <interfaces/>
+                    </custom>
+                </event>
+                <event id="A4">
+                    <precondition message=""/>
+                    <custom>
+                        <visualization>
+                            <location xLoc="400" yLoc="520"/>
+                            <colors bg="#f9f7ed" textStroke="#000000" stroke="#cccccc"/>
+                        </visualization>
+                        <roles/>
+                        <readRoles/>
+                        <groups>
+                            <group/>
+                        </groups>
+                        <phases>
+                            <phase/>
+                        </phases>
+                        <eventType/>
+                        <eventScope>private</eventScope>
+                        <eventTypeData/>
+                        <eventDescription/>
+                        <purpose/>
+                        <guide/>
+                        <insight use="false"/>
+                        <level>100</level>
+                        <sequence>4</sequence>
+                        <costs>0</costs>
+                        <eventData>
+                            <styles/>
+                        </eventData>
+                        <interfaces/>
+                    </custom>
+                </event>
+            </events>
+            <subProcesses/>
+            <labels>
+                <label id="A1"/>
+                <label id="A2"/>
+                <label id="A3"/>
+                <label id="A4"/>
+            </labels>
+            <labelMappings>
+                <labelMapping eventId="A1" labelId="A1"/>
+                <labelMapping eventId="A2" labelId="A2"/>
+                <labelMapping eventId="A3" labelId="A3"/>
+                <labelMapping eventId="A4" labelId="A4"/>
+            </labelMappings>
+            <expressions/>
+            <variables/>
+            <variableAccesses>
+                <writeAccesses/>
+            </variableAccesses>
+            <custom>
+                <keywords/>
+                <roles/>
+                <groups/>
+                <phases/>
+                <eventTypes/>
+                <eventParameters/>
+                <graphDetails>DCR Process</graphDetails>
+                <graphDocumentation/>
+                <graphLanguage>en-US</graphLanguage>
+                <graphDomain>process</graphDomain>
+                <graphFilters>
+                    <filteredGroups/>
+                    <filteredRoles/>
+                    <filteredPhases/>
+                </graphFilters>
+                <highlighterMarkup>
+                    <highlightLayers/>
+                    <highlights/>
+                </highlighterMarkup>
+            </custom>
+        </resources>
+        <constraints>
+            <conditions>
+                <condition sourceId="A1" targetId="A2" filterLevel="100" description="" time="" groups="" link="A1--condition--A2"/>
+                <condition sourceId="A2" targetId="A2" filterLevel="100" description="" time="" groups="" link="A2--condition--A2"/>
+                <condition sourceId="A1" targetId="A1" filterLevel="100" description="" time="" groups="" link="A1--condition--A1"/>
+                <condition sourceId="A1" targetId="A4" filterLevel="100" description="" time="" groups="" link="A1--condition--A4"/>
+            </conditions>
+            <responses>
+                <response sourceId="A1" targetId="A2" filterLevel="100" description="" time="" groups=""/>
+                <response sourceId="A1" targetId="A1" filterLevel="100" description="" time="" groups=""/>
+                <response sourceId="A2" targetId="A2" filterLevel="100" description="" time="" groups=""/>
+                <response sourceId="A1" targetId="A4" filterLevel="100" description="" time="" groups=""/>
+                <response sourceId="A4" targetId="A4" filterLevel="100" description="" time="" groups=""/>
+                <response sourceId="A3" targetId="A3" filterLevel="100" description="" time="" groups=""/>
+            </responses>
+            <coresponses>
+                <coresponse sourceId="A3" targetId="A2" filterLevel="100" description="" time="" groups=""/>
+                <coresponse sourceId="A3" targetId="A3" filterLevel="100" description="" time="" groups=""/>
+            </coresponses>
+            <includes>
+                <include sourceId="A2" targetId="A1" filterLevel="100" description="" time="" groups=""/>
+                <include sourceId="A2" targetId="A2" filterLevel="100" description="" time="" groups=""/>
+                <include sourceId="A4" targetId="A4" filterLevel="100" description="" time="" groups=""/>
+                <include sourceId="A4" targetId="A3" filterLevel="100" description="" time="" groups=""/>
+                <include sourceId="A3" targetId="A3" filterLevel="100" description="" time="" groups=""/>
+            </includes>
+            <excludes>
+                <exclude sourceId="A2" targetId="A1" filterLevel="100" description="" time="" groups=""/>
+                <exclude sourceId="A1" targetId="A1" filterLevel="100" description="" time="" groups=""/>
+                <exclude sourceId="A2" targetId="A2" filterLevel="100" description="" time="" groups=""/>
+                <exclude sourceId="A4" targetId="A4" filterLevel="100" description="" time="" groups=""/>
+                <exclude sourceId="A3" targetId="A3" filterLevel="100" description="" time="" groups=""/>
+                <exclude sourceId="A3" targetId="A4" filterLevel="100" description="" time="" groups=""/>
+            </excludes>
+            <milestones>
+                <milestone sourceId="A1" targetId="A2" filterLevel="100" description="" time="" groups="" link="A1--condition--A2"/>
+                <milestone sourceId="A2" targetId="A2" filterLevel="100" description="" time="" groups="" link="A2--condition--A2"/>
+                <milestone sourceId="A1" targetId="A1" filterLevel="100" description="" time="" groups="" link="A1--condition--A1"/>
+                <milestone sourceId="A1" targetId="A4" filterLevel="100" description="" time="" groups="" link="A1--condition--A4"/>
+                <milestone sourceId="A4" targetId="A4" filterLevel="100" description="" time="" groups=""/>
+                <milestone sourceId="A3" targetId="A3" filterLevel="100" description="" time="" groups=""/>
+                <milestone sourceId="A2" targetId="A3" filterLevel="100" description="" time="" groups=""/>
+            </milestones>
+            <spawns/>
+            <templateSpawns/>
+            <updates>
+                <update sourceId="A3" targetId="A4" filterLevel="100" description="" time="" groups=""/>
+            </updates>
+        </constraints>
+    </specification>
+    <runtime accepting="false">
+        <custom>
+            <globalMarking>
+                <enabled/>
+                <enabledSubprocesses/>
+                <executed/>
+                <pending/>
+                <included/>
+            </globalMarking>
+        </custom>
+        <marking>
+            <globalStore/>
+            <executed/>
+            <included>
+                <event id="A1"/>
+                <event id="A2"/>
+                <event id="A3"/>
+                <event id="A4"/>
+            </included>
+            <pendingResponses/>
+        </marking>
+    </runtime>
+</dcrgraph>

@@ -1,0 +1,20 @@
+A1 at=(10.343,-8.648) size=2.6x2.826
+A2 at=(15.996,-8.648) size=2.6x2.826
+A3 at=(15.996,-13.17) size=2.6x2.826
+A4 at=(10.343,-13.17) size=2.6x2.826
+self exclude A1 at 0.182
+self exclude A2 at 0.615
+self exclude A3 at 0.615
+self exclude A4 at 0.615
+self include A2 at 0.182
+self include A3 at 0.182
+self include A4 at 0.182
+self milestone A3 at 2.838
+self milestone A4 at 2.405
+self noresponse A3 at 2.405
+self precondition A1 at 1.049
+self precondition A2 at 1.483
+self response A1 at 0.615
+self response A2 at 1.049
+self response A3 at 1.971
+self response A4 at 1.971

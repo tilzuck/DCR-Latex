@@ -1,0 +1,31 @@
+activity A1 label="A1"
+activity A2 label="A2"
+activity A3 label="A3"
+activity A4 label="A4"
+relation exclude A1 -> A1
+relation exclude A2 -> A1
+relation exclude A2 -> A2
+relation exclude A3 -> A3
+relation exclude A3 -> A4
+relation exclude A4 -> A4
+relation include A2 -> A1
+relation include A2 -> A2
+relation include A3 -> A3
+relation include A4 -> A3
+relation include A4 -> A4
+relation milestone A2 -> A3
+relation milestone A3 -> A3
+relation milestone A4 -> A4
+relation noresponse A3 -> A2
+relation noresponse A3 -> A3
+relation precondition A1 -> A1
+relation precondition A1 -> A2
+relation precondition A1 -> A4
+relation precondition A2 -> A2
+relation response A1 -> A1
+relation response A1 -> A2
+relation response A1 -> A4
+relation response A2 -> A2
+relation response A3 -> A3
+relation response A4 -> A4
+relation update A3 -> A4

@@ -1,0 +1,45 @@
+activity A1 label="A"
+activity A11 label="V"
+activity A13 label="O" data
+activity A14 label="N"
+activity A15 label="F" executed pending excluded
+activity A16 label="X"
+activity A17 label="Y" computation
+activity A19 label="K"
+activity A2 label="B" excluded
+activity A20 label="L"
+activity A21 label="R" form
+activity A23 label="Q"
+activity A24 label="I" dmn
+activity A3 label="T" roles=Role1
+activity A4 label="S" roles=Role1|Role2
+activity A5 label="C" pending
+activity A6 label="G" computation
+activity A7 label="E" pending excluded
+activity A8 label="D"
+activity A9 label="H"
+form A22 label="P" children=A23
+nesting A18 label="J" children=A19,A20
+relation condition A1 -> A2
+relation condition A11 -> A12
+relation condition A21 -> A22
+relation condition A24 -> A22 guard="A24=\"A\""
+relation exclude A19 -> A20
+relation exclude A2 -> A2
+relation include A3 -> A2
+relation logicalinclude A6 -> A7 guard="A6 > 10"
+relation milestone A4 -> A5
+relation noresponse A6 -> A5
+relation precondition A2 -> A5
+relation precondition A5 -> A8 delay=PT1S
+relation response A13 -> A18
+relation response A14 -> A17
+relation response A16 -> A14
+relation response A19 -> A21
+relation response A2 -> A5
+relation response A4 -> A2
+relation response A8 -> A9 delay=PT5S
+relation spawn A8 -> A10
+relation update A6 -> A9
+subgraph A10 label="U" children=A11
+subprocess A12 label="M" children=A13,A14

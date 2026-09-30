@@ -56,8 +56,10 @@
 \definecolor{dcr subtitle}{HTML}{9A9A9A}
 \definecolor{dcr delay}{HTML}{EBAA49}
 \colorlet{dcr spawn}{black}                  % as in the DCR portal
-\definecolor{dcr subgraph}{HTML}{3386BB}      % "|||" of an (empty) subgraph event
-\definecolor{dcr subgraph collection}{HTML}{A06860}  % "|||" of a subgraph with events
+% "|||" of subgraphs: black (the blue #3386BB and brown #A06860 measured on
+% portal screenshots were ClearType's coloured fringes of thin black text)
+\colorlet{dcr subgraph}{black}                    % subgraph event (empty)
+\colorlet{dcr subgraph collection}{dcr subgraph}  % subgraph with events
 \colorlet{dcr precondition}{dcr condition}
 \colorlet{dcr logical include}{dcr include}
 \definecolor{dcr multi}{HTML}{8CC4F8}          % multi-instance subprocess
@@ -451,6 +453,10 @@
 %                 time of a condition etc., deadline: the time of a
 %                 response); plain `explicit' = all three
 %   via={(x1,y1),(x2,y2),...}   route the line through these points
+%   bundle=<node>:<name>   spread this relation with the others of the same
+%                 bundle, as if they were parallel (for relations with a
+%                 common end <node> that would lie on top of each other,
+%                 e.g. to a nesting and to a nesting inside it)
 \newif\ifdcr@guard
 \newif\ifdcr@routed
 \newif\ifdcr@xguard \newif\ifdcr@xdelay \newif\ifdcr@xdeadline
@@ -470,6 +476,8 @@
   guard/.default={},
   explicit/.code={\pgfkeys{/dcr@expl,#1}},
   explicit/.default={guard,delay,deadline},
+  bundle/.store in=\dcr@bundle,
+  selfpos/.store in=\dcr@selfpos,
   .unknown/.code={%
     \let\dcr@key\pgfkeyscurrentname
     \def\dcr@val{#1}%
@@ -485,7 +493,8 @@
   \begingroup
   \def\dcr@from{#6}\def\dcr@to{#7}%
   \def\dcr@ropts{}\def\dcr@delay{}\def\dcr@via{}\dcr@guardfalse\def\dcr@gexpr{}\def\dcr@off{0}%
-  \dcr@xguardfalse\dcr@xdelayfalse\dcr@xdeadlinefalse
+  \dcr@xguardfalse\dcr@xdelayfalse\dcr@xdeadlinefalse\def\dcr@bundle{}%
+  \def\dcr@selfpos{}%
   \pgfkeys{/dcr@rel,#5}%
   \ifx\dcr@via\@empty\dcr@routedfalse\else\dcr@routedtrue\fi
   % what is written as text for this relation: its guard, and its time
@@ -726,10 +735,14 @@
 \newcount\dcr@n
 \newdimen\dcr@wA \newdimen\dcr@hA \newdimen\dcr@wB \newdimen\dcr@hB
 
+\def\dcr@bsplit#1:#2:#3:#4:#5:#6\@nil{%
+  \def\dcr@bnode{#1}\def\dcr@bname{#2}\def\dcr@bidx{#3}\def\dcr@btot{#4}%
+  \def\dcr@bcentre{#5}}
 \newcommand\dcr@parallel[2]{%
   % which relation between these two is this, and in which direction?
   % (counters are per graph, so node names can be reused in other graphs)
-  \def\dcr@sign{1}%
+  \def\dcr@sign{1}\def\dcr@bidx{}%
+  \ifx\dcr@bundle\@empty
   \ifcsname dcr@pair@\the\dcr@graph|#1|#2\endcsname
     \dcr@n=\csname dcr@pair@\the\dcr@graph|#1|#2\endcsname\relax
     \edef\dcr@key{\the\dcr@graph|#1|#2}%
@@ -739,9 +752,31 @@
   \else
     \dcr@n=0 \edef\dcr@key{\the\dcr@graph|#1|#2}%
   \fi\fi
+  \else
+    % bundle=<node>:<name>[:<position>:<count>[:<centre>]]: relations with a common
+    % end <node> whose lines or markers would lie on top of each other,
+    % spread like parallel relations; the side is counted from <node>.
+    % With a position (0 = the leftmost, seen from <node>) and the count,
+    % that position is used (the converter sorts them geometrically, so
+    % neighbours never cross); without, the order of writing (as for
+    % parallel relations, with the count from the last run).
+    \expandafter\dcr@bsplit\dcr@bundle:::::\@nil
+    \edef\dcr@key{\the\dcr@graph|bundle|\dcr@bnode:\dcr@bname}%
+    \ifx\dcr@bidx\@empty
+      \ifcsname dcr@pair@\dcr@key\endcsname
+        \dcr@n=\csname dcr@pair@\dcr@key\endcsname\relax
+      \else
+        \dcr@n=0
+      \fi
+    \else
+      \dcr@n=\dcr@bidx\relax
+    \fi
+    \def\dcr@tmp{#1}\ifx\dcr@tmp\dcr@bnode\else\def\dcr@sign{-1}\fi
+  \fi
   % The total number of relations between the pair comes from the last
   % run (.aux), so the bundle can be centred: the first relation written
   % is on one side, the last on the other, in the order of the source.
+  \ifx\dcr@bidx\@empty
   \ifcsname dcr@tot@\dcr@key\endcsname
     \edef\dcr@total{\csname dcr@tot@\dcr@key\endcsname}%
     \ifnum\dcr@n<\dcr@total\relax\else\global\dcr@reruntrue\fi
@@ -752,6 +787,15 @@
   \advance\dcr@n 1
   \expandafter\xdef\csname dcr@pair@\dcr@key\endcsname{\the\dcr@n}%
   \immediate\write\@auxout{\string\dcr@auxtot{\dcr@key}{\the\dcr@n}}%
+  \else   % position and count given (bundle=node:name:position:count
+          % [:centre]); the centre (in positions) defaults to the middle
+    \let\dcr@total\dcr@btot
+    \ifx\dcr@bcentre\@empty
+      \pgfmathsetmacro\dcr@off{\dcr@sign*((\dcr@total-1)/2-\dcr@n)*\dcr@pardist}%
+    \else
+      \pgfmathsetmacro\dcr@off{\dcr@sign*(\dcr@bcentre-\dcr@n)*\dcr@pardist}%
+    \fi
+  \fi
   % centres and half sizes of both boxes
   \pgfpointanchor{#1}{center}\dcr@ax=\pgf@x \dcr@ay=\pgf@y
   \pgfpointanchor{#1}{north east}\dcr@wA=\pgf@x \dcr@hA=\pgf@y
@@ -765,6 +809,12 @@
   \pgfmathsetmacro\dcr@l{max(veclen(\dcr@dx,\dcr@dy),0.001)}%
   \pgfmathsetmacro\dcr@dx{\dcr@dx/\dcr@l}%
   \pgfmathsetmacro\dcr@dy{\dcr@dy/\dcr@l}%
+  % safety: the shifted line must still hit both boxes, with room for a
+  % marker -- limit the shift to what the narrower box allows across the
+  % line (its half extent perpendicular to the line)
+  \pgfmathsetmacro\dcr@lim{max(min(\dcr@wA*abs(\dcr@dy)+\dcr@hA*abs(\dcr@dx),
+    \dcr@wB*abs(\dcr@dy)+\dcr@hB*abs(\dcr@dx))-0.5*\dcr@rsize-\dcr@border, 0)}%
+  \pgfmathsetmacro\dcr@off{max(min(\dcr@off,\dcr@lim),-\dcr@lim)}%
   \pgfmathsetmacro\dcr@ox{-\dcr@dy*\dcr@off}%
   \pgfmathsetmacro\dcr@oy{\dcr@dx*\dcr@off}%
   % leave box A: distance along the line from the shifted centre
@@ -863,8 +913,11 @@
 }
 
 % Relation from an activity to itself (e.g. \exclude{A}{A}): no line, just
-% the marker above the top-left corner, as in the DCR portal. Several
-% self-relations on one activity are lined up left to right.
+% the marker on the top edge, as in the DCR portal. Several self-relations
+% on one activity are lined up left to right from the left corner; with
+% the relation key selfpos=<length> (distance of the marker's centre from
+% the left edge; set by \includedcrgraph to avoid the markers of other
+% relations) at that place instead.
 \newdimen\dcr@selfx
 \newcommand\dcr@selfrelation[3]{%
   \ifdcr@classic\expandafter\dcr@classicself\else\expandafter\dcr@portalself\fi
@@ -875,11 +928,19 @@
   \else
     \dcr@selfx=0pt
   \fi
-  \node[#1, anchor=south west]
-    at ([xshift=\dcr@selfx, yshift=0.5\dcr@border+2pt]#3.north west) {#2};
-  \advance\dcr@selfx by \dcr@rsize
-  \advance\dcr@selfx by 2pt
-  \expandafter\xdef\csname dcr@self@\the\dcr@graph @#3\endcsname{\the\dcr@selfx}%
+  % the marker's centre: flush on the top edge, exactly like the other
+  % markers (as in the portal); centre anchor, so that dots and squares
+  % line up
+  \ifx\dcr@selfpos\@empty
+    \dimen@=\dimexpr\dcr@selfx+0.5\dcr@rsize\relax
+    \advance\dcr@selfx by \dcr@rsize
+    \advance\dcr@selfx by 2pt
+    \expandafter\xdef\csname dcr@self@\the\dcr@graph @#3\endcsname{\the\dcr@selfx}%
+  \else
+    \dimen@=\dcr@selfpos\relax
+  \fi
+  \node[#1, anchor=center]
+    at ([xshift=\dimen@, yshift=0.5\dcr@border+\dcr@gap+0.5\dcr@rsize]#3.north west) {#2};
 }
 
 
@@ -1106,6 +1167,7 @@
 % \subgraph[options]{label}{id}{children}    : a subgraph (template) with
 %   its own events, target of spawns: dotted, "|||" and "g" (DCR portal)
 \newcommand\dcr@subgraphgroup[4][]{\dcr@group{g}{subgraph,#1}{#2}{#3}{#4}}
+\newif\ifdcr@withheader \newif\ifdcr@noheader
 \newcommand\dcr@group[5]{% #1 corner letter, #2 options, #3 label, #4 id, #5 children
   \begingroup
     \def\dcr@role{}\def\dcr@subtitle{}\def\dcr@bg{}\def\dcr@tikzopts{}\def\dcr@area{}%
@@ -1143,9 +1205,14 @@
       \dcr@do {};
       % 2) the visible box: extra room on top for a role header, and at
       %    the bottom for a subtitle (not with area=, which is exact)
+      % a header line: with a role, and always for forms (as in the portal)
+      \dcr@withheaderfalse
+      \ifx\dcr@role\@empty\else\dcr@withheadertrue\fi
+      \def\dcr@tmp{#1}\def\dcr@tmpb{f}\ifx\dcr@tmp\dcr@tmpb\dcr@withheadertrue\fi
+      \ifdcr@withheader\dcr@noheaderfalse\else\dcr@noheadertrue\fi
       \dimen@=0pt \dimen2=0pt
       \ifx\dcr@area\@empty
-        \ifx\dcr@role\@empty\else\dimen@=\dcr@header\fi
+        \ifdcr@withheader\dimen@=\dcr@header\fi
         \ifx\dcr@subtitle\@empty\else\dimen2=0.35cm\fi
       \fi
       \edef\dcr@do{\noexpand\node[dcr/nesting, inner sep=0pt,
@@ -1157,17 +1224,24 @@
         \ifdcr@subgraph dcr/subgraph,\fi
         \ifdcr@excluded dcr/excluded,\fi] (#4)}%
       \dcr@do {};
-      \ifx\dcr@role\@empty
+      \ifdcr@noheader
         \if\relax\detokenize{#3}\relax\else
-          \node[dcr/nesting label, text=\dcr@tc, anchor=north]
-            at ([yshift=-2pt]#4.north) {#3};
+          \ifx\dcr@list\@empty   % no children: label in the middle, like an event
+            \node[dcr/label, text=\dcr@tc] at (#4.center) {#3};
+          \else
+            \node[dcr/nesting label, text=\dcr@tc, anchor=north]
+              at ([yshift=-2pt]#4.north) {#3};
+          \fi
         \fi
       \else
         % header like an activity: role on top, label just below the line
+        % (with a role, and always for forms, as in the DCR portal)
         \draw[draw=\dcr@bc, line width=\dcr@border,
               \ifdcr@excluded dcr/excluded\fi]
           ([yshift=-\dcr@header]#4.north west) -- ([yshift=-\dcr@header]#4.north east);
-        \node[dcr/role, text=\dcr@tc] at ([yshift=-0.5\dcr@header]#4.north) {\dcr@role};
+        \ifx\dcr@role\@empty\else
+          \node[dcr/role, text=\dcr@tc] at ([yshift=-0.5\dcr@header]#4.north) {\dcr@role};
+        \fi
         \if\relax\detokenize{#3}\relax\else
           \node[dcr/nesting label, text=\dcr@tc, anchor=north]
             at ([yshift=-\dcr@header-2pt]#4.north) {#3};
@@ -1289,6 +1363,50 @@
       end}%
   \else
     \PackageError{dcrgraph}{\string\includedcrgraph\space needs LuaLaTeX}%
+      {Compile with lualatex (on Overleaf: Menu > Compiler > LuaLaTeX).}%
+  \fi}
+
+% ------------------------------------------------------------------
+%  An imported graph with manual adjustments:
+%    \begin{dcrgraphfile}[options of \includedcrgraph]{file}
+%      \adjustactivity{A6}{shift={(1,0)}, bgcolor=red!10}
+%      \adjustrelation{A6 include A7}{from=south, to=east, bend left=10}
+%    \end{dcrgraphfile}
+%  \adjustactivity{id}{options}: shift/xshift/yshift move the box (a
+%    collection with everything inside it); other options go to the box.
+%  \adjustrelation{relation}{options}: relation as in guards={...}
+%    ("source type target" or "source target"); from=/to= an anchor of the
+%    box (north, south east, 30, ...) where the line starts/ends; other
+%    options go to the relation (bend left=20, via=..., explicit=...).
+%  The graph is drawn at \end{dcrgraphfile}.
+% ------------------------------------------------------------------
+\newcommand\dcr@adjust[3]{% #1 activity|relation, #2 target, #3 options
+  \ifdefined\directlua
+    \directlua{if dcrgraphs then dcrgraphs.add_adjust("#1",
+      "\luaescapestring{\detokenize{#2}}", "\luaescapestring{\detokenize{#3}}") end}%
+  \fi\ignorespaces}
+\newenvironment{dcrgraphfile}[2][]{%
+  \def\dcr@fileopts{#1}\def\dcr@filename{#2}%
+  \ifdefined\directlua
+    \directlua{if dcrgraphs then dcrgraphs.begin_adjust() end}%
+  \fi
+  \def\adjustactivity##1##2{\dcr@adjust{activity}{##1}{##2}}%
+  \def\adjustrelation##1##2{\dcr@adjust{relation}{##1}{##2}}%
+  \ignorespaces
+}{%
+  \unskip
+  \ifdefined\directlua
+    \directlua{
+      if dcrgraphs then
+        dcrgraphs.include(
+          "\luaescapestring{\detokenize\expandafter{\dcr@fileopts}}",
+          "\luaescapestring{\detokenize\expandafter{\dcr@filename}}",
+          dcrgraphs.pending_adjust)
+      else
+        tex.error("dcrgraph: could not load the converter from dcrgraph.sty")
+      end}%
+  \else
+    \PackageError{dcrgraph}{dcrgraphfile needs LuaLaTeX}%
       {Compile with lualatex (on Overleaf: Menu > Compiler > LuaLaTeX).}%
   \fi}
 
@@ -1510,8 +1628,12 @@ local function read_dcrjs(text)
     local loc = child(custom, "visualization", "location")
     local size = child(custom, "visualization", "size")
     if not loc then warn("event `" .. id .. "' has no position; placed at (0,0)") end
+    -- a form with events is a collection (with a header, "f"); an empty
+    -- form is an event with the form key ("f")
     local kind = "activity"
-    if #kids > 0 or etype == "nesting" or etype == "subprocess" then
+    if etype == "form" then
+      if #kids > 0 then kind = "form" end
+    elseif #kids > 0 or etype == "nesting" or etype == "subprocess" then
       kind = (etype == "subprocess") and "subprocess"
           or (etype == "template") and "subgraph" or "nesting"
     end
@@ -1548,13 +1670,21 @@ local function read_dcrjs(text)
       -- an empty subgraph (template, target of spawns) is drawn as an event;
       -- one with events is a collection (kind "subgraph")
       subgraph = etype == "template" and kind == "activity",
+      form = etype == "form" and kind == "activity",
       bg = color("bg"), stroke = color("stroke"), text = color("textStroke"),
       -- collections without a size in the file (portal): box from the
       -- children, see layout
       autosize = kind ~= "activity" and not size,
     }
     local n = graph.nodes[#graph.nodes]
-    if n.subgraph and not size and tool == "portal" then
+    -- the nominal box (at the location, default size): a collection's box
+    -- is computed from its children's nominal boxes
+    n.ny, n.nh = n.y, n.h
+    -- boxes without a header strip -- an empty subgraph, and an empty
+    -- nesting or subprocess -- are drawn 20 px lower and shorter in the
+    -- portal (same bottom edge)
+    local empty_collection = kind ~= "activity" and #kids == 0
+    if (n.subgraph or empty_collection) and not size and tool == "portal" then
       n.y = n.y + PORTAL_HEADER
       n.h = n.h - PORTAL_HEADER
     end
@@ -1659,28 +1789,62 @@ local function layout(graph, opts)
     lay.ids[n.id] = id
   end
 
+  -- \adjustactivity: moves (shift, xshift, yshift) in cm; moving a
+  -- collection moves everything inside it. lay.nextra[id] = the other
+  -- options, passed to the node.
+  local byid, shift = {}, {}
+  for _, n in ipairs(graph.nodes) do byid[n.id] = n end
+  lay.nextra = {}
+  local function move(id, dx, dy)
+    local sh = shift[id] or { 0, 0 }
+    shift[id] = { sh[1] + dx, sh[2] + dy }
+    for _, c in ipairs(byid[id].children) do move(c, dx, dy) end
+  end
+  for _, a in ipairs(opts.adjust.activities) do
+    if not byid[a.id] then
+      warn("\\adjustactivity: no activity `" .. a.id .. "' in the file")
+    else
+      if a.dx ~= 0 or a.dy ~= 0 then move(a.id, a.dx, a.dy) end
+      for _, e in ipairs(a.extra) do
+        lay.nextra[a.id] = lay.nextra[a.id] or {}
+        table.insert(lay.nextra[a.id], e)
+      end
+    end
+  end
+
+  -- lay.nom[id] = {left, top, right, bottom}: the nominal box (at the
+  -- location, full height incl. a header strip that may not be drawn);
+  -- collections are computed from their children's nominal boxes
+  lay.nom = {}
   for _, n in ipairs(graph.nodes) do
-    -- centre scaled, size kept (text does not scale either)
-    local cx, cy = (n.x + n.w / 2) * s, -(n.y + n.h / 2) * s
+    -- centre scaled, size kept (text does not scale either); plus a move
+    local sh = shift[n.id] or { 0, 0 }
+    local cx, cy = (n.x + n.w / 2) * s + sh[1], -(n.y + n.h / 2) * s + sh[2]
     local w, h = n.w / ppc, n.h / ppc
+    local ny, nh = n.ny or n.y, n.nh or n.h
+    local ncy = -(ny + nh / 2) * s + sh[2]
+    local nominal = { cx - w / 2, ncy + nh / ppc / 2, cx + w / 2, ncy - nh / ppc / 2 }
     if n.kind == "activity" then
       lay.node[n.id] = { x = cx, y = cy, w = w, h = h }
+      lay.nom[n.id] = nominal
     elseif n.autosize and #n.children > 0 then
       -- the box around the children (already laid out: they come first)
       local x1, y1, x2, y2 = math.huge, -math.huge, -math.huge, math.huge
       for _, c in ipairs(n.children) do
-        local g = lay.node[c]
-        local l, t, r, b
-        if g.w then l, t, r, b = g.x - g.w / 2, g.y + g.h / 2, g.x + g.w / 2, g.y - g.h / 2
-        else l, t, r, b = g.x1, g.y1, g.x2, g.y2 end
+        local l, t, r, b = table.unpack(lay.nom[c])
         x1, y1, x2, y2 = math.min(x1, l), math.max(y1, t), math.max(x2, r), math.min(y2, b)
       end
       local p = COLLECTION_PAD
-      lay.node[n.id] = { x1 = x1 - p.left / ppc, y1 = y1 + p.top / ppc,
+      -- a form has a header strip: 20 px more at the top (portal, measured)
+      local top = p.top + (n.kind == "form" and PORTAL_HEADER or 0)
+      lay.node[n.id] = { x1 = x1 - p.left / ppc, y1 = y1 + top / ppc,
                          x2 = x2 + p.right / ppc, y2 = y2 - p.bottom / ppc }
+      local g = lay.node[n.id]
+      lay.nom[n.id] = { g.x1, g.y1, g.x2, g.y2 }
     else
       lay.node[n.id] = { x1 = cx - w / 2, y1 = cy + h / 2,
                          x2 = cx + w / 2, y2 = cy - h / 2 }
+      lay.nom[n.id] = nominal
     end
   end
 
@@ -1689,6 +1853,278 @@ local function layout(graph, opts)
       local p = {}
       for _, w in ipairs(r.waypoints) do p[#p + 1] = { w[1] * s, -w[2] * s } end
       lay.via[i] = p
+    end
+  end
+
+  -- \adjustrelation: lay.radj[i] = the adjustment of relation i
+  -- ({from = anchor, to = anchor, extra = {options}})
+  lay.radj = {}
+  for _, a in ipairs(opts.adjust.relations) do
+    local t, found = a.target, 0
+    for i, r in ipairs(graph.relations) do
+      if r.from == t.from and r.to == t.to and (not t.kind or t.kind == r.kind) then
+        lay.radj[i] = a
+        found = found + 1
+      end
+    end
+    if found == 0 then
+      warn("\\adjustrelation: no relation `" .. t.text .. "' in the file")
+    elseif found > 1 and not t.kind then
+      warn("\\adjustrelation: `" .. t.text .. "' matches " .. found ..
+        " relations; all are adjusted (add the relation type to pick one)")
+    end
+  end
+
+  -- Bundles: straight relations that leave a box at (almost) the same
+  -- point would have their lines or markers on top of each other (e.g. a
+  -- relation to a nesting and one to a nesting inside it, or two relations
+  -- to different boxes in a similar direction). Relations at a box whose
+  -- exit points are closer than MIN_GAP are spread like parallel relations
+  -- (key bundle=<node>:<k>). lay.bundle[i] = bundle name of relation i.
+  lay.bundle = {}
+  if not opts.waypoints then
+    local function centre(id)
+      local g = lay.node[id]
+      if g.w then return g.x, g.y end
+      return (g.x1 + g.x2) / 2, (g.y1 + g.y2) / 2
+    end
+    local function halfsize(id)
+      local g = lay.node[id]
+      if g.w then return g.w / 2, g.h / 2 end
+      return (g.x2 - g.x1) / 2, (g.y1 - g.y2) / 2
+    end
+    -- cm: a marker (10.3pt = 0.36cm) plus the sideways shift of a spread
+    -- line (the parallel distance, 13.5pt = 0.48cm), so that neighbours
+    -- do not collide after spreading either
+    local MIN_GAP = 0.85
+    -- A box with half sizes (hw, hh) at the origin, a line in direction
+    -- (ux, uy) shifted by o along (px, py): the range of o for which the
+    -- line leaves the box through the same side as for o = 0, at least
+    -- MARGIN (half a marker and a little) from the corners.
+    local MARGIN = 0.25
+    local function side_range(hw, hh, ux, uy, px, py)
+      local eps = 1e-9
+      local k, b, lim
+      if math.abs(ux) < eps or (math.abs(uy) > eps and hh / math.abs(uy) < hw / math.abs(ux)) then
+        -- leaves through the top or bottom: x of the exit point
+        local sy = uy >= 0 and 1 or -1
+        k, b, lim = px - py * ux / uy, sy * hh * ux / uy, hw - MARGIN
+      else
+        -- leaves through the left or right side: y of the exit point
+        local sx = ux >= 0 and 1 or -1
+        k, b, lim = py - px * uy / ux, sx * hw * uy / ux, hh - MARGIN
+      end
+      if lim < 0 then return 0, 0 end
+      if math.abs(k) < eps then
+        if math.abs(b) <= lim then return -math.huge, math.huge end
+        return 0, 0
+      end
+      local o1, o2 = (-lim - b) / k, (lim - b) / k
+      return math.min(o1, o2), math.max(o1, o2)
+    end
+    -- a relation can be in one bundle only: handle the most crowded boxes
+    -- first, where collisions are most likely
+    local degree, order = {}, {}
+    for _, r in ipairs(graph.relations) do
+      degree[r.from] = (degree[r.from] or 0) + 1
+      degree[r.to] = (degree[r.to] or 0) + 1
+    end
+    for k, n in ipairs(graph.nodes) do order[#order + 1] = { n = n, k = k } end
+    table.sort(order, function(p, q)
+      local dp, dq = degree[p.n.id] or 0, degree[q.n.id] or 0
+      if dp ~= dq then return dp > dq end
+      return p.k < q.k
+    end)
+    for _, entry in ipairs(order) do
+      local n = entry.n
+      local ax, ay = centre(n.id)
+      local hw, hh = halfsize(n.id)
+      local ends = {}   -- relations at n: {index, angle, exit point, other end}
+      for i, r in ipairs(graph.relations) do
+        if r.from ~= r.to and not lay.bundle[i] and not lay.radj[i]
+           and lay.node[r.from] and lay.node[r.to]
+           and (r.from == n.id or r.to == n.id) then
+          local other = (r.from == n.id) and r.to or r.from
+          local bx, by = centre(other)
+          local dx, dy = bx - ax, by - ay
+          -- where the line from the centre leaves the box
+          local t = math.min(dx ~= 0 and hw / math.abs(dx) or math.huge,
+                             dy ~= 0 and hh / math.abs(dy) or math.huge)
+          -- how far the line may be shifted sideways (to the left, seen from
+          -- n: offset o along p = (-uy, ux)) and still leave both boxes
+          -- through the same side as unshifted, at least MARGIN from the
+          -- corners, so that its marker sits flush on that side
+          local len = math.max(math.sqrt(dx * dx + dy * dy), 1e-6)
+          local ux, uy = dx / len, dy / len
+          local omin1, omax1 = side_range(hw, hh, ux, uy, -uy, ux)
+          local ow, oh = halfsize(other)
+          local omin2, omax2 = side_range(ow, oh, -ux, -uy, -uy, ux)
+          ends[#ends + 1] = { i = i, a = math.atan(dy, dx), other = other,
+                              px = ax + t * dx, py = ay + t * dy,
+                              omin = math.max(omin1, omin2),
+                              omax = math.min(omax1, omax2) }
+        end
+      end
+      table.sort(ends, function(p, q) return p.a < q.a end)
+      local function dist(p, q)
+        return math.sqrt((p.px - q.px) ^ 2 + (p.py - q.py) ^ 2)
+      end
+      -- groups of neighbouring relations (in the order around the box):
+      -- start with one group per relation, merge neighbours that are too
+      -- close. In a group of m lines the outer ones are shifted by
+      -- (m-1)/2 parallel distances, so a neighbour must be further away.
+      local PD = 0.4745   -- the parallel distance, 13.5pt, in cm
+      local groups = {}
+      for j = 1, #ends do groups[j] = { g = j, h = j } end
+      local merged = true
+      while merged do
+        merged = false
+        for q = 1, #groups - 1 do
+          local a, b = groups[q], groups[q + 1]
+          local need = MIN_GAP + ((a.h - a.g) + (b.h - b.g)) / 2 * PD
+          if dist(ends[a.h], ends[b.g]) < need then
+            groups[q] = { g = a.g, h = b.h }
+            table.remove(groups, q + 1)
+            merged = true
+            break
+          end
+        end
+      end
+      local k = 0
+      for _, grp in ipairs(groups) do
+        local g, h = grp.g, grp.h
+        local others = {}
+        for j = g, h do others[ends[j].other] = true end
+        local count = 0
+        for _ in pairs(others) do count = count + 1 end
+        if count > 1 then   -- several different targets: a bundle
+          -- positions in the bundle in the geometric order (0 = the most
+          -- counterclockwise line, which the package shifts furthest to
+          -- the left), so that neighbouring lines move apart, not across
+          k = k + 1
+          local total = h - g + 1
+          -- the centre of the bundle (in positions): the middle, unless an
+          -- outer line would then miss a box -- then the whole bundle is
+          -- moved towards the middle of the boxes, keeping the spacing
+          local lo, hi = -math.huge, math.huge
+          for j = g, h do
+            -- offset of position pos: (centre - pos) * PD, within its range
+            local pos = h - j
+            lo = math.max(lo, pos + ends[j].omin / PD)
+            hi = math.min(hi, pos + ends[j].omax / PD)
+          end
+          local centre = (total - 1) / 2
+          if lo <= hi then centre = math.min(math.max(centre, lo), hi)
+          else centre = (lo + hi) / 2 end   -- impossible: the package limits
+          for j = g, h do
+            lay.bundle[ends[j].i] = string.format("%s:%d:%d:%d:%s",
+              lay.ids[n.id], k, h - j, total, fmt(centre))
+          end
+        end
+      end
+    end
+  end
+
+  -- Self-relations: their markers are lined up on the top edge of the box
+  -- from the left corner, in the portal's order, skipping the places where
+  -- markers of other relations sit on that edge (as the portal does).
+  -- lay.selfpos[i] = centre of the marker from the box's left edge, in cm.
+  lay.selfpos = {}
+  do
+    local PD = 0.4745             -- parallel distance (13.5pt)
+    local RS = 0.3634             -- marker size (10.3pt)
+    local STEP = RS + 0.0703      -- marker + 2pt
+    local function box(id)        -- centre and half sizes
+      local g = lay.node[id]
+      if g.w then return g.x, g.y, g.w / 2, g.h / 2 end
+      return (g.x1 + g.x2) / 2, (g.y1 + g.y2) / 2, (g.x2 - g.x1) / 2, (g.y1 - g.y2) / 2
+    end
+    local target_marker = { condition = true, precondition = true, milestone = true }
+    -- sideways shift of each line (as the package draws it), as an offset
+    -- along the left perpendicular of the direction from `ref' to the other end
+    local shift = {}    -- i -> {ref = node id, o = offset in cm}
+    local pairs_seen = {}
+    for i, r in ipairs(graph.relations) do
+      local straight = not (opts.waypoints and lay.via[i])   -- not along a route
+      if r.from ~= r.to and not lay.radj[i] and straight then
+        if lay.bundle[i] then
+          local node, _, pos, total, centre = lay.bundle[i]:match("^(.-):(%d+):(%d+):(%d+):(.*)$")
+          for _, n in ipairs(graph.nodes) do
+            if lay.ids[n.id] == node then node = n.id break end
+          end
+          shift[i] = { ref = node, o = (tonumber(centre) - tonumber(pos)) * PD }
+        elseif r.from ~= r.to then
+          local key = r.from < r.to and (r.from .. "|" .. r.to) or (r.to .. "|" .. r.from)
+          pairs_seen[key] = pairs_seen[key] or { list = {}, first = r }
+          table.insert(pairs_seen[key].list, i)
+        end
+      end
+    end
+    for _, p in pairs(pairs_seen) do   -- parallel relations, in writing order
+      local t = #p.list
+      for n, i in ipairs(p.list) do
+        shift[i] = { ref = p.first.from, o = ((t - 1) / 2 - (n - 1)) * PD }
+      end
+    end
+    -- where lines of other relations (with or without their marker) meet
+    -- each box's top edge
+    local occupied = {}   -- node id -> list of x (from the left edge)
+    for i, r in ipairs(graph.relations) do
+      if r.from ~= r.to and lay.node[r.from] and lay.node[r.to] and not lay.radj[i] then
+       for _, at in ipairs({ r.from, r.to }) do
+        local other = (at == r.from) and r.to or r.from
+        local cx, cy, hw, hh = box(at)
+        local ox, oy = box(other)
+        local dx, dy = ox - cx, oy - cy
+        local len = math.max(math.sqrt(dx * dx + dy * dy), 1e-6)
+        local ux, uy = dx / len, dy / len
+        local o = 0
+        if shift[i] then o = (shift[i].ref == at) and shift[i].o or -shift[i].o end
+        local px, py = -uy, ux
+        if uy > 1e-6 then
+          local t = (hh - o * py) / uy
+          local x = o * px + t * ux
+          if math.abs(x) <= hw then
+            occupied[at] = occupied[at] or {}
+            table.insert(occupied[at], x + hw)
+          end
+        end
+       end
+      end
+    end
+    -- the self-relations of each box, in the portal's order
+    local order = { include = 1, exclude = 2, response = 3, noresponse = 4,
+      update = 5, spawn = 6, logicalinclude = 7, condition = 8,
+      precondition = 9, milestone = 10 }
+    local selfs = {}
+    for i, r in ipairs(graph.relations) do
+      if r.from == r.to then
+        selfs[r.from] = selfs[r.from] or {}
+        table.insert(selfs[r.from], i)
+      end
+    end
+    for id, list in pairs(selfs) do
+      table.sort(list, function(a, b)
+        local ka, kb = order[graph.relations[a].kind] or 99, order[graph.relations[b].kind] or 99
+        if ka ~= kb then return ka < kb end
+        return a < b
+      end)
+      -- left to right; a marker of another relation in the way: continue
+      -- right next to it
+      local occ = occupied[id] or {}
+      table.sort(occ)
+      local x = RS / 2
+      for _, i in ipairs(list) do
+        local moved = true
+        while moved do
+          moved = false
+          for _, ox in ipairs(occ) do
+            if math.abs(x - ox) < STEP then x = ox + STEP; moved = true end
+          end
+        end
+        lay.selfpos[i] = x
+        x = x + STEP
+      end
     end
   end
   return lay
@@ -1767,7 +2203,7 @@ local function emit(graph, opts, lay)
   for _, n in ipairs(graph.nodes) do
     local o = {}
     if #n.roles > 0 then
-      local role = escape(table.concat(n.roles, ", "))
+      local role = escape(table.concat(n.roles, ","))   -- "Role1,Role2", as in the portal
       if role:find("[,=]") then role = "{" .. role .. "}" end
       o[#o + 1] = "role=" .. role
     end
@@ -1776,22 +2212,26 @@ local function emit(graph, opts, lay)
       if n.pending then o[#o + 1] = "pending" end
       if n.excluded then o[#o + 1] = "excluded" end
     end
-    for _, flag in ipairs({ "data", "computation", "dmn", "global", "subgraph" }) do
+    for _, flag in ipairs({ "data", "computation", "dmn", "global", "subgraph", "form" }) do
       if n[flag] then o[#o + 1] = flag end
     end
     if n.bg then o[#o + 1] = "bgcolor=dcrcol" .. n.bg end
     if n.stroke then o[#o + 1] = "bordercolor=dcrcol" .. n.stroke end
     if n.text then o[#o + 1] = "textcolor=dcrcol" .. n.text end
+    -- \adjustactivity: further options, after ours (so they win)
+    local extra = lay.nextra[n.id] or {}
     local g = lay.node[n.id]
     if n.kind == "activity" then
       o[#o + 1] = "at={" .. pt({ g.x, g.y }) .. "}"
       o[#o + 1] = "minimum width=" .. fmt(g.w) .. "cm"
       o[#o + 1] = "minimum height=" .. fmt(g.h) .. "cm"
+      for _, e in ipairs(extra) do o[#o + 1] = e end
       add(string.format("  \\activity[%s]{%s}{%s}",
         table.concat(o, ", "), escape(n.label), ids[n.id]))
     else
       -- the box from the file (exact size)
       o[#o + 1] = "area={" .. pt({ g.x1, g.y1 }) .. pt({ g.x2, g.y2 }) .. "}"
+      for _, e in ipairs(extra) do o[#o + 1] = e end
       local kids = {}
       for _, c in ipairs(n.children) do kids[#kids + 1] = ids[c] end
       add(string.format("  \\%s[%s]{%s}{%s}{%s}", n.kind,
@@ -1809,10 +2249,19 @@ local function emit(graph, opts, lay)
       if r.delay then o[#o + 1] = "delay={" .. escape(r.delay) .. "}" end
       if r.guard then o[#o + 1] = "guard={" .. escape(r.guard) .. "}" end
       if explicit[i] then o[#o + 1] = "explicit={" .. table.concat(explicit[i], ",") .. "}" end
+      if lay.bundle[i] then o[#o + 1] = "bundle=" .. lay.bundle[i] end
+      if lay.selfpos[i] then o[#o + 1] = "selfpos=" .. fmt(lay.selfpos[i]) .. "cm" end
       if opts.waypoints and lay.via[i] then
         local p = {}
         for _, w in ipairs(lay.via[i]) do p[#p + 1] = pt(w) end
         o[#o + 1] = "via={" .. table.concat(p, ",") .. "}"
+      end
+      -- \adjustrelation: start/end at an anchor of the box, further options
+      local a = lay.radj[i]
+      if a then
+        if a.from then from = from .. "." .. a.from end
+        if a.to then to = to .. "." .. a.to end
+        for _, e in ipairs(a.extra) do o[#o + 1] = e end
       end
       add(string.format("  \\%s%s{%s}{%s}", r.kind,
         #o > 0 and "[" .. table.concat(o, ", ") .. "]" or "", from, to))
@@ -1912,6 +2361,74 @@ local function parse_options(str)
 end
 
 -- ------------------------------------------------------------------
+--  Adjustments: \adjustactivity{id}{options}, \adjustrelation{relation}
+--  {options} in a dcrgraphfile environment, given as a list of
+--  {kind = "activity"|"relation", target = ..., opts = ...}. Parsed here;
+--  applied in the layout step (moves) and the emitter (everything else).
+-- ------------------------------------------------------------------
+-- "a, b={c,d}" -> {"a", "b={c,d}"}: top-level commas only
+local function split_top(str)
+  local parts, depth, cur = {}, 0, ""
+  for c in (str or ""):gmatch(".") do
+    if c == "{" then depth = depth + 1 elseif c == "}" then depth = depth - 1 end
+    if c == "," and depth == 0 then parts[#parts + 1] = trim(cur); cur = ""
+    else cur = cur .. c end
+  end
+  parts[#parts + 1] = trim(cur)
+  local result = {}
+  for _, p in ipairs(parts) do if p ~= "" then result[#result + 1] = p end end
+  return result
+end
+
+-- a length in cm: "1", "1cm", "5mm", "10pt", "0.5in"
+local function length_cm(s, what)
+  local n, unit = trim(s or ""):gsub("^{(.*)}$", "%1"):match("^([%-%+]?[%d%.]+)%s*(%a*)$")
+  local factor = ({ [""] = 1, cm = 1, mm = 0.1, pt = 1 / 28.45274, ["in"] = 2.54,
+                    bp = 2.54 / 72 })[unit or "?"]
+  if not n or not tonumber(n) or not factor then
+    fail(what .. ": `" .. tostring(s) .. "' is not a length")
+  end
+  return tonumber(n) * factor
+end
+
+local function parse_adjustments(raw)
+  local adj = { activities = {}, relations = {} }
+  for _, a in ipairs(raw or {}) do
+    local where = "\\adjust" .. a.kind .. "{" .. a.target .. "}"
+    if a.kind == "activity" then
+      local e = { id = trim(a.target), dx = 0, dy = 0, extra = {}, text = a.opts }
+      for _, p in ipairs(split_top(a.opts)) do
+        local k, v = p:match("^([^=]-)%s*=%s*(.*)$")
+        k = trim(k or p)
+        if k == "shift" then
+          local x, y = (v or ""):gsub("^{(.*)}$", "%1"):match("^%(%s*(.-)%s*,%s*(.-)%s*%)$")
+          if not x then fail(where .. ": shift=" .. tostring(v) .. " is not of the form {(x,y)}") end
+          e.dx, e.dy = e.dx + length_cm(x, where), e.dy + length_cm(y, where)
+        elseif k == "xshift" then e.dx = e.dx + length_cm(v, where)
+        elseif k == "yshift" then e.dy = e.dy + length_cm(v, where)
+        else e.extra[#e.extra + 1] = p end
+      end
+      adj.activities[#adj.activities + 1] = e
+    elseif a.kind == "relation" then
+      local t = parse_targets(where, a.target)
+      if #t ~= 1 then fail(where .. ": name exactly one relation") end
+      local e = { target = t[1], extra = {}, text = a.opts }
+      for _, p in ipairs(split_top(a.opts)) do
+        local k, v = p:match("^([^=]-)%s*=%s*(.*)$")
+        k = trim(k or p)
+        if k == "from" or k == "to" then
+          e[k] = trim(v or ""):gsub("^{(.*)}$", "%1")   -- an anchor: south, 30, ...
+        else e.extra[#e.extra + 1] = p end
+      end
+      adj.relations[#adj.relations + 1] = e
+    else
+      fail("unknown adjustment `" .. tostring(a.kind) .. "'")
+    end
+  end
+  return adj
+end
+
+-- ------------------------------------------------------------------
 --  Entry points
 -- ------------------------------------------------------------------
 local function read_file(name)
@@ -1926,18 +2443,19 @@ local function read_file(name)
   return text
 end
 
--- file name + option string -> model, options
-function M.read(file, optstring)
+-- file name + option string (+ adjustments, see above) -> model, options
+function M.read(file, optstring, adjustments)
   M.warnings = {}
   local opts = parse_options(optstring)
+  opts.adjust = parse_adjustments(adjustments)
   local reader = front_ends[opts.format]
   if not reader then fail("unknown format `" .. tostring(opts.format) .. "'") end
   return reader(read_file(file)), opts
 end
 
--- file name + option string -> list of lines, options
-function M.convert(file, optstring)
-  local graph, opts = M.read(file, optstring)
+-- file name + option string (+ adjustments) -> list of lines, options
+function M.convert(file, optstring, adjustments)
+  local graph, opts = M.read(file, optstring, adjustments)
   return emit(graph, opts, layout(graph, opts)), opts
 end
 
@@ -1946,7 +2464,7 @@ end
 --  layout (where it is drawn), as sorted text lines, separately.
 -- ------------------------------------------------------------------
 local node_flags = { "executed", "pending", "excluded",
-                     "data", "computation", "dmn", "global", "subgraph" }
+                     "data", "computation", "dmn", "global", "subgraph", "form" }
 
 function M.describe_content(graph)
   local lines = {}
@@ -1995,6 +2513,24 @@ function M.describe_layout(graph, opts)
         table.concat(p, ""))
     end
   end
+  for i, r in ipairs(graph.relations) do
+    if lay.bundle[i] then
+      lines[#lines + 1] = string.format("bundle %s: %s %s -> %s", lay.bundle[i],
+        r.kind, r.from, r.to)
+    end
+    if lay.selfpos[i] then
+      lines[#lines + 1] = string.format("self %s %s at %s", r.kind, r.from, fmt(lay.selfpos[i]))
+    end
+    local a = lay.radj[i]
+    if a then
+      lines[#lines + 1] = string.format("adjust %s %s -> %s:%s%s%s", r.kind, r.from, r.to,
+        a.from and (" from=" .. a.from) or "", a.to and (" to=" .. a.to) or "",
+        #a.extra > 0 and (" " .. table.concat(a.extra, ", ")) or "")
+    end
+  end
+  for id, extra in pairs(lay.nextra) do
+    lines[#lines + 1] = "adjust " .. id .. ": " .. table.concat(extra, ", ")
+  end
   -- which values are written as text (options guards=, delays=,
   -- deadlines=, explicit; for the whole graph or single relations)
   local parts = M.explicit_parts(graph, opts)
@@ -2027,9 +2563,18 @@ local function export_header(file)
 end
 
 -- called by \includedcrgraph
-function M.include(optstring, file)
+-- the adjustments of the current dcrgraphfile environment
+M.pending_adjust = {}
+function M.begin_adjust() M.pending_adjust = {} end
+function M.add_adjust(kind, target, opts)
+  table.insert(M.pending_adjust, { kind = kind, target = target, opts = opts })
+end
+
+-- called by \includedcrgraph (and at the end of dcrgraphfile, with the
+-- collected adjustments)
+function M.include(optstring, file, adjustments)
   in_tex = true
-  local ok, lines, opts = pcall(M.convert, file, optstring)
+  local ok, lines, opts = pcall(M.convert, file, optstring, adjustments)
   if not ok then
     tex.error(tostring(lines))
     return

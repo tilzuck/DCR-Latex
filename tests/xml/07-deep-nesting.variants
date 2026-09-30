@@ -1,0 +1,33 @@
+# Layout variants of 07-deep-nesting.xml: "name: options of \includedcrgraph",
+# followed by indented adjustment lines (as in a dcrgraphfile environment).
+
+# the user's example: the include from the bottom of A6 to the right of A7
+include-from-south:
+  \adjustrelation{A6 include A7}{from=south, to=east}
+
+# relation options: a bend, and a route through a point
+bend:
+  \adjustrelation{A7 exclude A1}{bend right=20}
+via:
+  \adjustrelation{A7 spawn A2}{via={(5,-11)}}
+
+# moving: an event, and a nesting with everything inside it
+move-event:
+  \adjustactivity{A7}{shift={(-1,0)}}
+move-nesting:
+  \adjustactivity{A3}{yshift=-10pt}
+
+# other options for a box: colours
+colour:
+  \adjustactivity{A6}{bgcolor=red!10, bordercolor=red!60}
+
+# several at once
+combined: explicit
+  \adjustrelation{A6 include A7}{from=south, to=east}
+  \adjustactivity{A7}{xshift=-1cm}
+
+# wrong names: must give warnings
+unknown-activity:
+  \adjustactivity{A9}{shift={(1,0)}}
+unknown-relation:
+  \adjustrelation{A1 include A7}{from=south}
