@@ -1,6 +1,18 @@
+\textsf{\small portal notation (default)}\par
+\begin{dcrgraph}
+  \activity{A}{a}
+  \activity[right=3cm of a]{B}{b}
+  \precondition{a}{b}
+  \logicalinclude[guard={x > 0}]{a}{b}
+  \response[delay=P1D]{a}{b}
+\end{dcrgraph}
+
+\bigskip
+\textsf{\small the same graph, classic notation}\par
 \begin{dcrgraph}[dcr/notation=classic]
   \activity{A}{a}
-  \activity[right=2cm of a]{B}{b}
-  \condition{a}{b}
-  \response[bend left=30]{a}{b}
+  \activity[right=3cm of a]{B}{b}
+  \precondition{a}{b}
+  \logicalinclude[guard={x > 0}]{a}{b}
+  \response[delay=P1D]{a}{b}
 \end{dcrgraph}

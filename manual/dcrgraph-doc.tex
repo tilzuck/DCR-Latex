@@ -4,11 +4,13 @@
 % and executed, so the code shown is exactly what made the picture.
 %
 % Structure (decided with the author):
-%   Start      what the package does, requirements, a first graph
-%   Part 1     the default look: importing and drawing by hand
-%   Part 2     changing the layout, by task
-%   Part 3     reference of all commands and keys
-%   Appendix   DCR portal compatibility
+%   1 Introduction     what the package is, the two ways in, requirements
+%   2 Drawing with TikZ  by topic, each with an example; every topic that
+%                      applies to imported graphs too is explained here only
+%   3 Importing XML    first import, options, relation lists, customising
+%                      the imported graph (\adjust...), export, what is read
+%   4 Reference        all commands, keys and settings
+%   Appendix           DCR portal compatibility
 % Every example is shown as code and as its result, from the same source.
 \documentclass[a4paper,11pt]{article}
 \usepackage[margin=2.2cm]{geometry}
@@ -55,99 +57,192 @@
 \tableofcontents
 
 % =====================================================================
-\section{Start}
+\section{Introduction}
 
-\textsf{dcrgraph} draws DCR (Dynamic Condition Response) graphs with
-Ti\emph{k}Z, in the look of the DCR portal of DCR Solutions or in the
-classic notation of the literature. Graphs can be drawn by hand, or
-imported from a file exported from the DCR portal or DCR-js.
+\textsf{dcrgraph} draws DCR (Dynamic Condition Response) graphs in
+\LaTeX, in the look of the DCR portal of DCR Solutions or in the classic
+notation of the literature. There are two ways to create a graph:
+\begin{itemize}
+  \item \textbf{Drawing with Ti\emph{k}Z} (Section~\ref{sec:tikz}): you write
+    the events and relations yourself, in a \texttt{dcrgraph} environment.
+  \item \textbf{Importing XML} (Section~\ref{sec:import}): you model the graph
+    in the DCR portal (or DCR-js), export it as XML and include the file;
+    the graph looks as in the portal, and can be customised in \LaTeX.
+\end{itemize}
 
 \paragraph{Requirements.}
 \begin{itemize}
   \item Only the file \texttt{dcrgraph.sty} and \cs{usepackage\{dcrgraph\}}.
     Everything else it needs is part of every \TeX{} distribution.
-  \item Graphs drawn by hand work with pdf\LaTeX{} and Lua\LaTeX.
-  \item Importing graphs from files (\cs{includedcrgraph}) needs
-    \textbf{Lua\LaTeX}. On Overleaf: Menu $\to$ Compiler $\to$ LuaLaTeX.
+  \item Graphs drawn with Ti\emph{k}Z work with pdf\LaTeX{} and Lua\LaTeX.
+  \item Importing needs \textbf{Lua\LaTeX}. On Overleaf: upload
+    \texttt{dcrgraph.sty} and choose Menu $\to$ Compiler $\to$ LuaLaTeX.
   \item Graphs with several relations between the same two events need two
     \LaTeX{} runs; latexmk and Overleaf do this automatically.
 \end{itemize}
 
-\paragraph{A first graph.}\mbox{}\par
-\example{first}
-
 % =====================================================================
-\section{The default look}
+\section{\texorpdfstring{Drawing with Ti\emph{k}Z}{Drawing with TikZ}}\label{sec:tikz}
 
-\subsection{Importing a graph}
-Export the graph from the DCR portal (or DCR-js) as XML and include it:
-\example{import-default}
-The graph looks as in the portal: positions and sizes, colours, roles,
-marking, and all relations with their markers. Guards, delays and
-deadlines are shown only as markers (shield, clock), as in the portal;
-Section~\ref{sec:values} shows how to write their values.
+\subsection{A first graph}
+As a running example we use the evaluation of applications by a board:
+an evaluation round is started; applications can be received until the
+deadline has passed; before the board meets, conflicts of interest are
+assessed (a subprocess); after the meeting the report is updated and then
+approved.
 
-\draft{more on the import: which files, what is read, warnings}
-
-\subsection{Drawing by hand}
 Everything happens in a \texttt{dcrgraph} environment, which is a
-Ti\emph{k}Z picture. Events are \cs{activity}\oarg{options}\marg{label}\marg{id},
-placed with Ti\emph{k}Z positioning (\key{right=1.5cm of apply}) or
-coordinates (\key{at=\{(4,0)\}}). Collections (nestings, subprocesses)
-come after their events, relations last.
-\example{hand-default}
+Ti\emph{k}Z picture. Events come first, then collections (here the
+subprocess, around its events), then relations:
+\example{opening}
+Events are written \cs{activity}\oarg{options}\marg{label}\marg{id}; the
+\meta{id} is used to refer to the event. Relations are written
+\meta{relation}\oarg{options}\marg{from}\marg{to}, always from the source
+to the target.
 
-The direction of a relation is always \marg{from}\marg{to}. The marker sits
-at the target for conditions, pre-conditions and milestones, and at the
-source for all other relations.
+\subsection{Events and marking}
+The marking (pending, executed, excluded) and the type of an event are
+keys of \cs{activity}; \key{role=} and \key{subtitle=} add text.
+\example{events}
+Events are placed with Ti\emph{k}Z: relative to others
+(\key{right=1.5cm of a}, \key{below=2cm of a}) or at coordinates
+(\key{at=\{(4,0)\}}). Their size is \key{minimum width=}, \key{minimum height=}
+(default 2.6\,cm $\times$ 2.8\,cm).
+
+\subsection{Relations}
+All relations at a glance (portal notation; the marker sits at the target
+for conditions, pre-conditions and milestones, at the source for all
+others):
+\example{relations-all}
+
+\paragraph{Placing the lines.}\mbox{}\par
+A relation is a straight line between the two boxes. Several relations
+between the same two events are spread out side by side. A line can start
+and end at a given point of a box (\key{a.south}), run through points
+(\key{via=}, which keeps right angles), or take any Ti\emph{k}Z option.
+A relation from an event to itself is a marker on its top edge.
+\example{routing}
+
+\subsection{Guards and time}\label{sec:values}
+A relation can have a guard (\key{guard=\{}\meta{expression}\key{\}}) and a
+time (\key{delay=}\meta{time}: for a response a deadline, for the others a
+delay). In the portal notation they are shown as markers: a shield for a
+guard, a clock for a time. Their values can be written as text, for the
+whole graph or for single relations:
+\example{values}
+\begin{itemize}
+  \item For the graph: \key{dcr/guards=}, \key{dcr/delays=},
+    \key{dcr/deadlines=} with \key{explicit} (the value as text), \key{none}
+    (nothing at all, not even the marker), or the default (\key{shield},
+    \key{marker}); \key{dcr/explicit} for all three.
+  \item For one relation: \key{explicit=guard}, \key{explicit=\{delay,guard\}},
+    \key{explicit} (all).
+\end{itemize}
+In the classic notation there are no shields or clocks: there the values
+are written as text by default, and \key{none} leaves them out.
+
+\subsection{Collections}
+Nestings, subprocesses (also multi-instance), forms and subgraphs group
+events. They are written after their events and placed around them;
+relations can start and end at a collection like at an event.
+\example{collections}
+
+\subsection{Portal and classic notation}
+The relations can be drawn with the markers of the DCR portal (the
+default) or with the arrows of the literature:
+\example{notation}
+The classic notation has no symbols for two relations of the DCR portal;
+they are drawn as what they mean: a pre-condition as a condition plus a
+milestone (a time on the condition only), a logical include with the guard
+$g$ as an include with the guard $g$ plus an exclude with the guard
+\texttt{not(}$g$\texttt{)} (format: \cs{dcrnotguard}). The notation of a whole
+document: \cs{usepackage[classic]\{dcrgraph\}}; of one graph:
+\key{dcr/notation=classic}.
+
+\subsection{Customisation}
+\paragraph{Colours.} \key{bgcolor}, \key{bordercolor} and \key{textcolor} take
+any \textsf{xcolor} colour; own colours are defined with \cs{definecolor}.
+\example{colours}
+The defaults of a whole document: \cs{dcrset\{bgcolor=\dots, nesting
+bgcolor=\dots\}}, \cs{colorlet\{dcr border\}\{\dots\}}; the colours of the
+relations: \cs{colorlet\{dcr condition\}\{\dots\}} and so on
+(Section~\ref{sec:colours}).
+
+\paragraph{Sizes and fonts.} Markers, the spacing of parallel lines, line
+widths and the font are settings of the graph or the document
+(Section~\ref{sec:settings}); boxes have any size.
+\example{sizes}
+
+\subsection{Symbols in running text}
+For papers: $A \dcrcondition B$, $A \dcrresponse B$, $A \dcrinclude B$,
+$A \dcrexclude B$, $A \dcrmilestone B$, written
+\verb|$A \dcrcondition B$| and so on (Section~\ref{sec:symbols}).
 
 % =====================================================================
-\section{Changing the layout}
+\section{Importing XML}\label{sec:import}
 
-\subsection{Showing values: guards, delays, deadlines}\label{sec:values}
-By default only markers are drawn. The values can be written as text for
-the whole graph, or for single relations:
-\example{values}
-For imported graphs: \key{guards=explicit}, \key{delays=explicit},
-\key{deadlines=explicit}, or lists of relations such as
-\key{guards=\{A4 response A6, A6 A7\}} (see Section~\ref{sec:include}).
+\subsection{A first import}
+The running example of Section~\ref{sec:tikz}, the evaluation of
+applications, modelled in DCR-js and exported as XML. Put the file next to
+your document and include it:
+\example{import-default}
+The graph looks as in the editor: positions and sizes, colours, roles,
+marking, all events, collections and relations with their markers.
+\cs{includedcrgraph} draws an ordinary \texttt{dcrgraph} picture, so
+everything in Section~\ref{sec:tikz} applies to it too: the notation, the
+display of guards and times, the settings.
 
-\subsection{Colours}
-\key{bgcolor}, \key{bordercolor} and \key{textcolor} take any \textsf{xcolor}
-colour; own colours are defined with \cs{definecolor}.
-\example{colours}
-The defaults of a whole document: \cs{dcrset\{bgcolor=\dots, nesting bgcolor=\dots\}},
-\cs{colorlet\{dcr border\}\{\dots\}}, \cs{colorlet\{dcr text\}\{\dots\}}.
+\subsection{Options}
+The options of \cs{includedcrgraph} (Section~\ref{sec:include}) choose the
+notation (\key{notation=classic}), how guards and times are shown, and a
+few things of the import itself. Relations are drawn as straight lines by
+default; files from DCR-js also store the routes of the lines, which
+\key{waypoints} uses:
+\example{import-waypoints}
+Guards, delays and deadlines can also be
+shown for single relations, named by their ids in the file as
+``\meta{source} \meta{type} \meta{target}'' (or ``\meta{source}
+\meta{target}'' if there is only one relation between the two; \key{value}
+is the update relation):
+\example{import-options}
+A name that matches no relation, or a relation without such a value, gives a
+warning.
 
-\subsection{Adjusting an imported graph}\label{sec:adjust}
-An imported graph can be adjusted by hand without leaving the file behind:
-put the adjustments into a \texttt{dcrgraphfile} environment. Relations are
-named as ``\meta{source} \meta{type} \meta{target}'' (or ``\meta{source}
-\meta{target}'' if there is only one between the two), with the ids from the
-file.
+\subsection{Customising the imported graph}\label{sec:adjust}
+The imported graph can be changed in \LaTeX{} without touching the file:
+put the changes into a \texttt{dcrgraphfile} environment. Events and
+relations are named by their ids in the file (DCR-js generates ids like
+\texttt{Event\_191im4m}; the DCR portal uses the ids given in the editor).
 \example{adjust}
-\cs{adjustrelation} takes \key{from=} and \key{to=}, the point of the box where
-the line starts and ends (\key{north}, \key{south}, \key{east}, \key{west},
-\key{south east}, \dots, or an angle like \key{-60}), and any option of a
-relation: \key{bend left=20}, \key{via=\{(5,-11)\}}, \key{explicit=guard}, \dots\
-\cs{adjustactivity} moves a box with \key{shift=\{(x,y)\}}, \key{xshift=},
-\key{yshift=} (a nesting with everything inside it) and takes any option of
-an activity (colours, \key{subtitle=}, \dots).
-When the graph is changed in the portal and exported again, the adjustments
+\begin{itemize}
+  \item \cs{adjustrelation}\marg{relation}\marg{options}: \key{from=} and
+    \key{to=} set the point of the box where the line starts and ends
+    (\key{north}, \key{south}, \key{east}, \key{west}, \key{south east},
+    \dots, or an angle like \key{-60}); any other option of a relation
+    works too: \key{bend left=20}, \key{via=\{(5,-11)\}}, \key{explicit=guard}.
+  \item \cs{adjustactivity}\marg{id}\marg{options}: \key{shift=\{(x,y)\}},
+    \key{xshift=}, \key{yshift=} move a box (a collection with everything
+    inside it, and the collections around it grow); any other option of an
+    activity works too (colours, \key{subtitle=}, \dots).
+\end{itemize}
+When the graph is changed in the portal and exported again, the changes
 still apply; one that names something no longer in the file gives a warning.
 
-\subsection{Positions and routes}
-\draft{at=, positioning, via= with right-angled routes, bend left/right}
+\subsection{Taking over the code}
+With \key{export=}\meta{file.tex}, \cs{includedcrgraph} also writes the
+\texttt{dcrgraph} code of the graph into a file (and into the \texttt{.log}).
+Include it with \cs{input} instead of the XML, and edit it freely; it
+also works with pdf\LaTeX. On Overleaf the file is under ``Logs and output
+files''; copy it into your project.
 
-\subsection{Sizes}
-\draft{marker size, parallel distance, border width, box size via minimum width/height}
-
-\subsection{Notation}
-\example{notation}
-For a whole document: \cs{usepackage[classic]\{dcrgraph\}}.
-
-\subsection{Editing an imported graph}
-\draft{export=file.tex, where to find it on Overleaf, \cs{input}}
+\subsection{What is read}
+From DCR portal files: events with labels, roles, types, marking and
+colours; nestings, subprocesses, forms and subgraphs (with their own
+events); all relations with their guards and times. The positions are
+taken from the file; the portal's own routing of lines is not (relations
+are straight lines, spread out where they would overlap). Things the
+package cannot draw are skipped with a warning. Details:
+Appendix~\ref{sec:compat}.
 
 % =====================================================================
 \section{Reference}
@@ -186,6 +281,10 @@ anything else & passed to the Ti\emph{k}Z node: \key{at=\{(x,y)\}},
   \key{right=2cm of a}, \key{minimum width=3cm}, \dots\\
 \bottomrule
 \end{tabularx}
+
+The label is wrapped to the width of the box; a box grows taller (evenly
+around its centre) when its label needs more room than it has, so long labels
+never run out of the box.
 
 \subsection{Collections}
 Written after their events; \meta{children} is a list of ids.
@@ -266,10 +365,14 @@ in the options of one graph.
 Setting & Meaning (default)\\
 \midrule
 \key{notation=portal|classic} & markers of the DCR portal, or arrows (portal)\\
-\key{guards=shield|explicit|both} & how guards are shown (shield)\\
-\key{delays=marker|explicit} & times of conditions etc.\ as text (marker)\\
-\key{deadlines=marker|explicit} & times of responses as text (marker)\\
+\key{guards=shield|explicit|both|none} & how guards are shown\\
+\key{delays=marker|explicit|none} & times of conditions etc.\\
+\key{deadlines=marker|explicit|none} & times of responses\\
 \key{explicit} & all three explicit\\
+\multicolumn{2}{@{}p{\linewidth}@{}}{\small Defaults: portal notation shows only
+  the markers (shield, clock); classic notation has no shields or clocks and
+  shows the values as text. \key{explicit} adds the text (portal), \key{none}
+  shows nothing at all (both notations).}\\
 \key{font=} & font of the graph (\cs{sffamily})\\
 \key{subtitle font=} & font of subtitles\\
 \key{bgcolor=}, \key{nesting bgcolor=} & default backgrounds\\
@@ -289,7 +392,7 @@ Setting & Meaning (default)\\
 \medskip\noindent
 Package options: \cs{usepackage[classic]\{dcrgraph\}} (or \key{portal}).
 
-\subsection{Colours}
+\subsection{Colours}\label{sec:colours}
 Change with \cs{definecolor} or \cs{colorlet}, e.g.
 \cs{colorlet\{dcr condition\}\{orange\}}.
 
@@ -353,17 +456,33 @@ Command & Meaning\\
 \bottomrule
 \end{tabularx}
 
-\subsection{Symbols in text}
+\subsection{Symbols in text}\label{sec:symbols}
 In math mode: \cs{dcrcondition} $\dcrcondition$, \cs{dcrresponse} $\dcrresponse$,
 \cs{dcrinclude} $\dcrinclude$, \cs{dcrexclude} $\dcrexclude$,
 \cs{dcrmilestone} $\dcrmilestone$, e.g.\ \verb|$A \dcrcondition B$|.
-The format of guards on lines: \cs{dcrguardformat}.
+The format of guards on lines: \cs{dcrguardformat}; of the negated guard of a
+logical include in the classic notation: \cs{dcrnotguard}.
 
 % =====================================================================
 \appendix
-\section{DCR portal compatibility}
-\draft{what is read from portal and DCR-js files; what is not reproduced
-(order of parallel lines, the portal's own line routing, the value of update
-relations)}
+\section{DCR portal compatibility}\label{sec:compat}
+\paragraph{Read from the file.} Events: label, roles, position, colours
+(background, border, text), marking (executed, pending, included), type
+(data, computation, DMN, global, form, subgraph). Collections: nestings,
+subprocesses, forms, subgraphs with their own graph; their boxes are
+computed as in the portal. Relations: condition, pre-condition, milestone,
+response, include, exclude, logical include, no-response, value (update),
+spawn; their guards and times; the routes of lines (only with the option
+\key{waypoints}, for DCR-js files).
+
+\paragraph{Not reproduced.} The portal's routing of lines (it draws some
+lines at right angles, the package draws straight lines and spreads out
+lines that would overlap); the order of parallel lines between two events;
+the value assigned by an update relation; data types, expressions and
+everything that only concerns the execution of the graph.
+
+\paragraph{Sizes.} Portal boxes are 115\,$\times$\,125\,px; the package draws
+them as 2.6\,$\times$\,2.8\,cm (its default box), the positions scaled
+accordingly.
 
 \end{document}

@@ -1,7 +1,9 @@
 \resizebox{\linewidth}{!}{%
-\begin{dcrgraphfile}{../tests/xml/07-deep-nesting.xml}
-  \adjustrelation{A6 include A7}{from=south, to=east}
-  \adjustrelation{A7 exclude A1}{bend right=15}
-  \adjustrelation{A7 spawn A2}{from=west}
-  \adjustactivity{A6}{bgcolor=green!10}
+\begin{dcrgraphfile}{examples/application process.xml}
+  % the exclude: from the top of "Deadline Passed" to the bottom of "Receive"
+  \adjustrelation{Event_1upi9ve exclude Event_191im4m}{from=north, to=south}
+  % the condition into the subprocess: along the left
+  \adjustrelation{Event_191im4m condition SubProcess_1fhz1v1}{to=west}
+  % "Deadline Passed" a little lower, and highlighted
+  \adjustactivity{Event_1upi9ve}{yshift=-1cm, bgcolor=red!8}
 \end{dcrgraphfile}}

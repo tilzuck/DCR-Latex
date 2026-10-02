@@ -1,0 +1,11 @@
+\begin{dcrgraph}
+  \activity{A}{a}
+  \activity[right=4cm of a]{B}{b}
+  \activity[below=1.5cm of a]{C}{c}
+  \condition{a}{b}                          % two relations between A and B:
+  \response{a}{b}                           % spread out automatically
+  \include{a.south}{c.north}                % from an anchor to an anchor
+  \exclude[via={(b.south |- c.east)}]{b}{c} % right-angled route
+  \milestone[bend right=40]{c}{a}           % any TikZ option
+  \response{c}{c}                           % self-relation: marker on top
+\end{dcrgraph}

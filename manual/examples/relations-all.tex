@@ -1,0 +1,17 @@
+\begin{dcrgraph}[small/.style={minimum width=2cm, minimum height=1.3cm},
+                 relname/.style={anchor=west, font=\ttfamily\scriptsize}]
+  \foreach \rel [count=\i] in {condition, precondition, milestone,
+                               response, include} {
+    \activity[small, at={(0,-1.8*\i)}]{A}{a\i}
+    \activity[small, at={(3,-1.8*\i)}]{B}{b\i}
+    \csname\rel\endcsname{a\i}{b\i}
+    \node[relname] at (4.05,-1.8*\i) {\textbackslash\rel};
+  }
+  \foreach \rel [count=\i] in {exclude, logicalinclude, noresponse,
+                               update, spawn} {
+    \activity[small, at={(7.6,-1.8*\i)}]{A}{c\i}
+    \activity[small, at={(10.6,-1.8*\i)}]{B}{d\i}
+    \csname\rel\endcsname{c\i}{d\i}
+    \node[relname] at (11.65,-1.8*\i) {\textbackslash\rel};
+  }
+\end{dcrgraph}

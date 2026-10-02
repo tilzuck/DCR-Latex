@@ -1,8 +1,0 @@
-\begin{dcrgraph}
-  \activity[role=Citizen]{Apply}{apply}
-  \activity[role=Office, pending, right=1.5cm of apply]{Review}{review}
-  \activity[role=Office, excluded, right=1.5cm of review]{Pay out}{pay}
-  \nesting{Case}{case}{review, pay}
-  \response{apply}{review}
-  \include{review}{pay}
-\end{dcrgraph}

@@ -1,0 +1,10 @@
+\begin{dcrgraph}
+  \activity[pending]{Pending}{a}
+  \activity[executed, right=0.6cm of a]{Executed}{b}
+  \activity[excluded, right=0.6cm of b]{Excluded}{c}
+  \activity[pending, executed, right=0.6cm of c]{Both}{d}
+  \activity[role=Clerk, data, below=0.6cm of a]{Data}{e}
+  \activity[computation, subtitle=SetValue, right=0.6cm of e]{Computation}{f}
+  \activity[dmn, right=0.6cm of f]{DMN}{g}
+  \activity[global, form, right=0.6cm of g]{Global, form}{h}
+\end{dcrgraph}

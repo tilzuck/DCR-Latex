@@ -1,0 +1,24 @@
+\begin{dcrgraph}
+  % events
+  \activity{Start Evaluation Round}{start}
+  \activity[right=0.6cm of start]{Receive Application}{receive}
+  \activity[right=0.6cm of receive]{Host board meeting}{meeting}
+  \activity[right=0.6cm of meeting]{Update Report}{update}
+  \activity[right=0.6cm of update]{Approve Report}{approve}
+  \activity[below=1.6cm of start]{Application Deadline Passed}{deadline}
+  \activity[below=2.4cm of meeting]{Disclose reviewers names to applicant}{disclose}
+  \activity[below=2.4cm of update]{Filter Reviewers with Conflict of
+    Interests according to the applicant report}{filter}
+  % a subprocess around two of them
+  \subprocess{Assess Conflict of Interests}{assess}{disclose, filter}
+  % relations
+  \condition{start}{receive}
+  \condition{receive}{assess}
+  \condition{assess}{meeting}
+  \response{receive}{meeting}
+  \response{meeting}{update}
+  \response{update}{approve}
+  \milestone{update}{approve}
+  \response{disclose}{filter}
+  \exclude{deadline}{receive}
+\end{dcrgraph}

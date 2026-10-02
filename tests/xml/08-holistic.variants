@@ -1,0 +1,5 @@
+# Layout variants of 08-holistic.xml: "name: options of \includedcrgraph"
+
+# classic notation: pre-conditions become condition + milestone; the logical
+# include G->E becomes include [A6 > 10] + exclude [not(A6 > 10)]
+classic: notation=classic

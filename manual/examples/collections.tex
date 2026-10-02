@@ -1,0 +1,14 @@
+\begin{dcrgraph}
+  \activity{A}{a}
+  \activity[right=1cm of a]{B}{b}
+  \nesting{Nesting}{n}{a, b}
+  \activity[right=2.2cm of b]{C}{c}
+  \subprocess{Subprocess}{s}{c}
+  \activity[below=2cm of a]{D}{d}
+  \form{Form}{f}{d}
+  \activity[right=2.2cm of d]{E}{e}
+  \subprocess[multi]{Multi-instance}{m}{e}
+  \activity[right=2.2cm of e]{F}{fx}
+  \subgraph{Subgraph}{g}{fx}
+  \spawn{c}{g}
+\end{dcrgraph}

@@ -1,0 +1,5 @@
+# Layout variants of 03-relationships.xml: "name: options of \includedcrgraph"
+
+# classic notation: the pre-condition A1->A2 becomes condition + milestone,
+# the logical include A3->A4 becomes include + exclude (guard not(true))
+classic: notation=classic

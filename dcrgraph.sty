@@ -75,6 +75,8 @@
 \newlength\dcr@border  \setlength\dcr@border{1.5pt}  % box line width
 \newlength\dcr@datasize \setlength\dcr@datasize{0.36cm} % data page icon
 \newlength\dcr@rx
+\newlength\dcr@lw  \setlength\dcr@lw{2.3cm}    % label width (set per box)
+\newsavebox\dcr@lbox                            % for measuring a label
 \newlength\dcr@dmnsize \setlength\dcr@dmnsize{8pt}  % DMN table icon width
 \newlength\dcr@rwidth  \setlength\dcr@rwidth{1.3pt}   % relation line width
 
@@ -97,8 +99,28 @@
     fill=dcr activity, minimum width=2.6cm, minimum height=2.8cm,
     inner sep=0pt},
   dcr/role/.style={font=\dcr@font\bfseries\small},
-  dcr/label/.style={font=\dcr@font\small, text width=2.3cm, align=center,
+  % the label: as wide as the box (minus 0.3cm), see dcr/fit label
+  dcr/label/.style={font=\dcr@font\small, text width=\dcr@lw, align=flush center,
     execute at begin node={\hyphenpenalty=10000\exhyphenpenalty=10000}},
+  % Applied last to an activity's box: the label's width follows the box
+  % width, and the box grows taller (evenly, it is centred) if the label
+  % needs more room than the box offers -- long labels never run out.
+  dcr/fit label/.code={%
+    \pgfmathsetlength\dimen@ii{\pgfkeysvalueof{/pgf/minimum width}}%
+    \global\dcr@lw=\dimen@ii
+    \global\advance\dcr@lw by -0.3cm
+    % (measured outside the picture: in it, fonts are \nullfont)
+    \pgfinterruptpicture
+      \global\setbox\dcr@lbox\hbox{\parbox{\dcr@lw}{\centering\dcr@font\small
+        \hyphenpenalty=10000\exhyphenpenalty=10000 \dcr@labeltext}}%
+    \endpgfinterruptpicture
+    \dimen@=\ht\dcr@lbox \advance\dimen@ by \dp\dcr@lbox
+    \ifx\dcr@subtitle\@empty\else\advance\dimen@ by 13pt\fi
+    \advance\dimen@ by \dcr@header \advance\dimen@ by 0.7cm  % + margins, inner sep
+    \pgfmathsetlength\dimen@ii{\pgfkeysvalueof{/pgf/minimum height}}%
+    \ifdim\dimen@>\dimen@ii
+      \pgfkeyssetevalue{/pgf/minimum height}{\the\dimen@}%
+    \fi},
   dcr/excluded/.style={dashed},
   % nestings
   dcr/nesting/.style={draw=dcr border, line width=\dcr@border,
@@ -298,11 +320,12 @@
     \def\dcr@bc{dcr border}\def\dcr@tc{dcr text}%
     \dcr@resetflags
     \pgfkeys{/dcr@act,#1}%
+    \def\dcr@labeltext{#2}%
     \edef\dcr@do{\noexpand\node[dcr/activity, draw=\dcr@bc,
       \ifx\dcr@bg\@empty\else fill=\dcr@bg,\fi
       \ifdcr@excluded dcr/excluded,\fi
       \ifdcr@subgraph dcr/subgraph,\fi
-      \unexpanded\expandafter{\dcr@tikzopts}] (#3)}%
+      \unexpanded\expandafter{\dcr@tikzopts}, dcr/fit label] (#3)}%
     \dcr@do {};
     % header: always drawn, as in the DCR portal; role text if given.
     % A subgraph (template) has no header; its label is centred in the box.
@@ -324,7 +347,7 @@
     \else  % label, and below it a grey subtitle cut off with "..."
       \node[dcr/label, text=\dcr@tc] at ([yshift=\dcr@ly]#3.center)
         {#2\\[3pt]{\dcr@font\dcr@subfont\color{dcr subtitle}%
-          \truncate{2.2cm}{\dcr@subtitle}}};
+          \truncate{\dimexpr\dcr@lw-0.1cm\relax}{\dcr@subtitle}}};
     \fi
     % state markers, top left: "!" (pending), then the tick (executed),
     % standing on the baseline of the "!". As in the DCR portal, the tick
@@ -478,6 +501,13 @@
   explicit/.default={guard,delay,deadline},
   bundle/.store in=\dcr@bundle,
   selfpos/.store in=\dcr@selfpos,
+  % internal, for the classic translation of pre-condition / logical include
+  dcr@nodelay/.code={\def\dcr@delay{}},
+  dcr@negateguard/.code={%
+    \ifdcr@guard\ifx\dcr@gexpr\@empty\def\dcr@gexpr{true}\fi
+    \else\dcr@guardtrue\def\dcr@gexpr{true}\fi
+    \expandafter\def\expandafter\dcr@gexpr\expandafter{%
+      \expandafter\dcrnotguard\expandafter{\dcr@gexpr}}},
   .unknown/.code={%
     \let\dcr@key\pgfkeyscurrentname
     \def\dcr@val{#1}%
@@ -497,28 +527,50 @@
   \def\dcr@selfpos{}%
   \pgfkeys{/dcr@rel,#5}%
   \ifx\dcr@via\@empty\dcr@routedfalse\else\dcr@routedtrue\fi
-  % what is written as text for this relation: its guard, and its time
-  % (a deadline for responses, a delay for the others) -- from the
-  % settings of the graph, or per relation with explicit={...}
-  \ifdcr@guardtext\dcr@gtexttrue\else\dcr@gtextfalse\fi
-  \ifdcr@guardshield\dcr@gshieldtrue\else\dcr@gshieldfalse\fi
+  % How this relation's guard and time (a deadline for responses, a delay
+  % for the others) are shown, from the settings of the graph (see
+  % guards=, delays=, deadlines= below) and the key explicit={...}:
+  %   portal:  guard = shield, time = clock marker; explicit adds the text
+  %   classic: no shields, no clocks -- the values as text
+  %   none:    nothing, in both notations
+  % guard
+  \dcr@gtextfalse\dcr@gshieldfalse\dcr@gallowshieldfalse
+  \ifx\dcr@gmode\dcr@kw@none\else
+    \ifdcr@classic
+      \dcr@gtexttrue
+    \else
+      \dcr@gallowshieldtrue
+      \ifx\dcr@gmode\dcr@kw@explicit\dcr@gtexttrue
+      \else\ifx\dcr@gmode\dcr@kw@both\dcr@gtexttrue\dcr@gshieldtrue
+      \else\dcr@gshieldtrue\fi\fi
+    \fi
+  \fi
   \ifdcr@xguard\dcr@gtexttrue\dcr@gshieldfalse\fi
+  % time
   \def\dcr@tmp{#1}\def\dcr@tmpb{dcr/response}%
+  \ifx\dcr@tmp\dcr@tmpb\let\dcr@tm\dcr@lmode\else\let\dcr@tm\dcr@dmode\fi
+  \dcr@ttextfalse\dcr@tclockfalse
+  \ifx\dcr@tm\dcr@kw@none\else
+    \ifdcr@classic
+      \dcr@ttexttrue
+    \else
+      \dcr@tclocktrue
+      \ifx\dcr@tm\dcr@kw@explicit\dcr@ttexttrue\fi
+    \fi
+  \fi
   \ifx\dcr@tmp\dcr@tmpb
-    \ifdcr@deadlinetext\dcr@ttexttrue\else\dcr@ttextfalse\fi
     \ifdcr@xdeadline\dcr@ttexttrue\fi
   \else
-    \ifdcr@delaytext\dcr@ttexttrue\else\dcr@ttextfalse\fi
     \ifdcr@xdelay\dcr@ttexttrue\fi
   \fi
   % a delayed relation uses a clock marker instead of its usual one: the
   % style "<marker> delayed" if the relation has one (response: blue square
-  % with a clock), else the general clock circle
+  % with a clock), else the general clock circle (portal only, not with none)
   \def\dcr@mstyle{#2}%
-  \ifx\dcr@delay\@empty\else
+  \ifx\dcr@delay\@empty\else\ifdcr@tclock
     \pgfkeysifdefined{/tikz/#2 delayed/.@cmd}%
       {\def\dcr@mstyle{#2 delayed}}{\def\dcr@mstyle{dcr/delay marker}}%
-  \fi
+  \fi\fi
   \ifdcr@classic
     \edef\dcr@next{\noexpand\dcr@classicrelation{\unexpanded{#1}}%
       {\unexpanded\expandafter{\dcr@ropts}}{\unexpanded{#6}}{\unexpanded{#7}}}%
@@ -592,7 +644,7 @@
   % when guards are shown as shields (guards=shield or both)
   \ifdcr@guard
     \dcr@showshieldfalse
-    \ifx\dcr@gexpr\@empty\dcr@showshieldtrue\fi
+    \ifx\dcr@gexpr\@empty\ifdcr@gallowshield\dcr@showshieldtrue\fi\fi
     \ifdcr@gshield\dcr@showshieldtrue\fi
     \ifdcr@showshield
       \pgfmathsetmacro\dcr@gx{\dcr@px+(#2+\dcr@guardsize+1.5)*\dcr@ux+(#2+\dcr@guardsize)*\dcr@nx}%
@@ -601,34 +653,38 @@
     \fi
   \fi}
 
-% What is written as text, for a document (\dcrset) or a graph
-% (\begin{dcrgraph}[dcr/...]). The default is the DCR portal: only the
-% markers (shield, clock), no values.
-%   guards=shield | explicit | both   guard expressions: shield at the
-%                                     marker / [ expr ] on the line / both
-%   delays=marker | explicit          times of conditions etc. as text
-%   deadlines=marker | explicit       times of responses as text
-%   explicit                          all three explicit
-% Single relations: the relation key `explicit'.
-\newif\ifdcr@guardshield \dcr@guardshieldtrue
-\newif\ifdcr@guardtext
-\newif\ifdcr@delaytext
-\newif\ifdcr@deadlinetext
+% How guards, delays and deadlines are shown, for a document (\dcrset) or
+% a graph (\begin{dcrgraph}[dcr/...]). Defaults depend on the notation:
+% portal = only the markers (shield, clock), no values; classic = the
+% values as text (classic notation has no shields or clocks).
+%   guards=shield | explicit | both | none
+%   delays=marker | explicit | none       (times of conditions etc.)
+%   deadlines=marker | explicit | none    (times of responses)
+%   explicit                              all three explicit
+% explicit: the value as text (portal: in addition to the marker);
+% none: not shown at all. In classic notation, every mode except none
+% shows the text. Single relations: the relation key explicit={...}.
+\def\dcr@gmode{default}\def\dcr@dmode{default}\def\dcr@lmode{default}
+\def\dcr@kw@none{none}\def\dcr@kw@explicit{explicit}\def\dcr@kw@both{both}
 \newif\ifdcr@showshield
 \newif\ifdcr@gtext \newif\ifdcr@gshield \newif\ifdcr@ttext  % per relation
+\newif\ifdcr@gallowshield \newif\ifdcr@tclock
 \tikzset{
   dcr/guards/.is choice,
-  dcr/guards/shield/.code={\dcr@guardtextfalse\dcr@guardshieldtrue},
-  dcr/guards/explicit/.code={\dcr@guardtexttrue\dcr@guardshieldfalse},
-  dcr/guards/both/.code={\dcr@guardtexttrue\dcr@guardshieldtrue},
+  dcr/guards/shield/.code={\def\dcr@gmode{shield}},
+  dcr/guards/explicit/.code={\def\dcr@gmode{explicit}},
+  dcr/guards/both/.code={\def\dcr@gmode{both}},
+  dcr/guards/none/.code={\def\dcr@gmode{none}},
   dcr/delays/.is choice,
-  dcr/delays/marker/.code=\dcr@delaytextfalse,
-  dcr/delays/explicit/.code=\dcr@delaytexttrue,
+  dcr/delays/marker/.code={\def\dcr@dmode{marker}},
+  dcr/delays/explicit/.code={\def\dcr@dmode{explicit}},
+  dcr/delays/none/.code={\def\dcr@dmode{none}},
   dcr/deadlines/.is choice,
-  dcr/deadlines/marker/.code=\dcr@deadlinetextfalse,
-  dcr/deadlines/explicit/.code=\dcr@deadlinetexttrue,
-  dcr/explicit/.code={\dcr@guardtexttrue\dcr@guardshieldfalse
-    \dcr@delaytexttrue\dcr@deadlinetexttrue},
+  dcr/deadlines/marker/.code={\def\dcr@lmode{marker}},
+  dcr/deadlines/explicit/.code={\def\dcr@lmode{explicit}},
+  dcr/deadlines/none/.code={\def\dcr@lmode{none}},
+  dcr/explicit/.code={\def\dcr@gmode{explicit}\def\dcr@dmode{explicit}%
+    \def\dcr@lmode{explicit}},
 }
 
 % guard expression written halfway along the line, beside it
@@ -1118,21 +1174,37 @@
   \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{=}%
   \dcr@srcrelation{dcr/update}{dcr/update marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
 
-% \precondition[opts]{from}{to} : filled orange dot at to
+% \precondition[opts]{from}{to} : filled orange dot at to.
+% Classic notation has no pre-condition: it is what it means, a condition
+% plus a milestone (the time, if any, on the condition only).
 \newcommand\dcr@precondition[3][]{%
-  \def\dcr@csrc{}\def\dcr@ctgt{diamond}\def\dcr@csym{}%
-  \dcr@relation{dcr/precondition}{dcr/precondition marker}{}{0.5\dcr@csize}{#1}{#2}{#3}}
+  \ifdcr@classic
+    \dcr@condition[#1]{#2}{#3}%
+    \dcr@milestone[#1,dcr@nodelay]{#2}{#3}%
+  \else
+    \def\dcr@csrc{}\def\dcr@ctgt{diamond}\def\dcr@csym{}%
+    \dcr@relation{dcr/precondition}{dcr/precondition marker}{}{0.5\dcr@csize}{#1}{#2}{#3}%
+  \fi}
 
 % \spawn[opts]{from}{to}      : dark blue asterisk at from; from spawns to
 \newcommand\dcr@spawn[3][]{%
   \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{\Large$\ast$}%
   \dcr@srcrelation{dcr/spawn}{dcr/spawn marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
 
-% \logicalinclude[opts]{from}{to} : green "+" with a bar above, at from
+% \logicalinclude[opts]{from}{to} : green "+-" at from.
+% Classic notation has no logical include: it is what it means, an include
+% with the guard g plus an exclude with the guard not(g) (\dcrnotguard;
+% without a guard: not(true), as the DCR portal stores it).
 \newcommand\dcr@logicalinclude[3][]{%
-  \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{$\overline{+}$}%
-  \dcr@srcrelation{dcr/logical include}{dcr/logical include marker}{}{0.5\dcr@rsize}%
-    {#1}{#2}{#3}}
+  \ifdcr@classic
+    \dcr@include[#1]{#2}{#3}%
+    \dcr@exclude[#1,dcr@negateguard]{#2}{#3}%
+  \else
+    \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{$\overline{+}$}%
+    \dcr@srcrelation{dcr/logical include}{dcr/logical include marker}{}{0.5\dcr@rsize}%
+      {#1}{#2}{#3}%
+  \fi}
+\newcommand\dcrnotguard[1]{not(#1)}
 
 % \noresponse[opts]{from}{to} : brown "x" at from; from removes to's pending
 \newcommand\dcr@noresponse[3][]{%
@@ -1543,6 +1615,12 @@ local function merge_linked(rels)
         for j, q in ipairs(rels) do
           if not drop[j] and q.kind == b and q.link == r.link
              and q.from == r.from and q.to == r.to then
+            -- keep both halves, for the classic notation (which has no
+            -- pre-condition or logical include: there they are drawn as
+            -- the two relations they are made of)
+            local first = {}
+            for k, v in pairs(r) do first[k] = v end
+            r.parts = { first, q }
             r.kind = merged
             r.delay = r.delay or q.delay
             drop[j] = true
@@ -2344,8 +2422,8 @@ local function parse_options(str)
       elseif k == "guards" or k == "delays" or k == "deadlines" then
         -- a mode for the whole graph, or a list of relations whose value
         -- is shown as text: guards={A4 response A6, A6 A7}
-        local modes = (k == "guards") and { shield = 1, explicit = 1, both = 1 }
-                                       or { marker = 1, explicit = 1 }
+        local modes = (k == "guards") and { shield = 1, explicit = 1, both = 1, none = 1 }
+                                       or { marker = 1, explicit = 1, none = 1 }
         if modes[v] then
           opts[k] = v
         else
@@ -2450,7 +2528,26 @@ function M.read(file, optstring, adjustments)
   opts.adjust = parse_adjustments(adjustments)
   local reader = front_ends[opts.format]
   if not reader then fail("unknown format `" .. tostring(opts.format) .. "'") end
-  return reader(read_file(file)), opts
+  local graph = reader(read_file(file))
+  -- classic notation: pre-conditions and logical includes become the two
+  -- relations they are made of (condition + milestone; include + exclude,
+  -- each with its own guard); the milestone of a timed pre-condition
+  -- carries no time (milestones are not timed in the literature)
+  if opts.notation == "classic" then
+    local rels = {}
+    for _, r in ipairs(graph.relations) do
+      if r.parts then
+        for _, p in ipairs(r.parts) do
+          if p.kind == "milestone" then p.delay = nil end
+          rels[#rels + 1] = p
+        end
+      else
+        rels[#rels + 1] = r
+      end
+    end
+    graph.relations = rels
+  end
+  return graph, opts
 end
 
 -- file name + option string (+ adjustments) -> list of lines, options
@@ -2535,16 +2632,21 @@ function M.describe_layout(graph, opts)
   -- deadlines=, explicit; for the whole graph or single relations)
   local parts = M.explicit_parts(graph, opts)
   local all = opts.explicit_all
+  -- as text: with explicit (both), and in classic notation by default
+  -- (it has no shields or clocks), unless the mode is none
+  local classic = opts.notation == "classic"
+  local function as_text(mode)
+    if all or mode == "explicit" or mode == "both" then return true end
+    return classic and mode ~= "none"
+  end
   for i, r in ipairs(graph.relations) do
     local shown = {}
     for _, p in ipairs(parts[i] or {}) do shown[p] = true end
-    if r.guard and (all or opts.guards == "explicit" or opts.guards == "both") then
-      shown.guard = true
-    end
-    if r.delay and r.kind == "response" and (all or opts.deadlines == "explicit") then
+    if r.guard and as_text(opts.guards) then shown.guard = true end
+    if r.delay and r.kind == "response" and as_text(opts.deadlines) then
       shown.deadline = true
     end
-    if r.delay and r.kind ~= "response" and (all or opts.delays == "explicit") then
+    if r.delay and r.kind ~= "response" and as_text(opts.delays) then
       shown.delay = true
     end
     for _, p in ipairs({ "guard", "delay", "deadline" }) do
