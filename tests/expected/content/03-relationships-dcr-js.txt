@@ -1,0 +1,18 @@
+activity A1 label="A1"
+activity A2 label="A2"
+activity A3 label="A3"
+activity A4 label="A4"
+activity A5 label="A5"
+relation condition A1 -> A2
+relation condition A3 -> A4
+relation exclude A1 -> A2
+relation exclude A3 -> A4
+relation include A1 -> A2
+relation include A3 -> A4
+relation milestone A1 -> A2
+relation milestone A3 -> A4
+relation noresponse A1 -> A2
+relation response A1 -> A2
+relation spawn A5 -> A6
+relation update A1 -> A2
+subprocess A6 label="A6" multi

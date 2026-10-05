@@ -23,7 +23,8 @@ no-type: guards={A6 A7}, delays={A1 A2}
 # mixed: one of each kind
 mixed: guards={A4 response A6}, delays={A1 condition A2}, deadlines={A2 response A5}
 
-# classic notation: no shields, no clocks -- all values as text by default
+# classic notation (old name "classic" on purpose, it must keep working):
+# no shields, no clocks -- all values as text by default
 classic: notation=classic
 # ... unless hidden
 classic-none: notation=classic, guards=none, delays=none, deadlines=none

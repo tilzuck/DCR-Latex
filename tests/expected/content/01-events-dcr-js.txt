@@ -1,0 +1,6 @@
+activity A1 label="A1"
+activity A2 label="A2" roles=Role1|Role2
+activity A3 label="A3" roles=Role1
+activity A4 label="A4" roles=Role2
+activity A5 label="A5"
+activity A6 label="A6"

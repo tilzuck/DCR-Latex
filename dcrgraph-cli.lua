@@ -1,7 +1,7 @@
 -- dcrgraph-cli.lua -- development tool, not needed to use the package.
 -- Runs the converter stored at the end of dcrgraph.sty from the command line:
---   texlua dcrgraph-cli.lua [--waypoints] [--notation=classic] [--scale=0.8]
---                           [--marking=false] [--format=dcrjs] file.xml
+--   texlua dcrgraph-cli.lua [--waypoints] [--notation=DCRSolutions|Classic|CoopIS2023] [--scale=0.8]
+--                           [--marking=false] file.xml
 -- prints the LaTeX code.
 --
 -- Copyright (C) 2026 tilzuck. Part of the dcrgraph package; distributed

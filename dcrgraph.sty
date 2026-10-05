@@ -24,13 +24,26 @@
 \ProvidesPackage{dcrgraph}[2026/09/27 v0.2 DCR graphs with TikZ]
 
 % Notation of the RELATIONS (activities, nestings etc. look the same):
-%   \usepackage{dcrgraph}           DCR portal markers (default)
-%   \usepackage[classic]{dcrgraph}  traditional arrows from the literature
-%                                   (->•, •->, ->+, ->%, ->◇)
+%   \usepackage{dcrgraph}         DCR Solutions portal markers (default;
+%                                 = option DCRSolutions)
+%   \usepackage[Classic]{dcrgraph}  traditional arrows from the literature
+%                                 (->•, •->, ->+, ->%, ->◇)
+%   \usepackage[CoopIS2023]{dcrgraph}  the proposal of "Designing
+%                                 Semantically Transparent Declarative
+%                                 Process Constraints" (CoopIS 2023; as in
+%                                 DCR-js): triangle at the source, circled
+%                                 symbol at the target
 % It can also be switched per document or per graph with notation=...
+% The old names portal and classic still work.
+% CoopIS2023 is Classic with other symbols: \ifdcr@classic is true for
+% both (same relations, same translations, values as text).
 \newif\ifdcr@classic
-\DeclareOption{classic}{\dcr@classictrue}
-\DeclareOption{portal}{\dcr@classicfalse}
+\newif\ifdcr@coopis
+\DeclareOption{Classic}{\dcr@classictrue\dcr@coopisfalse}
+\DeclareOption{CoopIS2023}{\dcr@classictrue\dcr@coopistrue}
+\DeclareOption{DCRSolutions}{\dcr@classicfalse\dcr@coopisfalse}
+\DeclareOption{classic}{\dcr@classictrue\dcr@coopisfalse}
+\DeclareOption{portal}{\dcr@classicfalse\dcr@coopisfalse}
 \ProcessOptions\relax
 
 \RequirePackage{tikz}
@@ -222,8 +235,12 @@
 
 \tikzset{
   dcr/notation/.is choice,
-  dcr/notation/portal/.code={\dcr@classicfalse},
-  dcr/notation/classic/.code={\dcr@classictrue},
+  dcr/notation/DCRSolutions/.code={\dcr@classicfalse\dcr@coopisfalse},
+  dcr/notation/Classic/.code={\dcr@classictrue\dcr@coopisfalse},
+  dcr/notation/CoopIS2023/.code={\dcr@classictrue\dcr@coopistrue},
+  % old names, still accepted
+  dcr/notation/portal/.code={\dcr@classicfalse\dcr@coopisfalse},
+  dcr/notation/classic/.code={\dcr@classictrue\dcr@coopisfalse},
   % arrows and symbols in the classic notation
   dcr/classic arrow/.style={},   % extra style for classic arrows (e.g. thinner lines)
 }
@@ -571,14 +588,17 @@
     \pgfkeysifdefined{/tikz/#2 delayed/.@cmd}%
       {\def\dcr@mstyle{#2 delayed}}{\def\dcr@mstyle{dcr/delay marker}}%
   \fi\fi
-  \ifdcr@classic
+  \ifdcr@coopis
+    \edef\dcr@next{\noexpand\dcr@coopisrelation{\unexpanded{#1}}%
+      {\unexpanded\expandafter{\dcr@ropts}}{\unexpanded{#6}}{\unexpanded{#7}}}%
+  \else\ifdcr@classic
     \edef\dcr@next{\noexpand\dcr@classicrelation{\unexpanded{#1}}%
       {\unexpanded\expandafter{\dcr@ropts}}{\unexpanded{#6}}{\unexpanded{#7}}}%
   \else
     \edef\dcr@next{\noexpand\dcr@portalrelation{\unexpanded{#1}}%
       {\unexpanded\expandafter{\dcr@mstyle}}{\unexpanded{#3}}{\unexpanded{#4}}%
       {\unexpanded\expandafter{\dcr@ropts}}{\unexpanded{#6}}{\unexpanded{#7}}}%
-  \fi
+  \fi\fi
   \dcr@next
   \endgroup}
 
@@ -1136,6 +1156,277 @@
   \expandafter\xdef\csname dcr@cself@\the\dcr@graph @#3\endcsname{\the\dcr@k}%
 }
 
+% ------------------------------------------------------------------
+%  CoopIS2023 notation (relations only), the proposal of "Designing
+%  Semantically Transparent Declarative Process Constraints" (CoopIS
+%  2023), as drawn by
+%  DCR-js: a triangle at the SOURCE (its base flush on the box, pointing
+%  along the line; milestone: hollow with a "!") and a circle with the
+%  relation's symbol at the TARGET (condition and milestone: a key,
+%  response "!", include "+", exclude "-"). update, no-response and spawn
+%  are not in the proposal; they get their portal symbol in the circle.
+%  Like classic otherwise: pre-conditions and logical includes are
+%  translated, values are shown as text. Symbols stay upright.
+% ------------------------------------------------------------------
+\newlength\dcr@thalf  % half the length of the source triangle
+\newlength\dcr@twhalf % half its width
+\newlength\dcr@tchalf % half the size of the target circle
+\newlength\dcr@tbend  \setlength\dcr@tbend{0pt}  % see dcr/coopis bend
+\newif\ifdcr@hollow
+% coloured rectangle in a circle; #1 colour, #2..#5 = x1,y1,x2,y2 as
+% fractions of the marker size, from its centre
+\newcommand\dcr@tglyph[5]{%
+  \fill[#1]
+    ([shift={(#2\dcr@csize,#3\dcr@csize)}]path picture bounding box.center)
+    rectangle
+    ([shift={(#4\dcr@csize,#5\dcr@csize)}]path picture bounding box.center);}
+\tikzset{
+  % the lines; a round cap, so that a steep line ends neatly in the tip of
+  % the triangle (the end at the circle is hidden under the circle)
+  dcr/coopis line/.style={line cap=round},
+  % 0pt (default): straight lines whose start depends on their angle;
+  % a radius: the line leaves the triangle's tip straight out and turns
+  % into its own direction with a bend of this radius
+  dcr/coopis bend/.code={\setlength\dcr@tbend{#1}},
+  dcr/coopis circle/.style={circle, fill=white, inner sep=0pt,
+    line width=0.1\dcr@csize, minimum size=0.9\dcr@csize},
+  dcr/coopis key/.style={% #1 colour
+    path picture={%
+      \draw[#1, line width=0.07\dcr@csize, line cap=butt]
+        ([xshift=-0.14\dcr@csize]path picture bounding box.center)
+          circle[radius=0.085\dcr@csize]
+        ([xshift=-0.055\dcr@csize]path picture bounding box.center) --
+        ([xshift=0.27\dcr@csize]path picture bounding box.center) --
+        ([xshift=0.27\dcr@csize,yshift=-0.12\dcr@csize]path picture bounding box.center)
+        ([xshift=0.15\dcr@csize]path picture bounding box.center) --
+        ([xshift=0.15\dcr@csize,yshift=-0.09\dcr@csize]path picture bounding box.center);}},
+  dcr/condition coopis marker/.style={dcr/coopis circle,
+    draw=dcr condition, dcr/coopis key=dcr condition},
+  dcr/milestone coopis marker/.style={dcr/coopis circle,
+    draw=dcr milestone, dcr/coopis key=dcr milestone},
+  dcr/response coopis marker/.style={dcr/coopis circle,
+    draw=dcr response, path picture={%
+      \dcr@tglyph{dcr response}{-0.055}{-0.03}{0.055}{0.24}%
+      \dcr@tglyph{dcr response}{-0.055}{-0.24}{0.055}{-0.13}}},
+  dcr/include coopis marker/.style={dcr/coopis circle,
+    draw=dcr include, path picture={%
+      \dcr@tglyph{dcr include}{-0.24}{-0.055}{0.24}{0.055}%
+      \dcr@tglyph{dcr include}{-0.055}{-0.24}{0.055}{0.24}}},
+  dcr/exclude coopis marker/.style={dcr/coopis circle,
+    draw=dcr exclude, path picture={%
+      \dcr@tglyph{dcr exclude}{-0.24}{-0.055}{0.24}{0.055}}},
+  dcr/update coopis marker/.style={dcr/coopis circle,
+    draw=dcr update, path picture={%
+      \dcr@tglyph{dcr update}{-0.22}{0.04}{0.22}{0.14}%
+      \dcr@tglyph{dcr update}{-0.22}{-0.14}{0.22}{-0.04}}},
+  dcr/noresponse coopis marker/.style={dcr/coopis circle,
+    draw=dcr noresponse, path picture={%
+      \draw[dcr noresponse, line width=0.11\dcr@csize]
+        ([shift={(-0.17\dcr@csize,-0.17\dcr@csize)}]path picture bounding box.center) --
+        ([shift={(0.17\dcr@csize,0.17\dcr@csize)}]path picture bounding box.center)
+        ([shift={(-0.17\dcr@csize,0.17\dcr@csize)}]path picture bounding box.center) --
+        ([shift={(0.17\dcr@csize,-0.17\dcr@csize)}]path picture bounding box.center);}},
+  dcr/spawn coopis marker/.style={dcr/coopis circle,
+    draw=dcr spawn, path picture={%
+      \foreach \dcr@a in {90,30,-30}{%
+        \draw[dcr spawn, line width=0.1\dcr@csize]
+          ([shift={(\dcr@a:0.24\dcr@csize)}]path picture bounding box.center) --
+          ([shift={(\dcr@a+180:0.24\dcr@csize)}]path picture bounding box.center);}}},
+  dcr/coopis marker/.style={dcr/coopis circle, draw},  % any other
+}
+
+% the triangle at the source; #1 relation style, #2,#3 its centre (pt),
+% #4,#5 unit vector along the line, away from the box
+\newcommand\dcr@ttriangle[5]{%
+  \pgfmathsetmacro\dcr@Bx{#2-\dcr@thalf*(#4)}%  middle of the base
+  \pgfmathsetmacro\dcr@By{#3-\dcr@thalf*(#5)}%
+  \pgfmathsetmacro\dcr@Tx{#2+\dcr@thalf*(#4)}%  tip
+  \pgfmathsetmacro\dcr@Ty{#3+\dcr@thalf*(#5)}%
+  \pgfmathsetmacro\dcr@Ax{\dcr@Bx-\dcr@twhalf*(#5)}%
+  \pgfmathsetmacro\dcr@Ay{\dcr@By+\dcr@twhalf*(#4)}%
+  \pgfmathsetmacro\dcr@Cx{\dcr@Bx+\dcr@twhalf*(#5)}%
+  \pgfmathsetmacro\dcr@Cy{\dcr@By-\dcr@twhalf*(#4)}%
+  \ifdcr@hollow
+    \filldraw[#1, fill=white, line width=0.06\dcr@csize, line join=miter]
+      (\dcr@Ax pt,\dcr@Ay pt) -- (\dcr@Tx pt,\dcr@Ty pt) -- (\dcr@Cx pt,\dcr@Cy pt) -- cycle;
+    % the "!" at the centroid, upright
+    \pgfmathsetmacro\dcr@Gx{\dcr@Bx+0.667*\dcr@thalf*(#4)}%
+    \pgfmathsetmacro\dcr@Gy{\dcr@By+0.667*\dcr@thalf*(#5)}%
+    \fill[#1] ([shift={(-0.04\dcr@csize,-0.02\dcr@csize)}]\dcr@Gx pt,\dcr@Gy pt)
+      rectangle ([shift={(0.04\dcr@csize,0.17\dcr@csize)}]\dcr@Gx pt,\dcr@Gy pt)
+      ([shift={(-0.04\dcr@csize,-0.17\dcr@csize)}]\dcr@Gx pt,\dcr@Gy pt)
+      rectangle ([shift={(0.04\dcr@csize,-0.09\dcr@csize)}]\dcr@Gx pt,\dcr@Gy pt);
+  \else
+    \fill[#1]
+      (\dcr@Ax pt,\dcr@Ay pt) -- (\dcr@Tx pt,\dcr@Ty pt) -- (\dcr@Cx pt,\dcr@Cy pt) -- cycle;
+  \fi}
+
+% sizes, and which triangle; #1 relation style
+\newcommand\dcr@tsetup[1]{%
+  \setlength\dcr@thalf{0.3\dcr@csize}%
+  \setlength\dcr@twhalf{0.38\dcr@csize}%
+  \setlength\dcr@tchalf{0.5\dcr@csize}%
+  \def\dcr@tmp{#1}\def\dcr@tmpb{dcr/milestone}%
+  \ifx\dcr@tmp\dcr@tmpb\dcr@hollowtrue\else\dcr@hollowfalse\fi
+  \pgfkeysifdefined{/tikz/#1 coopis marker/.@cmd}%
+    {\def\dcr@tstyle{#1 coopis marker}}{\def\dcr@tstyle{dcr/coopis marker}}}
+
+\newcommand\dcr@coopisrelation[4]{% #1 line style, #2 options, #3 from, #4 to
+  \dcr@tsetup{#1}%
+  \ifx\dcr@from\dcr@to
+    \dcr@coopisself{#1}{#3}%
+  \else
+    \dcr@split#3.\@nil\let\dcr@fromnode\dcr@node
+    \dcr@split#4.\@nil\let\dcr@tonode\dcr@node
+    \dcr@autofalse
+    \if\relax\detokenize{#2}\relax\ifdcr@routed\else
+      \ifx\dcr@fromnode\dcr@from\ifx\dcr@tonode\dcr@to\dcr@autotrue\fi\fi
+    \fi\fi
+    % ---- geometry: start/end on the borders and points just inside ----
+    \ifdcr@routed
+      \dcr@route{#3}{#4}%
+      \coordinate (dcr@s) at (dcr@p0);
+      \coordinate (dcr@s2) at (dcr@p1);
+      \coordinate (dcr@e) at (dcr@p\the\dcr@np);
+      \coordinate (dcr@e2) at (dcr@p\the\numexpr\dcr@np-1\relax);
+    \else\ifdcr@auto
+      \dcr@parallel{#3}{#4}%
+      \pgfcoordinate{dcr@s2}{\pgfpointadd{\pgfpointanchor{dcr@s}{center}}%
+        {\pgfpoint{5*\dcr@dx pt}{5*\dcr@dy pt}}}%
+      \pgfcoordinate{dcr@e2}{\pgfpointadd{\pgfpointanchor{dcr@e}{center}}%
+        {\pgfpoint{-5*\dcr@dx pt}{-5*\dcr@dy pt}}}%
+    \else
+      \path[#2] (#3) to coordinate[pos=0] (dcr@s) coordinate[pos=0.03] (dcr@s2)
+                        coordinate[pos=0.97] (dcr@e2) coordinate[pos=1] (dcr@e) (#4);
+    \fi\fi
+    % ---- source triangle ----
+    \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@s}{center}}%
+    \pgfcoordinate{dcr@a}{\pgfpointanchor{dcr@s2}{center}}%
+    \dcr@computeend{#3}{\dcr@thalf}%
+    \let\dcr@lux\dcr@ux \let\dcr@luy\dcr@uy   % direction of the line here
+    % The triangle sits square on the side of the box the line leaves
+    % through (base on the side, pointing straight out), whatever the angle
+    % of the line, as in DCR-js.
+    \ifdim\dcr@sx pt>\dcr@sy pt   % left or right side
+      \pgfmathsetmacro\dcr@sux{\dcr@bx>\dcr@cx ? 1 : -1}\def\dcr@suy{0}%
+    \else                         % top or bottom side
+      \def\dcr@sux{0}\pgfmathsetmacro\dcr@suy{\dcr@by>\dcr@cy ? 1 : -1}%
+    \fi
+    \pgfmathsetmacro\dcr@spx{\dcr@bx+(\dcr@thalf+0.5*\dcr@border)*\dcr@sux}%
+    \pgfmathsetmacro\dcr@spy{\dcr@by+(\dcr@thalf+0.5*\dcr@border)*\dcr@suy}%
+    \pgfmathsetmacro\dcr@tpx{\dcr@spx+\dcr@thalf*\dcr@sux}%   the tip
+    \pgfmathsetmacro\dcr@tpy{\dcr@spy+\dcr@thalf*\dcr@suy}%
+    \ifdim\dcr@tbend>0pt
+      % dcr/coopis bend: the line leaves the tip straight out and turns
+      % into its own direction with a round bend of that radius (at most
+      % 30% of a straight line); it starts inside the triangle (dcr@tb)
+      \pgfmathsetmacro\dcr@ta{\dcr@tbend}%
+      \ifdcr@auto
+        \pgfpointanchor{dcr@e}{center}%
+        \pgfmathsetmacro\dcr@ta{min(\dcr@ta,0.3*veclen(\pgf@x-\dcr@tpx,\pgf@y-\dcr@tpy))}%
+      \fi
+      \coordinate (dcr@ta) at
+        (\dcr@tpx pt+\dcr@ta*\dcr@sux pt,\dcr@tpy pt+\dcr@ta*\dcr@suy pt);
+      \coordinate (dcr@tb) at
+        (\dcr@tpx pt-0.6*\dcr@thalf*\dcr@sux,\dcr@tpy pt-0.6*\dcr@thalf*\dcr@suy);
+    \else
+      % Default: a straight line; its start (dcr@tb) depends on its angle.
+      % The line is moved sideways (to the side it turns to) by half its
+      % width, so that its edge runs exactly through the tip: the tip
+      % touches the line, no gap, nothing sticks out. It starts behind the
+      % tip, as far back as the angle allows while its end stays hidden in
+      % the triangle (on the axis if the angle permits). At small angles the
+      % line is centred on the tip.
+      \ifdcr@auto   % straight line: its direction from the tip to the target
+        \pgfpointanchor{dcr@e}{center}%
+        \pgfmathsetmacro\dcr@lux{\pgf@x-\dcr@tpx}%
+        \pgfmathsetmacro\dcr@luy{\pgf@y-\dcr@tpy}%
+        \pgfmathsetmacro\dcr@l{max(veclen(\dcr@lux,\dcr@luy),0.001)}%
+        \pgfmathsetmacro\dcr@lux{\dcr@lux/\dcr@l}%
+        \pgfmathsetmacro\dcr@luy{\dcr@luy/\dcr@l}%
+      \fi
+      % signed sine and cosine of the angle between the line and the axis
+      \pgfmathsetmacro\dcr@lsin{\dcr@sux*\dcr@luy-\dcr@suy*\dcr@lux}%
+      \pgfmathsetmacro\dcr@lcos{max(\dcr@sux*\dcr@lux+\dcr@suy*\dcr@luy,0)}%
+      \pgfmathsetmacro\dcr@lh{0.5*\dcr@rwidth*min(1,5*abs(\dcr@lsin))*(\dcr@lsin<0 ? -1 : 1)}%
+      \pgfmathsetmacro\dcr@lk{min(0.5*\dcr@rwidth*\dcr@lcos/max(abs(\dcr@lsin),0.01),1.6*\dcr@thalf)}%
+      % start = tip + lh * (normal of the line) - lk * (direction)
+      \coordinate (dcr@tb) at
+        (\dcr@tpx pt-\dcr@lh*\dcr@luy pt-\dcr@lk*\dcr@lux pt,
+         \dcr@tpy pt+\dcr@lh*\dcr@lux pt-\dcr@lk*\dcr@luy pt);
+      \coordinate (dcr@ta) at (dcr@tb);
+    \fi
+    % ---- target circle ----
+    \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@e}{center}}%
+    \ifdcr@auto   % straight line: the circle on the line
+      \pgfcoordinate{dcr@a}{\pgfpointanchor{dcr@ta}{center}}%
+    \else
+      \pgfcoordinate{dcr@a}{\pgfpointanchor{dcr@e2}{center}}%
+    \fi
+    \dcr@computeend{#4}{\dcr@tchalf}%
+    \setlength\dcr@tend{\dimexpr\dcr@t+\dcr@tchalf\relax}%
+    % ---- the line, then the markers on top ----
+    \ifdcr@routed   % routes leave the box straight; start in the triangle
+      \coordinate (dcr@p0) at (dcr@tb);
+      \draw[#1, dcr/coopis line, #2, shorten >=\dcr@tend] \dcr@ppath;
+    \else\ifdim\dcr@tbend>0pt
+      \ifdcr@auto
+        \draw[#1, dcr/coopis line, rounded corners=\dcr@ta pt, shorten >=\dcr@tend]
+          (dcr@tb) -- (dcr@ta) -- (dcr@e);
+      \else\if\relax\detokenize{#2}\relax   % anchors given, no options
+        \draw[#1, dcr/coopis line, rounded corners=\dcr@ta pt, shorten >=\dcr@tend]
+          (dcr@tb) -- (dcr@ta) -- (#4);
+      \else   % own path options (bend ...): a curve that leaves the tip
+        % straight out and arrives at the target like the original path
+        \coordinate (dcr@tt) at (\dcr@tpx pt,\dcr@tpy pt);
+        \pgfmathsetmacro\dcr@oang{atan2(\dcr@suy,\dcr@sux)}%
+        \pgfpointdiff{\pgfpointanchor{dcr@e}{center}}{\pgfpointanchor{dcr@e2}{center}}%
+        \pgfmathsetmacro\dcr@iang{atan2(\pgf@y,\pgf@x)}%
+        \draw[#1, dcr/coopis line, #2, shorten >=\dcr@tend]
+          (dcr@tb) -- (dcr@tt) to[relative=false, out=\dcr@oang, in=\dcr@iang] (dcr@e);
+      \fi\fi
+    \else
+      \ifdcr@auto
+        \draw[#1, dcr/coopis line, shorten >=\dcr@tend] (dcr@tb) -- (dcr@e);
+      \else
+        \draw[#1, dcr/coopis line, #2, shorten >=\dcr@tend] (dcr@tb) to (#4);
+      \fi
+    \fi\fi
+    \dcr@ttriangle{#1}{\dcr@spx}{\dcr@spy}{\dcr@sux}{\dcr@suy}%
+    \node[\dcr@tstyle] at (\dcr@px pt,\dcr@py pt) {};
+    \dcr@decorate{#1}{\dcr@tchalf}%
+    \dcr@guardlabel{#1}{#2}{#3}{#4}%
+  \fi}
+
+% Self-relations: a right-angled loop round a corner, as in DCR-js: from
+% the triangle on the top (bottom) edge out, round the corner, back to the
+% circle on the side edge. Corners in turn: top left (as in DCR-js), top
+% right, bottom left, bottom right.
+\newcommand\dcr@coopisself[2]{% #1 style, #2 node
+  \ifcsname dcr@tself@\the\dcr@graph @#2\endcsname
+    \dcr@k=\csname dcr@tself@\the\dcr@graph @#2\endcsname\relax
+  \else \dcr@k=0 \fi
+  \ifcase\dcr@k \def\dcr@c{north west}\def\dcr@sx{-1}\def\dcr@sy{1}%
+  \or           \def\dcr@c{north east}\def\dcr@sx{1}\def\dcr@sy{1}%
+  \or           \def\dcr@c{south west}\def\dcr@sx{-1}\def\dcr@sy{-1}%
+  \else         \def\dcr@c{south east}\def\dcr@sx{1}\def\dcr@sy{-1}\fi
+  \coordinate (dcr@ls) at ([xshift=-\dcr@sx*0.3cm]#2.\dcr@c);  % on top/bottom edge
+  \coordinate (dcr@le) at ([yshift=-\dcr@sy*0.3cm]#2.\dcr@c);  % on the side edge
+  \draw[#1, dcr/coopis line]
+    ([yshift=\dcr@sy*(1.4\dcr@thalf+0.5\dcr@border)]dcr@ls) --  % behind the tip
+    ([yshift=\dcr@sy*0.45cm]dcr@ls) -|
+    ([xshift=\dcr@sx*0.75cm]dcr@le) --
+    ([xshift=\dcr@sx*(2\dcr@tchalf+0.5\dcr@border)]dcr@le);
+  \pgfpointanchor{dcr@ls}{center}%
+  \pgfmathsetmacro\dcr@spx{\pgf@x}%
+  \pgfmathsetmacro\dcr@spy{\pgf@y+\dcr@sy*(\dcr@thalf+0.5*\dcr@border)}%
+  \dcr@ttriangle{#1}{\dcr@spx}{\dcr@spy}{0}{\dcr@sy}%
+  \node[\dcr@tstyle]
+    at ([xshift=\dcr@sx*(\dcr@tchalf+0.5\dcr@border)]dcr@le) {};
+  \advance\dcr@k 1
+  \expandafter\xdef\csname dcr@tself@\the\dcr@graph @#2\endcsname{\the\dcr@k}%
+}
+
 % Direction: every relation is written \relation{from}{to}.
 %   condition, milestone : symbol at the TARGET (the activity that is blocked)
 %   all others           : symbol at the SOURCE (the activity that acts),
@@ -1378,10 +1669,11 @@
 % ------------------------------------------------------------------
 %  \includedcrgraph[options]{file}  -- draw a graph from a file, converted
 %  by dcrgraphs.lua into dcrgraph commands. Options:
-%    format=dcrjs        input format (DCR-js / DCR portal XML)
+%    format=auto         input format: recognised from the file (DCR Solutions XML
+%                        or DCR-js XML); dcrsolutions, dcrjs accepted
 %    waypoints           draw relations along the routes stored in the file
 %                        (default: straight lines between the boxes)
-%    notation=classic    notation, as for the dcrgraph environment
+%    notation=Classic    notation (DCRSolutions, Classic, CoopIS2023), as for the dcrgraph environment
 %    scale=0.8           scale positions (box sizes and text stay the same)
 %    marking=false       leave out executed / pending / excluded
 %    By default the graph looks like the DCR portal: guards, delays and
@@ -1496,6 +1788,13 @@
 
 local M = {}
 
+-- notations with the relation set of the literature (no pre-condition, no
+-- logical include, values as text): Classic and CoopIS2023 ("classic" is
+-- the old name of Classic)
+local function literature_notation(n)
+  return n == "Classic" or n == "classic" or n == "CoopIS2023"
+end
+
 -- Pixels per cm, per tool, chosen so that a default box of the tool comes
 -- out 2.6cm wide, the width of a default \activity:
 --   DCR-js: boxes 130 x 150 px, stored in the file        -> 50 px/cm
@@ -1540,8 +1839,10 @@ end
 --  Small DOM helpers (luaxml-domobject). luaxml lowercases attribute
 --  names, so names are compared in lower case.
 -- ------------------------------------------------------------------
+-- element name, lower case, without a namespace prefix ("dcr:event" ->
+-- "event"; the DCR-js format uses prefixes, the portal format does not)
 local function ename(el)
-  return el:get_element_name():lower()
+  return (el:get_element_name():lower():gsub("^.*:", ""))
 end
 
 local function attr(el, name)
@@ -1573,7 +1874,8 @@ local function num(s)
 end
 
 -- ------------------------------------------------------------------
---  Front end: DCR-js XML (compatible with the DCR portal export)
+--  Front end 1: DCR Solutions XML (the DCR portal's format; DCR-js can
+--  export it too: "portal export")
 --
 --  Model:
 --    graph.nodes      list, children before parents:
@@ -1635,10 +1937,7 @@ local function merge_linked(rels)
   return kept
 end
 
-local function read_dcrjs(text)
-  -- {} = no HTML void elements: pure XML (else <meta>...</meta>, used by
-  -- the DCR portal, is rejected as unbalanced)
-  local dom = require("luaxml-domobject").parse(text, {})
+local function read_dcrsolutions(dom)
   local root = child(dom:root_node(), "dcrgraph")
   if not root then fail("no <dcrgraph> element found") end
   -- which tool wrote the file: the DCR portal adds a <meta> block
@@ -1819,10 +2118,129 @@ local function read_dcrjs(text)
   return graph
 end
 
-local front_ends = {
-  dcrjs = read_dcrjs,
-  dcrsolutionsxml = read_dcrjs,   -- same format
+-- ------------------------------------------------------------------
+--  Front end 2: DCR-js XML, DCR-js's own format (bpmn-js style):
+--    <dcr:definitions>
+--      <dcr:dcrGraph>   events, nestings, subprocesses (nested in each
+--                       other) and relations (at any level)
+--        <dcr:event id description role included executed pending/>
+--        <dcr:nesting id description> ... </dcr:nesting>
+--        <dcr:subProcess id description multi-instance ...> ... </>
+--        <dcr:relation id type sourceRef targetRef/>
+--      <dcrDi:dcrRootBoard><dcrDi:dcrPlane>   the drawing:
+--        <dcrDi:dcrShape boardElement=id><dc:Bounds x y width height/>
+--        <dcrDi:relation boardElement=id><dcrDi:waypoint x y/>...
+--  Positions in px, top left, y down, 50 px/cm (as the portal export).
+--  DCR-js has no guards, times, pre-conditions, logical includes, event
+--  types or colours; anything it does not know is warned about and skipped.
+-- ------------------------------------------------------------------
+local dcrjs_relation_kinds = {
+  condition = "condition", response = "response", include = "include",
+  exclude = "exclude", milestone = "milestone", update = "update",
+  spawn = "spawn", coresponse = "noresponse",
 }
+
+local function read_dcrjs(dom)
+  local root = child(dom:root_node(), "definitions")
+  if not root then fail("no <dcr:definitions> element found") end
+  local gel = child(root, "dcrGraph")
+  if not gel then fail("no <dcr:dcrGraph> element found") end
+  local graph = { nodes = {}, relations = {}, px_per_cm = PX_PER_CM.dcrjs }
+
+  -- the drawing: boxes and relation routes, by the id of their element
+  local bounds, routes = {}, {}
+  for _, el in ipairs(elements(child(root, "dcrRootBoard", "dcrPlane"))) do
+    local id, n = attr(el, "boardElement"), ename(el)
+    if n == "dcrshape" then
+      local b = child(el, "Bounds")
+      if id and b then
+        bounds[id] = { num(attr(b, "x")), num(attr(b, "y")),
+                       num(attr(b, "width")), num(attr(b, "height")) }
+      end
+    elseif n == "relation" and id then
+      local wps = {}
+      for _, w in ipairs(elements(el, "waypoint")) do
+        wps[#wps + 1] = { num(attr(w, "x")), num(attr(w, "y")) }
+      end
+      routes[id] = wps
+    end
+  end
+
+  local kinds = { event = "activity", nesting = "nesting", subprocess = "subprocess" }
+  local function yes(el, name) return (attr(el, name) or ""):lower() == "true" end
+  -- the elements inside `el' (children before parents); returns the ids
+  -- of its events / collections
+  local function read_level(el)
+    local ids = {}
+    for _, c in ipairs(elements(el)) do
+      local n = ename(c)
+      if kinds[n] then
+        local id = attr(c, "id")
+        local kids = read_level(c)
+        local kind = kinds[n]
+        if kind == "activity" and #kids > 0 then kind = "nesting" end
+        local roles = {}
+        for r in (attr(c, "role") or ""):gmatch("[^,]+") do
+          r = r:gsub("^%s+", ""):gsub("%s+$", "")
+          if r ~= "" then roles[#roles + 1] = r end
+        end
+        local b = bounds[id]
+        if not b then
+          warn("event `" .. id .. "' has no position; placed at (0,0)")
+          b = { 0, 0, DEFAULT_SIZE.dcrjs[1], DEFAULT_SIZE.dcrjs[2] }
+        end
+        local label = attr(c, "description")
+        graph.nodes[#graph.nodes + 1] = {
+          id = id, label = (label and label ~= "") and label or id,
+          roles = roles, kind = kind, children = kids,
+          x = b[1], y = b[2], w = b[3], h = b[4],
+          executed = yes(c, "executed"), pending = yes(c, "pending"),
+          -- nestings carry no marking
+          excluded = kind ~= "nesting" and attr(c, "included") ~= nil
+                     and not yes(c, "included"),
+          multi = kind == "subprocess" and yes(c, "multi-instance"),
+        }
+        ids[#ids + 1] = id
+      elseif n == "relation" then
+        local t = (attr(c, "type") or ""):lower()
+        local kind = dcrjs_relation_kinds[t]
+        if not kind then
+          warn("relation `" .. tostring(attr(c, "id")) .. "' of type `" .. t
+            .. "' not supported; skipped")
+        else
+          graph.relations[#graph.relations + 1] = {
+            kind = kind, from = attr(c, "sourceRef"), to = attr(c, "targetRef"),
+            waypoints = routes[attr(c, "id")] or {},
+          }
+        end
+      else
+        warn("element <" .. c:get_element_name() .. "> not supported; skipped")
+      end
+    end
+    return ids
+  end
+  read_level(gel)
+  return graph
+end
+
+-- the format of a file, from its root element
+local function detect_format(dom)
+  local root = elements(dom:root_node())[1]
+  local n = root and ename(root)
+  if n == "dcrgraph" then return "dcrsolutions" end
+  if n == "definitions" then return "dcrjs" end
+  fail("unknown file format: root element <" ..
+    (root and root:get_element_name() or "?") .. ">")
+end
+
+local front_ends = {
+  dcrsolutions = read_dcrsolutions,
+  dcrjs = read_dcrjs,
+}
+-- format= : the format is always detected from the file; these names are
+-- accepted (dcrsolutionsxml: old name)
+local format_names = { auto = true, dcrsolutions = "dcrsolutions",
+  dcrsolutionsxml = "dcrsolutions", dcrjs = "dcrjs" }
 
 -- ------------------------------------------------------------------
 --  Emitter: model -> dcrgraph code (list of lines)
@@ -2197,7 +2615,9 @@ local function layout(graph, opts)
         while moved do
           moved = false
           for _, ox in ipairs(occ) do
-            if math.abs(x - ox) < STEP then x = ox + STEP; moved = true end
+            -- (tolerance: (ox + STEP) - ox can come out a hair below STEP,
+            -- which would loop forever)
+            if math.abs(x - ox) < STEP - 1e-9 then x = ox + STEP; moved = true end
           end
         end
         lay.selfpos[i] = x
@@ -2290,7 +2710,7 @@ local function emit(graph, opts, lay)
       if n.pending then o[#o + 1] = "pending" end
       if n.excluded then o[#o + 1] = "excluded" end
     end
-    for _, flag in ipairs({ "data", "computation", "dmn", "global", "subgraph", "form" }) do
+    for _, flag in ipairs({ "data", "computation", "dmn", "global", "subgraph", "form", "multi" }) do
       if n[flag] then o[#o + 1] = flag end
     end
     if n.bg then o[#o + 1] = "bgcolor=dcrcol" .. n.bg end
@@ -2397,7 +2817,7 @@ end
 
 -- "a, b=c, d={e,f}" -> table; top-level commas only
 local function parse_options(str)
-  local opts = { format = "dcrjs", scale = 1, marking = true, waypoints = false,
+  local opts = { format = "auto", scale = 1, marking = true, waypoints = false,
                  targets = {} }
   local parts, depth, cur = {}, 0, ""
   for c in (str or ""):gmatch(".") do
@@ -2526,14 +2946,19 @@ function M.read(file, optstring, adjustments)
   M.warnings = {}
   local opts = parse_options(optstring)
   opts.adjust = parse_adjustments(adjustments)
-  local reader = front_ends[opts.format]
-  if not reader then fail("unknown format `" .. tostring(opts.format) .. "'") end
-  local graph = reader(read_file(file))
-  -- classic notation: pre-conditions and logical includes become the two
+  if not format_names[opts.format] then
+    fail("unknown format `" .. tostring(opts.format)
+      .. "' (the format is recognised from the file; format= is not needed)")
+  end
+  -- {} = no HTML void elements: pure XML (else <meta>...</meta>, used by
+  -- the DCR portal, is rejected as unbalanced)
+  local dom = require("luaxml-domobject").parse(read_file(file), {})
+  local graph = front_ends[detect_format(dom)](dom)
+  -- Classic and CoopIS2023 notation: pre-conditions and logical includes become the two
   -- relations they are made of (condition + milestone; include + exclude,
   -- each with its own guard); the milestone of a timed pre-condition
   -- carries no time (milestones are not timed in the literature)
-  if opts.notation == "classic" then
+  if literature_notation(opts.notation) then
     local rels = {}
     for _, r in ipairs(graph.relations) do
       if r.parts then
@@ -2561,7 +2986,7 @@ end
 --  layout (where it is drawn), as sorted text lines, separately.
 -- ------------------------------------------------------------------
 local node_flags = { "executed", "pending", "excluded",
-                     "data", "computation", "dmn", "global", "subgraph", "form" }
+                     "data", "computation", "dmn", "global", "subgraph", "form", "multi" }
 
 function M.describe_content(graph)
   local lines = {}
@@ -2634,7 +3059,7 @@ function M.describe_layout(graph, opts)
   local all = opts.explicit_all
   -- as text: with explicit (both), and in classic notation by default
   -- (it has no shields or clocks), unless the mode is none
-  local classic = opts.notation == "classic"
+  local classic = literature_notation(opts.notation)
   local function as_text(mode)
     if all or mode == "explicit" or mode == "both" then return true end
     return classic and mode ~= "none"
@@ -2741,8 +3166,8 @@ function M.main(args)
     if o then optlist[#optlist + 1] = o else file = a end
   end
   if not file then
-    io.stderr:write("usage: texlua dcrgraph-cli.lua [--waypoints] [--notation=classic]\n"
-      .. "         [--scale=N] [--marking=false] [--format=dcrjs] [--export=out.tex] file\n")
+    io.stderr:write("usage: texlua dcrgraph-cli.lua [--waypoints] [--notation=DCRSolutions|Classic|CoopIS2023]\n"
+      .. "         [--scale=N] [--marking=false] [--export=out.tex] file\n")
     os.exit(1)
   end
   local ok, lines, opts = pcall(M.convert, file, table.concat(optlist, ","))

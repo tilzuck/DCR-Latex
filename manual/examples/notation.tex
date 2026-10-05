@@ -1,4 +1,4 @@
-\textsf{\small portal notation (default)}\par
+\textsf{\small DCRSolutions notation (default)}\par
 \begin{dcrgraph}
   \activity{A}{a}
   \activity[right=3cm of a]{B}{b}
@@ -8,8 +8,18 @@
 \end{dcrgraph}
 
 \bigskip
-\textsf{\small the same graph, classic notation}\par
-\begin{dcrgraph}[dcr/notation=classic]
+\textsf{\small the same graph, Classic notation}\par
+\begin{dcrgraph}[dcr/notation=Classic]
+  \activity{A}{a}
+  \activity[right=3cm of a]{B}{b}
+  \precondition{a}{b}
+  \logicalinclude[guard={x > 0}]{a}{b}
+  \response[delay=P1D]{a}{b}
+\end{dcrgraph}
+
+\bigskip
+\textsf{\small the same graph, CoopIS2023 notation}\par
+\begin{dcrgraph}[dcr/notation=CoopIS2023]
   \activity{A}{a}
   \activity[right=3cm of a]{B}{b}
   \precondition{a}{b}

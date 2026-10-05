@@ -2,4 +2,7 @@
 
 # classic notation: the pre-condition A1->A2 becomes condition + milestone,
 # the logical include A3->A4 becomes include + exclude (guard not(true))
-classic: notation=classic
+classic: notation=Classic
+
+# CoopIS2023 notation (paper proposal, as in DCR-js): translated like Classic
+coopis2023: notation=CoopIS2023

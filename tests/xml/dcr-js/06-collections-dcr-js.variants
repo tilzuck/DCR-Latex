@@ -1,0 +1,9 @@
+# Layout variants of 06-collections-dcr-js.xml: "name: options of \includedcrgraph"
+
+# (no waypoints variant: this file was imported into DCR-js from the
+# portal; DCR-js filled in routes automatically -- all parallel relations
+# share one route, routes cross boxes -- so they test nothing. A
+# waypoint test needs a graph drawn in DCR-js.)
+
+# DCR-js draws in the CoopIS2023 notation
+coopis2023: notation=CoopIS2023

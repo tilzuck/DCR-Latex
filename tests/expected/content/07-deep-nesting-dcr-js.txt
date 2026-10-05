@@ -1,0 +1,17 @@
+activity A6 label="A6"
+activity A7 label="A7"
+nesting A1 label="A1" children=A2,A3,A6
+nesting A3 label="A3" children=A4,A5
+nesting A5 label="A5"
+relation condition A6 -> A5
+relation exclude A7 -> A1
+relation exclude A7 -> A7
+relation include A6 -> A7
+relation milestone A6 -> A5
+relation response A7 -> A6
+relation spawn A5 -> A2
+relation spawn A5 -> A4
+relation spawn A7 -> A2
+relation update A7 -> A3
+subprocess A2 label="A2" multi
+subprocess A4 label="A4" multi

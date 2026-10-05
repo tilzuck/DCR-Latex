@@ -60,14 +60,16 @@
 \section{Introduction}
 
 \textsf{dcrgraph} draws DCR (Dynamic Condition Response) graphs in
-\LaTeX, in the look of the DCR portal of DCR Solutions or in the classic
-notation of the literature. There are two ways to create a graph:
+\LaTeX, in one of three notations: \texttt{DCRSolutions}, the look of the
+DCR portal of DCR Solutions (the default); \texttt{Classic}, the arrows of the
+literature; \texttt{CoopIS2023}, the notation proposed at CoopIS 2023 and used
+by DCR-js. There are two ways to create a graph:
 \begin{itemize}
   \item \textbf{Drawing with Ti\emph{k}Z} (Section~\ref{sec:tikz}): you write
     the events and relations yourself, in a \texttt{dcrgraph} environment.
   \item \textbf{Importing XML} (Section~\ref{sec:import}): you model the graph
-    in the DCR portal (or DCR-js), export it as XML and include the file;
-    the graph looks as in the portal, and can be customised in \LaTeX.
+    in the DCR portal or in DCR-js, save it as XML and include the file;
+    the graph looks as in the editor, and can be customised in \LaTeX.
 \end{itemize}
 
 \paragraph{Requirements.}
@@ -110,7 +112,7 @@ Events are placed with Ti\emph{k}Z: relative to others
 (default 2.6\,cm $\times$ 2.8\,cm).
 
 \subsection{Relations}
-All relations at a glance (portal notation; the marker sits at the target
+All relations at a glance (DCRSolutions notation; the marker sits at the target
 for conditions, pre-conditions and milestones, at the source for all
 others):
 \example{relations-all}
@@ -126,7 +128,7 @@ A relation from an event to itself is a marker on its top edge.
 \subsection{Guards and time}\label{sec:values}
 A relation can have a guard (\key{guard=\{}\meta{expression}\key{\}}) and a
 time (\key{delay=}\meta{time}: for a response a deadline, for the others a
-delay). In the portal notation they are shown as markers: a shield for a
+delay). In the DCRSolutions notation they are shown as markers: a shield for a
 guard, a clock for a time. Their values can be written as text, for the
 whole graph or for single relations:
 \example{values}
@@ -138,8 +140,8 @@ whole graph or for single relations:
   \item For one relation: \key{explicit=guard}, \key{explicit=\{delay,guard\}},
     \key{explicit} (all).
 \end{itemize}
-In the classic notation there are no shields or clocks: there the values
-are written as text by default, and \key{none} leaves them out.
+In the Classic and CoopIS2023 notations there are no shields or clocks:
+there the values are written as text by default, and \key{none} leaves them out.
 
 \subsection{Collections}
 Nestings, subprocesses (also multi-instance), forms and subgraphs group
@@ -147,17 +149,28 @@ events. They are written after their events and placed around them;
 relations can start and end at a collection like at an event.
 \example{collections}
 
-\subsection{Portal and classic notation}
-The relations can be drawn with the markers of the DCR portal (the
-default) or with the arrows of the literature:
+\subsection{Notations: DCRSolutions, Classic, CoopIS2023}
+The relations can be drawn in three notations (events and collections look
+the same in all of them):
+\begin{itemize}
+  \item \texttt{DCRSolutions} (default): the markers of the DCR portal.
+  \item \texttt{Classic}: the arrows of the literature.
+  \item \texttt{CoopIS2023}: the notation proposed in \emph{Designing
+    Semantically Transparent Declarative Process Constraints} (CoopIS 2023)
+    and used by DCR-js: a triangle at the source and a circle with the symbol
+    at the target (a key for condition and milestone; the milestone's
+    triangle is hollow, with a ``!'').
+\end{itemize}
 \example{notation}
-The classic notation has no symbols for two relations of the DCR portal;
+Classic and CoopIS2023 have no symbols for two relations of the DCR portal;
 they are drawn as what they mean: a pre-condition as a condition plus a
 milestone (a time on the condition only), a logical include with the guard
 $g$ as an include with the guard $g$ plus an exclude with the guard
-\texttt{not(}$g$\texttt{)} (format: \cs{dcrnotguard}). The notation of a whole
-document: \cs{usepackage[classic]\{dcrgraph\}}; of one graph:
-\key{dcr/notation=classic}.
+\texttt{not(}$g$\texttt{)} (format: \cs{dcrnotguard}). Update, no-response
+and spawn are not part of the CoopIS2023 proposal; there they get their
+DCRSolutions symbol in the circle. The notation of a whole document:
+\cs{usepackage[Classic]\{dcrgraph\}} or \cs{usepackage[CoopIS2023]\{dcrgraph\}};
+of one graph: \key{dcr/notation=Classic} or \key{dcr/notation=CoopIS2023}.
 
 \subsection{Customisation}
 \paragraph{Colours.} \key{bgcolor}, \key{bordercolor} and \key{textcolor} take
@@ -194,7 +207,7 @@ display of guards and times, the settings.
 
 \subsection{Options}
 The options of \cs{includedcrgraph} (Section~\ref{sec:include}) choose the
-notation (\key{notation=classic}), how guards and times are shown, and a
+notation (\key{notation=Classic}), how guards and times are shown, and a
 few things of the import itself. Relations are drawn as straight lines by
 default; files from DCR-js also store the routes of the lines, which
 \key{waypoints} uses:
@@ -236,13 +249,22 @@ also works with pdf\LaTeX. On Overleaf the file is under ``Logs and output
 files''; copy it into your project.
 
 \subsection{What is read}
-From DCR portal files: events with labels, roles, types, marking and
-colours; nestings, subprocesses, forms and subgraphs (with their own
-events); all relations with their guards and times. The positions are
-taken from the file; the portal's own routing of lines is not (relations
-are straight lines, spread out where they would overlap). Things the
-package cannot draw are skipped with a warning. Details:
-Appendix~\ref{sec:compat}.
+Two formats are read; which one a file has is recognised automatically:
+\begin{itemize}
+  \item \textbf{DCR Solutions XML}, the format of the DCR portal (DCR-js can
+    export it too): events with labels, roles, types, marking and colours;
+    nestings, subprocesses, forms and subgraphs (with their own events); all
+    relations with their guards and times.
+  \item \textbf{DCR-js XML}, the format DCR-js saves its graphs in: events
+    with labels, roles and marking; nestings and subprocesses (also
+    multi-instance); the relations DCR-js has (condition, response, include,
+    exclude, milestone, update, spawn, no-response). DCR-js has no guards,
+    times, pre-conditions, logical includes, event types or colours.
+\end{itemize}
+The positions are taken from the file; the routes of the lines only with
+\key{waypoints} (otherwise relations are straight lines, spread out where
+they would overlap). Things the package cannot draw are skipped with a
+warning. Details: Appendix~\ref{sec:compat}.
 
 % =====================================================================
 \section{Reference}
@@ -252,7 +274,7 @@ Appendix~\ref{sec:compat}.
 \toprule
 \cs{begin\{dcrgraph\}}\oarg{options} & A Ti\emph{k}Z picture; options:
   any Ti\emph{k}Z option, and the settings of Section~\ref{sec:settings} with
-  the prefix \key{dcr/} (e.g. \key{dcr/notation=classic}).\\
+  the prefix \key{dcr/} (e.g. \key{dcr/notation=Classic}).\\
 \bottomrule
 \end{tabularx}
 
@@ -313,7 +335,7 @@ Keys & \key{role=}, \key{subtitle=}, \key{excluded}, \key{bgcolor=},
 \medskip
 \begin{tabularx}{\linewidth}{@{}llL@{}}
 \toprule
-Command & Colour & Marker (portal notation)\\
+Command & Colour & Marker (DCRSolutions notation)\\
 \midrule
 \cs{condition} & orange & open circle at the target\\
 \cs{precondition} & orange & filled dot at the target\\
@@ -352,7 +374,7 @@ anything else & Ti\emph{k}Z: \key{bend left=20}, \key{out=90}, \dots\\
 
 \medskip\noindent
 A relation from an event to itself is drawn as a marker above the event
-(portal) or a loop (classic). Several relations between the same two events
+(DCRSolutions) or a loop round a corner (Classic, CoopIS2023). Several relations between the same two events
 are spread out automatically, unless they have Ti\emph{k}Z options.
 
 \subsection{Settings}\label{sec:settings}
@@ -364,15 +386,17 @@ in the options of one graph.
 \toprule
 Setting & Meaning (default)\\
 \midrule
-\key{notation=portal|classic} & markers of the DCR portal, or arrows (portal)\\
+\key{notation=DCRSolutions|Classic|CoopIS2023} & markers of the DCR portal,
+  arrows, or triangle and circle (DCRSolutions; the old names \key{portal} and
+  \key{classic} still work)\\
 \key{guards=shield|explicit|both|none} & how guards are shown\\
 \key{delays=marker|explicit|none} & times of conditions etc.\\
 \key{deadlines=marker|explicit|none} & times of responses\\
 \key{explicit} & all three explicit\\
-\multicolumn{2}{@{}p{\linewidth}@{}}{\small Defaults: portal notation shows only
-  the markers (shield, clock); classic notation has no shields or clocks and
-  shows the values as text. \key{explicit} adds the text (portal), \key{none}
-  shows nothing at all (both notations).}\\
+\multicolumn{2}{@{}p{\linewidth}@{}}{\small Defaults: DCRSolutions shows only
+  the markers (shield, clock); Classic and CoopIS2023 have no shields or
+  clocks and show the values as text. \key{explicit} adds the text (DCRSolutions),
+  \key{none} shows nothing at all (all notations).}\\
 \key{font=} & font of the graph (\cs{sffamily})\\
 \key{subtitle font=} & font of subtitles\\
 \key{bgcolor=}, \key{nesting bgcolor=} & default backgrounds\\
@@ -383,14 +407,18 @@ Setting & Meaning (default)\\
   \key{condition marker size=}, \key{response marker size=}\\
 \key{marker gap=} & gap between marker and box (0\,pt)\\
 \key{parallel distance=} & distance of parallel relations (13.5\,pt)\\
-\key{classic marker size=} & symbols in the classic notation\\
+\key{classic marker size=} & symbols in the Classic notation\\
+\key{coopis bend=} & CoopIS2023: with a radius, a slanted line leaves the
+  triangle straight out and turns into its direction with a bend of this
+  radius (0\,pt: straight lines)\\
 \key{data size=}, \key{dmn size=}, & sizes of the icons\\
 \key{guard size=}, \key{tick size=} & \\
 \bottomrule
 \end{tabularx}
 
 \medskip\noindent
-Package options: \cs{usepackage[classic]\{dcrgraph\}} (or \key{portal}).
+Package options: \cs{usepackage[Classic]\{dcrgraph\}},
+\cs{usepackage[CoopIS2023]\{dcrgraph\}} (or \key{DCRSolutions}, the default).
 
 \subsection{Colours}\label{sec:colours}
 Change with \cs{definecolor} or \cs{colorlet}, e.g.
@@ -424,7 +452,7 @@ Option & Meaning\\
 \midrule
 \key{waypoints} & draw relations along the routes stored in the file
   (default: straight lines)\\
-\key{notation=classic} & classic notation\\
+\key{notation=Classic|CoopIS2023} & the notation (default DCRSolutions)\\
 \key{guards=}, \key{delays=}, \key{deadlines=} & as the settings above, or a list of
   relations: \key{guards=\{A4 response A6, A6 A7\}}; each entry
   ``\meta{source} \meta{type} \meta{target}'' or ``\meta{source} \meta{target}''
@@ -434,7 +462,9 @@ Option & Meaning\\
 \key{scale=}\meta{factor} & scale the positions (not the boxes)\\
 \key{export=}\meta{file.tex} & also write the generated code to a file, and
   into the \texttt{.log}\\
-\key{format=dcrjs} & input format (the only one so far)\\
+\key{format=} & not needed: the format (DCR Solutions XML or DCR-js XML) is
+  recognised from the file; accepted values \key{auto}, \key{dcrsolutions},
+  \key{dcrjs}\\
 \bottomrule
 \end{tabularx}
 
@@ -461,11 +491,21 @@ In math mode: \cs{dcrcondition} $\dcrcondition$, \cs{dcrresponse} $\dcrresponse$
 \cs{dcrinclude} $\dcrinclude$, \cs{dcrexclude} $\dcrexclude$,
 \cs{dcrmilestone} $\dcrmilestone$, e.g.\ \verb|$A \dcrcondition B$|.
 The format of guards on lines: \cs{dcrguardformat}; of the negated guard of a
-logical include in the classic notation: \cs{dcrnotguard}.
+logical include in the Classic and CoopIS2023 notations: \cs{dcrnotguard}.
 
 % =====================================================================
 \appendix
-\section{DCR portal compatibility}\label{sec:compat}
+\section{Compatibility with the DCR portal and DCR-js}\label{sec:compat}
+\paragraph{DCR-js XML.} Read: events (label = \texttt{description}, roles,
+position and size, marking), nestings, subprocesses (\texttt{multi-instance}),
+relations of all types DCR-js has, their routes (with \key{waypoints}).
+DCR-js stores no guards, times, event types or colours; a graph imported into
+DCR-js from the portal has lost them (pre-conditions and logical includes
+become their two relations, subgraphs multi-instance subprocesses). Unknown
+elements and relation types are skipped with a warning.
+
+The rest of this appendix is about DCR Solutions XML.
+
 \paragraph{Read from the file.} Events: label, roles, position, colours
 (background, border, text), marking (executed, pending, included), type
 (data, computation, DMN, global, form, subgraph). Collections: nestings,

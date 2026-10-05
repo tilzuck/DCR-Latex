@@ -1,0 +1,24 @@
+A1 area=(2,-0.4)(16.8,-7.6)
+A2 area=(2.6,-1.4)(5.2,-4.4)
+A3 area=(5.6,-2.4)(12.8,-7)
+A4 area=(6.2,-3.4)(8.8,-6.4)
+A5 area=(9.6,-3.4)(12.2,-6.4)
+A6 at=(14.9,-2.9) size=2.6x3
+A7 at=(6.3,-12.9) size=2.6x3
+bundle A5:1:0:2:0.5: spawn A5 -> A4
+bundle A5:1:1:2:0.5: spawn A5 -> A2
+bundle A7:1:0:5:2.899: spawn A7 -> A2
+bundle A7:1:1:5:2.899: exclude A7 -> A1
+bundle A7:1:2:5:2.899: update A7 -> A3
+bundle A7:1:3:5:2.899: response A7 -> A6
+bundle A7:1:4:5:2.899: include A6 -> A7
+condition A6 -> A5 via=(13.6,-2.9)(10.9,-3.4)
+exclude A7 -> A1 via=(7.6,-12.9)(9.4,-7.6)
+include A6 -> A7 via=(13.6,-2.9)(6.3,-11.4)
+milestone A6 -> A5 via=(13.6,-2.9)(10.9,-3.4)
+response A7 -> A6 via=(7.6,-12.9)(14.9,-4.4)
+self exclude A7 at 0.182
+spawn A5 -> A2 via=(10.9,-3.4)(5.2,-2.9)
+spawn A5 -> A4 via=(10.9,-3.4)(8.8,-4.9)
+spawn A7 -> A2 via=(6.3,-11.4)(5.2,-2.9)
+update A7 -> A3 via=(7.6,-12.9)(9.2,-7)

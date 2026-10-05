@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dcr:definitions xmlns:dcr="http://tk/schema/dcr" xmlns:dcrDi="http://tk/schema/dcrDi" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC">
+  <dcr:dcrGraph id="dcrGraph">
+    <dcr:event id="A1" description="A1" included="true" executed="false" pending="false" />
+    <dcr:event id="A2" description="A2" included="true" executed="false" pending="false" />
+    <dcr:event id="A3" description="A3" included="true" executed="false" pending="false" />
+    <dcr:event id="A4" description="A4" included="true" executed="false" pending="false" />
+    <dcr:event id="A5" description="A5" included="true" executed="false" pending="false" />
+    <dcr:subProcess id="A6" description="A6" included="true" executed="false" pending="false" multi-instance="true" />
+    <dcr:relation id="A1A2condition" type="condition" sourceRef="A1" targetRef="A2" />
+    <dcr:relation id="A3A4condition" type="condition" sourceRef="A3" targetRef="A4" />
+    <dcr:relation id="A1A2response" type="response" sourceRef="A1" targetRef="A2" />
+    <dcr:relation id="A1A2coresponse" type="coresponse" sourceRef="A1" targetRef="A2" />
+    <dcr:relation id="A1A2include" type="include" sourceRef="A1" targetRef="A2" />
+    <dcr:relation id="A3A4include" type="include" sourceRef="A3" targetRef="A4" />
+    <dcr:relation id="A1A2exclude" type="exclude" sourceRef="A1" targetRef="A2" />
+    <dcr:relation id="A3A4exclude" type="exclude" sourceRef="A3" targetRef="A4" />
+    <dcr:relation id="A1A2milestone" type="milestone" sourceRef="A1" targetRef="A2" />
+    <dcr:relation id="A3A4milestone" type="milestone" sourceRef="A3" targetRef="A4" />
+    <dcr:relation id="A5A6spawn" type="spawn" sourceRef="A5" targetRef="A6" />
+    <dcr:relation id="A1A2update" type="update" sourceRef="A1" targetRef="A2" />
+  </dcr:dcrGraph>
+  <dcrDi:dcrRootBoard id="dcrRootBoard">
+    <dcrDi:dcrPlane id="dcrPlane" boardElement="dcrGraph">
+      <dcrDi:relation id="A1A2updateid" boardElement="A1A2update">
+        <dcrDi:waypoint x="380" y="245" />
+        <dcrDi:waypoint x="665" y="320" />
+      </dcrDi:relation>
+      <dcrDi:relation id="A5A6spawnid" boardElement="A5A6spawn">
+        <dcrDi:waypoint x="750" y="245" />
+        <dcrDi:waypoint x="815" y="370" />
+      </dcrDi:relation>
+      <dcrDi:relation id="A3A4milestoneid" boardElement="A3A4milestone">
+        <dcrDi:waypoint x="380" y="445" />
+        <dcrDi:waypoint x="665" y="520" />
+      </dcrDi:relation>
+      <dcrDi:relation id="A1A2milestoneid" boardElement="A1A2milestone">
+        <dcrDi:waypoint x="380" y="245" />
+        <dcrDi:waypoint x="665" y="320" />
+      </dcrDi:relation>
+      <dcrDi:relation id="A3A4excludeid" boardElement="A3A4exclude">
+        <dcrDi:waypoint x="380" y="445" />
+        <dcrDi:waypoint x="665" y="520" />
+      </dcrDi:relation>
+      <dcrDi:relation id="A1A2excludeid" boardElement="A1A2exclude">
+        <dcrDi:waypoint x="380" y="245" />
+        <dcrDi:waypoint x="665" y="320" />
+      </dcrDi:relation>
+      <dcrDi:relation id="A3A4includeid" boardElement="A3A4include">
+        <dcrDi:waypoint x="380" y="445" />
+        <dcrDi:waypoint x="665" y="520" />
+      </dcrDi:relation>
+      <dcrDi:relation id="A1A2includeid" boardElement="A1A2include">
+        <dcrDi:waypoint x="380" y="245" />
+        <dcrDi:waypoint x="665" y="320" />
+      </dcrDi:relation>
+      <dcrDi:relation id="A1A2coresponseid" boardElement="A1A2coresponse">
+        <dcrDi:waypoint x="380" y="245" />
+        <dcrDi:waypoint x="665" y="320" />
+      </dcrDi:relation>
+      <dcrDi:relation id="A1A2responseid" boardElement="A1A2response">
+        <dcrDi:waypoint x="380" y="245" />
+        <dcrDi:waypoint x="665" y="320" />
+      </dcrDi:relation>
+      <dcrDi:relation id="A3A4conditionid" boardElement="A3A4condition">
+        <dcrDi:waypoint x="380" y="445" />
+        <dcrDi:waypoint x="665" y="520" />
+      </dcrDi:relation>
+      <dcrDi:relation id="A1A2conditionid" boardElement="A1A2condition">
+        <dcrDi:waypoint x="380" y="245" />
+        <dcrDi:waypoint x="665" y="320" />
+      </dcrDi:relation>
+      <dcrDi:dcrShape id="A1_id" boardElement="A1">
+        <dc:Bounds x="250" y="170" width="130" height="150" />
+      </dcrDi:dcrShape>
+      <dcrDi:dcrShape id="A2_id" boardElement="A2">
+        <dc:Bounds x="600" y="170" width="130" height="150" />
+      </dcrDi:dcrShape>
+      <dcrDi:dcrShape id="A3_id" boardElement="A3">
+        <dc:Bounds x="250" y="370" width="130" height="150" />
+      </dcrDi:dcrShape>
+      <dcrDi:dcrShape id="A4_id" boardElement="A4">
+        <dc:Bounds x="600" y="370" width="130" height="150" />
+      </dcrDi:dcrShape>
+      <dcrDi:dcrShape id="A5_id" boardElement="A5">
+        <dc:Bounds x="750" y="170" width="130" height="150" />
+      </dcrDi:dcrShape>
+      <dcrDi:dcrShape id="A6_id" boardElement="A6">
+        <dc:Bounds x="750" y="370" width="130" height="150" />
+      </dcrDi:dcrShape>
+    </dcrDi:dcrPlane>
+  </dcrDi:dcrRootBoard>
+</dcr:definitions>

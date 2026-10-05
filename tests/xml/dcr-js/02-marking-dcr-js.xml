@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dcr:definitions xmlns:dcr="http://tk/schema/dcr" xmlns:dcrDi="http://tk/schema/dcrDi" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC">
+  <dcr:dcrGraph id="dcrGraph">
+    <dcr:event id="A1" description="A1" included="true" executed="false" pending="false" />
+    <dcr:event id="A2" description="A2" included="false" executed="false" pending="true" />
+    <dcr:event id="A3" description="A3" included="false" executed="true" pending="false" />
+    <dcr:event id="A4" description="A4" included="true" executed="false" pending="true" />
+    <dcr:event id="A5" description="A5" included="true" executed="true" pending="false" />
+    <dcr:event id="A6" description="A6" included="false" executed="true" pending="true" />
+    <dcr:event id="A7" description="A7" included="true" executed="true" pending="true" />
+  </dcr:dcrGraph>
+  <dcrDi:dcrRootBoard id="dcrRootBoard">
+    <dcrDi:dcrPlane id="dcrPlane" boardElement="dcrGraph">
+      <dcrDi:dcrShape id="A1_id" boardElement="A1">
+        <dc:Bounds x="250" y="120" width="130" height="150" />
+      </dcrDi:dcrShape>
+      <dcrDi:dcrShape id="A2_id" boardElement="A2">
+        <dc:Bounds x="250" y="270" width="130" height="150" />
+      </dcrDi:dcrShape>
+      <dcrDi:dcrShape id="A3_id" boardElement="A3">
+        <dc:Bounds x="250" y="420" width="130" height="150" />
+      </dcrDi:dcrShape>
+      <dcrDi:dcrShape id="A4_id" boardElement="A4">
+        <dc:Bounds x="400" y="120" width="130" height="150" />
+      </dcrDi:dcrShape>
+      <dcrDi:dcrShape id="A5_id" boardElement="A5">
+        <dc:Bounds x="400" y="270" width="130" height="150" />
+      </dcrDi:dcrShape>
+      <dcrDi:dcrShape id="A6_id" boardElement="A6">
+        <dc:Bounds x="400" y="420" width="130" height="150" />
+      </dcrDi:dcrShape>
+      <dcrDi:dcrShape id="A7_id" boardElement="A7">
+        <dc:Bounds x="550" y="120" width="130" height="150" />
+      </dcrDi:dcrShape>
+    </dcrDi:dcrPlane>
+  </dcrDi:dcrRootBoard>
+</dcr:definitions>

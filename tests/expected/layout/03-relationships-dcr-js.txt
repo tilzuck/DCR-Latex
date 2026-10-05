@@ -1,0 +1,18 @@
+A1 at=(6.3,-4.9) size=2.6x3
+A2 at=(13.3,-4.9) size=2.6x3
+A3 at=(6.3,-8.9) size=2.6x3
+A4 at=(13.3,-8.9) size=2.6x3
+A5 at=(16.3,-4.9) size=2.6x3
+A6 area=(15,-7.4)(17.6,-10.4)
+condition A1 -> A2 via=(7.6,-4.9)(13.3,-6.4)
+condition A3 -> A4 via=(7.6,-8.9)(13.3,-10.4)
+exclude A1 -> A2 via=(7.6,-4.9)(13.3,-6.4)
+exclude A3 -> A4 via=(7.6,-8.9)(13.3,-10.4)
+include A1 -> A2 via=(7.6,-4.9)(13.3,-6.4)
+include A3 -> A4 via=(7.6,-8.9)(13.3,-10.4)
+milestone A1 -> A2 via=(7.6,-4.9)(13.3,-6.4)
+milestone A3 -> A4 via=(7.6,-8.9)(13.3,-10.4)
+noresponse A1 -> A2 via=(7.6,-4.9)(13.3,-6.4)
+response A1 -> A2 via=(7.6,-4.9)(13.3,-6.4)
+spawn A5 -> A6 via=(15,-4.9)(16.3,-7.4)
+update A1 -> A2 via=(7.6,-4.9)(13.3,-6.4)

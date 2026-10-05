@@ -1,0 +1,13 @@
+activity A1 label="A1"
+activity A2 label="A2"
+activity A3 label="A3"
+activity A4 label="A4"
+activity A5 label="A5"
+activity A6 label="A6"
+activity A7 label="A7"
+relation condition A1 -> A2
+relation condition A3 -> A4
+relation milestone A3 -> A4
+relation response A2 -> A5
+relation response A4 -> A6
+relation update A6 -> A7

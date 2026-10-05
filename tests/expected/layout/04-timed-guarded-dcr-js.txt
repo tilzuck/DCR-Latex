@@ -1,0 +1,13 @@
+A1 at=(4.3,-3.9) size=2.6x3
+A2 at=(7.3,-3.9) size=2.6x3
+A3 at=(4.3,-6.9) size=2.6x3
+A4 at=(7.3,-6.9) size=2.6x3
+A5 at=(10.3,-3.9) size=2.6x3
+A6 at=(11.3,-6.9) size=2.6x3
+A7 at=(11.3,-10.9) size=2.6x3
+condition A1 -> A2 via=(5.6,-3.9)(7.3,-5.4)
+condition A3 -> A4 via=(5.6,-6.9)(7.3,-8.4)
+milestone A3 -> A4 via=(5.6,-6.9)(7.3,-8.4)
+response A2 -> A5 via=(8.6,-3.9)(10.3,-5.4)
+response A4 -> A6 via=(8.6,-6.9)(11.3,-8.4)
+update A6 -> A7 via=(10,-6.9)(11.3,-9.4)
