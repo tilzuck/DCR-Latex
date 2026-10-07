@@ -35,7 +35,7 @@ for `\includedcrgraph` set *Menu → Settings → Compiler* to LuaLaTeX.
 Import test (LuaLaTeX), with any file from [`xml/`](xml/):
 
 ```latex
-\includedcrgraph{DCR-JS Graph.xml}
+\includedcrgraph{xml/DCR-JS Graph.xml}
 ```
 <img width="300" alt="image" src="https://github.com/user-attachments/assets/179b26bc-ab06-49c9-a8b1-ed0e91dddcba" />
 
