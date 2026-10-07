@@ -1,0 +1,20 @@
+\begin{dcrgraph}
+\NEW  % Pre-Start
+\NEW  \activity[role=HR Manager]{Find Computer and Keycard for new Hire}{computer}
+\NEW  \activity[role=HR Manager, right=0.8cm of computer]{Fill out contractual papers}{papers}
+\NEW  \activity[role=HR Manager, below=0.8cm of computer]{Find a trainer for new hire}{trainer}
+\NEW  \activity[role=HR Manager, below=0.8cm of papers]{Enter new hires information}{enter}
+\NEW  \activity[role=New Hire, right=1.6cm of papers]{Sign Contract}{sign}
+\NEW  \activity[role=Database, below=2.2cm of enter]{Update Database}{database}
+\NEW  % First day of new Hire
+\NEW  \activity[role=HR Manager, right=3cm of sign]{Introduce to Colleagues}{colleagues}
+\NEW  \activity[role=HR Manager, right=0.8cm of colleagues]{Receive Computer and Keycard}{keycard}
+\NEW  \activity[role=Trainer, below=0.8cm of keycard]{Introduce new hire to IT systems and work process}{it}
+\NEW  \activity[role=New Hire, right=0.8cm of keycard]{Begin Work}{begin}
+\NEW  % 3-week mark and 6 month review
+\NEW  \activity[role=HR Manager, below=1.8cm of it]{Performance interview with new Hire}{interview}
+\NEW  \activity[role=HR Manager, left=0.8cm of interview]{Update System with performance data}{perfdata}
+\NEW  \activity[role=HR Manager, below=1.8cm of interview]{Review of the 6 month period with new hire}{review}
+\NEW  \activity[role=HR Manager, left=0.8cm of review]{Update Database with Review Data}{reviewdata}
+\NEW  \activity[role=HR Manager, right=1.4cm of review]{Finish Onboarding}{finish}
+\end{dcrgraph}

@@ -2,6 +2,17 @@ A1 at=(10.343,-8.648) size=2.6x2.826
 A2 at=(15.996,-8.648) size=2.6x2.826
 A3 at=(15.996,-13.17) size=2.6x2.826
 A4 at=(10.343,-13.17) size=2.6x2.826
+port exclude A2 (14.696,-7.936) -> A1 (11.643,-7.936)
+port exclude A3 (14.696,-13.17) -> A4 (11.643,-13.17)
+port include A2 (14.696,-8.411) -> A1 (11.643,-8.411)
+port include A4 (11.643,-12.695) -> A3 (14.696,-12.695)
+port milestone A2 (16.233,-10.061) -> A3 (16.233,-11.757)
+port noresponse A3 (15.758,-11.757) -> A2 (15.758,-10.061)
+port precondition A1 (10.106,-10.061) -> A4 (11.01,-11.757)
+port precondition A1 (11.643,-9.36) -> A2 (14.696,-9.36)
+port response A1 (10.581,-10.061) -> A4 (11.343,-11.757)
+port response A1 (11.643,-8.885) -> A2 (14.696,-8.885)
+port update A3 (14.696,-13.644) -> A4 (11.643,-13.644)
 self exclude A1 at 0.182
 self exclude A2 at 0.615
 self exclude A3 at 0.615
@@ -10,11 +21,11 @@ self include A2 at 0.182
 self include A3 at 0.182
 self include A4 at 0.182
 self milestone A3 at 2.838
-self milestone A4 at 2.405
+self milestone A4 at 2.652
 self noresponse A3 at 2.405
 self precondition A1 at 1.049
 self precondition A2 at 1.483
 self response A1 at 0.615
 self response A2 at 1.049
 self response A3 at 1.971
-self response A4 at 1.971
+self response A4 at 1.049

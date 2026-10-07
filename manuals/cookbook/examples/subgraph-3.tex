@@ -1,0 +1,22 @@
+\begin{dcrgraph}
+  \activity[computation]{Create New Document}{create}
+  \activity[excluded, right=3cm of create]{Download}{download}
+  \activity[pending, right=0.8cm of download]{Check-In}{checkin}
+  \activity[right=1.6cm of checkin]{Check-Out}{checkout}
+  \activity[below=2.8cm of checkin]{Close Case}{close}
+  \subprocess{}{instance}{download, checkin, checkout}
+  \subgraph{Document}{document}{instance}
+\NEW  \spawn{create}{document}
+\NEW  \precondition{checkout}{checkin}
+\NEW  \response{checkout}{checkin}
+\NEW  \include{checkin}{download}
+\NEW  \include{checkin}{checkout}
+\NEW  \include{checkout}{checkin}
+\NEW  \exclude{checkin}{checkin}
+\NEW  \exclude{checkout}{checkout}
+\NEW  \exclude{close}{checkin}
+\NEW  \exclude{close}{checkout}
+\NEW  \exclude{close}{create}
+\NEW  \exclude{close}{close}
+\NEW  \milestone{checkin}{close}
+\end{dcrgraph}

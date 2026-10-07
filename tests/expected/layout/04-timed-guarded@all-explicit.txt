@@ -5,6 +5,11 @@ A4 at=(8.083,-7.517) size=2.6x2.826
 A5 at=(11.474,-4.126) size=2.6x2.826
 A6 at=(12.604,-7.517) size=2.6x2.826
 A7 at=(12.604,-12.039) size=2.6x2.826
+port condition A1 (5.991,-4.126) -> A2 (6.783,-4.126)
+port precondition A3 (5.991,-7.517) -> A4 (6.783,-7.517)
+port response A2 (9.383,-4.126) -> A5 (10.174,-4.126)
+port response A4 (9.383,-7.517) -> A6 (11.304,-7.517)
+port update A6 (12.604,-8.93) -> A7 (12.604,-10.626)
 show deadline response A2 -> A5
 show delay condition A1 -> A2
 show delay precondition A3 -> A4

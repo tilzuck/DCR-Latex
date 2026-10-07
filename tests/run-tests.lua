@@ -21,7 +21,9 @@
 --    of contents) must compile with LuaLaTeX.
 -- 3. Examples: the example documents must compile (twice) with pdfLaTeX and
 --    LuaLaTeX (dcrjs-example.tex: LuaLaTeX only).
--- 4. Manual: manual/dcrgraph-doc.tex must compile with LuaLaTeX (in manual/).
+-- 4. Manuals: manuals/ctan-manual/dcrgraph-doc.tex and
+--    manuals/cookbook/dcrgraph-cookbook.tex must compile with LuaLaTeX (each in
+--    its own folder).
 -- Look at tests/out/xml-gallery.pdf to check the pictures themselves.
 kpse.set_program_name("luatex")
 
@@ -149,10 +151,10 @@ end
 
 -- 2 and 3. compiling ----------------------------------------------------
 local function compile(engine, file, jobname, dir)
-  -- dir: compile in this folder (the manual is compiled in manual/)
+  -- dir: compile in this folder (the manual is compiled in its own folder)
   local cmd = string.format(
     '%s -interaction=nonstopmode -halt-on-error -output-directory=%s -jobname=%s "%s"',
-    engine, dir and ("../" .. OUT) or OUT, jobname, file)
+    engine, dir and (dir:gsub("[^/]+", "..") .. "/" .. OUT) or OUT, jobname, file)
   if dir then cmd = "cd " .. dir .. " && " .. cmd end
   local quiet = (os.type == "windows") and " >NUL 2>&1" or " >/dev/null 2>&1"
   local r
@@ -234,10 +236,15 @@ for _, e in ipairs(examples) do
 end
 
 print("Manual:")
-if compile("lualatex", "dcrgraph-doc.tex", "dcrgraph-doc", "manual") then
+if compile("lualatex", "dcrgraph-doc.tex", "dcrgraph-doc", "manuals/ctan-manual") then
   ok("manual (LuaLaTeX)")
 else
   bad("manual (LuaLaTeX)", "see " .. OUT .. "/dcrgraph-doc.log")
+end
+if compile("lualatex", "dcrgraph-cookbook.tex", "dcrgraph-cookbook", "manuals/cookbook") then
+  ok("cookbook (LuaLaTeX)")
+else
+  bad("cookbook (LuaLaTeX)", "see " .. OUT .. "/dcrgraph-cookbook.log")
 end
 
 print(string.format("\n%d passed, %d failed", passed, #failures))

@@ -5,11 +5,12 @@ A4 at=(8.309,-5.483) size=2.6x2.374
 A5 area=(10.852,-4.296)(13.452,-6.67)
 A6 at=(16.674,-2.996) size=2.6x2.826
 A7 at=(5.952,-14.3) size=2.6x2.826
-bundle A5:1:0:2:0.5: spawn A5 -> A4
-bundle A5:1:1:2:0.5: spawn A5 -> A2
-bundle A7:1:0:5:3.016: spawn A7 -> A2
-bundle A7:1:1:5:3.016: exclude A7 -> A1
-bundle A7:1:2:5:3.016: update A7 -> A3
-bundle A7:1:3:5:3.016: include A6 -> A7
-bundle A7:1:4:5:3.016: response A7 -> A6
+port exclude A7 (6.397,-12.887) -> A1 (8.53,-8.93)
+port include A6 (15.374,-4.109) -> A7 (7.252,-13.661)
+port precondition A6 (15.374,-3.16) -> A5 (13.452,-4.768)
+port response A7 (7.252,-13.187) -> A6 (15.374,-3.634)
+port spawn A5 (10.852,-5.06) -> A2 (5.539,-3.593)
+port spawn A5 (10.852,-5.534) -> A4 (9.609,-5.483)
+port spawn A7 (5.734,-12.887) -> A2 (4.423,-4.409)
+port update A7 (6.871,-12.887) -> A3 (9.106,-7.8)
 self exclude A7 at 0.182

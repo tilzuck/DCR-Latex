@@ -1,0 +1,26 @@
+\begin{dcrgraph}
+  % Pre-Start
+  \activity[role=HR Manager]{Find Computer and Keycard for new Hire}{computer}
+  \activity[role=HR Manager, right=0.8cm of computer]{Fill out contractual papers}{papers}
+  \activity[role=HR Manager, below=0.8cm of computer]{Find a trainer for new hire}{trainer}
+  \activity[role=HR Manager, below=0.8cm of papers]{Enter new hires information}{enter}
+  \activity[role=New Hire, right=1.6cm of papers]{Sign Contract}{sign}
+  \activity[role=Database, below=2.2cm of enter]{Update Database}{database}
+  % First day of new Hire
+  \activity[role=HR Manager, right=3cm of sign]{Introduce to Colleagues}{colleagues}
+  \activity[role=HR Manager, right=0.8cm of colleagues]{Receive Computer and Keycard}{keycard}
+  \activity[role=Trainer, below=0.8cm of keycard]{Introduce new hire to IT systems and work process}{it}
+  \activity[role=New Hire, right=0.8cm of keycard]{Begin Work}{begin}
+  % 3-week mark and 6 month review
+  \activity[role=HR Manager, below=1.8cm of it]{Performance interview with new Hire}{interview}
+  \activity[role=HR Manager, left=0.8cm of interview]{Update System with performance data}{perfdata}
+  \activity[role=HR Manager, below=1.8cm of interview]{Review of the 6 month period with new hire}{review}
+  \activity[role=HR Manager, left=0.8cm of review]{Update Database with Review Data}{reviewdata}
+  \activity[role=HR Manager, right=1.4cm of review]{Finish Onboarding}{finish}
+\NEW  % nestings: after their events, inner ones first
+\NEW  \nesting{Pre-Start}{prestart}{computer, papers, trainer, enter}
+\NEW  \nesting{First day of new Hire}{firstday}{colleagues, keycard, it, begin}
+\NEW  \nesting{3-week mark}{threeweeks}{perfdata, interview}
+\NEW  \nesting{6 month review}{sixmonths}{reviewdata, review}
+\NEW  \nesting{Responsibilities for new Hire}{responsibilities}{firstday, threeweeks, sixmonths, finish}
+\end{dcrgraph}

@@ -1,0 +1,137 @@
+% dcrgraph-cookbook.tex -- recipes for the dcrgraph package: short,
+% task-oriented, each with a real graph. Compile with LuaLaTeX (the import
+% recipes need it), twice, in this folder (manuals/cookbook/).
+%
+% The examples are in examples/: each is shown as code and executed, so the
+% code shown is exactly what made the picture. In the step-by-step recipes
+% every file holds the complete code up to that step; lines starting with
+% \NEW are the new or changed ones: \NEW does nothing in TeX and is hidden
+% in the listing, which shows those lines in green.
+\documentclass[a4paper,11pt]{article}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[scaled=0.92]{helvet}
+% dcrgraph.sty is two folders up
+\makeatletter\def\input@path{{../../}{./}}\makeatother
+\usepackage{dcrgraph}
+\usepackage[most]{tcolorbox}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+\usepackage{parskip}
+\sloppy
+
+\colorlet{newcode}{green!45!black}
+\let\NEW\relax
+% long lines are wrapped, the rest of a line indented (one command per
+% line in the files: \NEW must start a line)
+\lstset{basicstyle=\ttfamily\footnotesize, columns=fullflexible, keepspaces,
+  upquote=true, breaklines, breakindent=4em, postbreak={},
+  moredelim=[il][\color{newcode}]{\\NEW}}
+% \example{name}: examples/name.tex as code, and below it what it produces,
+% scaled down to the width of the text if it is wider
+\newsavebox\cbpicture
+\newcommand\example[1]{%
+  \begin{tcolorbox}[enhanced, breakable, colback=white, colframe=black!25,
+      boxrule=0.4pt, arc=1mm, left=2mm, right=2mm, halign lower=center]
+    \lstinputlisting{examples/#1.tex}
+    \tcblower
+    \sbox\cbpicture{\input{examples/#1}}%
+    \ifdim\wd\cbpicture>\linewidth
+      \resizebox{\linewidth}{!}{\usebox\cbpicture}%
+    \else
+      \usebox\cbpicture
+    \fi
+  \end{tcolorbox}}
+\newcommand\cs[1]{\texttt{\textbackslash#1}}
+\newcommand\key[1]{\texttt{#1}}
+\newcommand\new{\textcolor{newcode}{green}}
+
+\title{The \textsf{dcrgraph} cookbook\\[4pt]
+  \large Recipes for DCR graphs in \LaTeX}
+\author{tilzuck}
+\date{Draft}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+% =====================================================================
+\section*{About the recipes}
+Each recipe draws a graph from the examples of the DCR Solutions
+documentation, first by hand, step by step, then by including the
+graph's XML file. In each step the code is complete; the lines that are
+new or changed are \new. All you need is \cs{usepackage\{dcrgraph\}}; the
+imports need LuaLaTeX.
+
+% =====================================================================
+\section{Events, nestings and relations}
+The onboarding process from the DCR documentation,
+\url{https://documentation.dcr.design/example/example-of-onboarding-process/}.
+
+\subsection{Step 1: one event}
+Everything of a graph goes into a \texttt{dcrgraph} environment. An event is
+\cs{activity\{}\textit{label}\texttt{\}\{}\textit{id}\texttt{\}}; the id is the
+name you refer to it by. A long label is wrapped, and the box grows if
+needed.
+\example{onboarding-1}
+
+\subsection{Step 2: all events, placed next to each other}
+Options go into square brackets: \key{role=} for the role in the header,
+and the position relative to another event: \key{right=0.8cm of computer}
+(also \key{left=}, \key{above=}, \key{below=}).
+\example{onboarding-2}
+
+\subsection{Step 3: nestings}
+\cs{nesting\{}\textit{label}\texttt{\}\{}\textit{id}\texttt{\}\{}\textit{ids of its
+events}\texttt{\}} is drawn around the given events, so it comes after them,
+and an inner nesting before the outer one. Leave some room between events
+of different nestings (here 1.8\,cm) for the margins and labels.
+\example{onboarding-3}
+
+\subsection{Step 4: conditions}
+Relations are written from the source to the target,
+\cs{condition\{}\textit{from}\texttt{\}\{}\textit{to}\texttt{\}}, and may start or
+end at a nesting. Several relations between the same two events are
+spread out side by side; this needs two \LaTeX{} runs (latexmk and Overleaf
+do that by themselves).
+\example{onboarding-4}
+
+\subsection{Step 5: responses, includes and excludes}
+\cs{response}, \cs{include} and \cs{exclude} work the same way. A relation
+from an event to itself is drawn as a marker on its top edge.
+\example{onboarding-5}
+
+\subsection{Step 6: milestone and marking}
+The marking is set with the options \key{pending}, \key{executed} and
+\key{excluded} of an event.
+\example{onboarding-6}
+
+\subsection{The same graph from the editor}
+The graph's XML file, exported from the DCR portal, gives the same graph in
+one line, with the positions from the editor.
+\example{onboarding-import}
+
+% =====================================================================
+\section{Subprocesses, subgraphs and spawns}
+The subgraph example from the DCR documentation,
+\url{https://documentation.dcr.design/example/subgraph/}.
+
+\subsection{Step 1: the events}
+Event types are options like the marking: here \key{computation}; also
+\key{data}, \key{dmn}, \key{global}, \key{form}.
+\example{subgraph-1}
+
+\subsection{Step 2: subprocess and subgraph}
+\cs{subprocess} and \cs{subgraph} are written like \cs{nesting}: label, id,
+the ids of what is inside. The label may be empty.
+\example{subgraph-2}
+
+\subsection{Step 3: the relations}
+The spawn goes to the subgraph, written like any other relation.
+\example{subgraph-3}
+
+\subsection{The same graph from the editor}
+\example{subgraph-import}
+
+\end{document}

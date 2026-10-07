@@ -1,6 +1,6 @@
 % dcrgraph-doc.tex -- the manual of the dcrgraph package.
 % Compile with LuaLaTeX (the import examples need it), twice, in this
-% folder (manual/). The examples are in examples/: each is shown as code
+% folder (manuals/ctan-manual/). The examples are in examples/: each is shown as code
 % and executed, so the code shown is exactly what made the picture.
 %
 % Structure (decided with the author):
@@ -17,8 +17,8 @@
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage[scaled=0.92]{helvet}
-% dcrgraph.sty is in the folder above
-\makeatletter\def\input@path{{../}{./}}\makeatother
+% dcrgraph.sty is two folders up
+\makeatletter\def\input@path{{../../}{./}}\makeatother
 \usepackage{dcrgraph}
 \usepackage{booktabs,tabularx,array}
 \usepackage{tcolorbox}
@@ -262,8 +262,10 @@ Two formats are read; which one a file has is recognised automatically:
     times, pre-conditions, logical includes, event types or colours.
 \end{itemize}
 The positions are taken from the file; the routes of the lines only with
-\key{waypoints} (otherwise relations are straight lines, spread out where
-they would overlap). Things the package cannot draw are skipped with a
+\key{waypoints} (otherwise relations are straight lines; every line gets
+its own place on the edges of its two boxes, evenly spaced with the other
+lines there, so no two lines or markers lie on top of each other, and no
+second \LaTeX{} run is needed). Things the package cannot draw are skipped with a
 warning. Details: Appendix~\ref{sec:compat}.
 
 % =====================================================================
@@ -323,7 +325,7 @@ Command & Meaning\\
 \cs{subgraph}\oarg{options}\marg{label}\marg{id}\marg{children} & subgraph with its
   own events: dotted, ``$|||$'', ``g''\\
 \midrule
-Keys & \key{role=}, \key{subtitle=}, \key{excluded}, \key{bgcolor=},
+Keys & \key{role=}, \key{subtitle=}, \key{pending}, \key{executed}, \key{excluded}, \key{bgcolor=},
   \key{bordercolor=}, \key{textcolor=}, \key{multi};
   \key{area=\{(x1,y1)(x2,y2)\}}: exact box instead of fitting the children\\
 \bottomrule

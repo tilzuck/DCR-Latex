@@ -110,7 +110,11 @@
   dcr/activity/.style={
     draw=dcr border, line width=\dcr@border, rounded corners=4pt,
     fill=dcr activity, minimum width=2.6cm, minimum height=2.8cm,
-    inner sep=0pt},
+    inner sep=0pt, outer sep=0pt},
+  % (outer sep=0pt, also for collections: the border TikZ uses for anchors
+  % and lines is then exactly the drawn outline, and every marker is placed
+  % from it the same way -- half the line width + half the marker -- so
+  % all markers touch the outline alike, self-relation markers included)
   dcr/role/.style={font=\dcr@font\bfseries\small},
   % the label: as wide as the box (minus 0.3cm), see dcr/fit label
   dcr/label/.style={font=\dcr@font\small, text width=\dcr@lw, align=flush center,
@@ -137,7 +141,7 @@
   dcr/excluded/.style={dashed},
   % nestings
   dcr/nesting/.style={draw=dcr border, line width=\dcr@border,
-    rounded corners=4pt, fill=dcr nesting, inner sep=0.45cm},
+    rounded corners=4pt, fill=dcr nesting, inner sep=0.45cm, outer sep=0pt},
   dcr/nesting label/.style={font=\dcr@font\small},
   dcr/nesting marker/.style={font=\dcr@font\bfseries\small, text=black!45},
   dcr/pending marker/.style={text=dcr response, font=\dcr@font\bfseries\large},
@@ -1577,6 +1581,13 @@
       \ifx\dcr@area\@empty
         \ifdcr@withheader\dimen@=\dcr@header\fi
         \ifx\dcr@subtitle\@empty\else\dimen2=0.35cm\fi
+        % room for the label above the children (the padding alone is just
+        % the label's height: it touched the headers of the events), and
+        % below it for the marker of a self-relation on the top edge of an
+        % event (0.36cm)
+        \if\relax\detokenize{#3}\relax\else
+          \ifx\dcr@list\@empty\else\advance\dimen@ by 0.4cm\fi
+        \fi
       \fi
       \edef\dcr@do{\noexpand\node[dcr/nesting, inner sep=0pt,
         fit={(#4@box.north west)(#4@box.south east)
@@ -1625,6 +1636,18 @@
       \else
         \node[dcr/nesting marker, anchor=south east]
           at ([xshift=-3pt,yshift=1pt]#4.south east) {#1};
+      \fi\fi
+      % marking, top left, as for events (below the header, if any)
+      \ifdcr@withheader\dimen@=\dcr@header\else\dimen@=0pt\fi
+      \ifdcr@pending
+        \node[dcr/pending marker, inner xsep=0pt, anchor=north west]
+          (#4@pending) at ([xshift=7pt,yshift=-\dimen@-1pt]#4.north west) {!};
+        \ifdcr@executed \dcr@tick[2.5pt]{#4@pending.base east}\fi
+      \else\ifdcr@executed
+        \node[dcr/pending marker, inner xsep=0pt, anchor=north west]
+          (#4@pending) at ([xshift=7pt,yshift=-\dimen@-1pt]#4.north west)
+          {\phantom{!}};
+        \dcr@tick[2.5pt]{#4@pending.base east}%
       \fi\fi
     \end{pgfonlayer}
   \endgroup
@@ -2371,221 +2394,176 @@ local function layout(graph, opts)
     end
   end
 
-  -- Bundles: straight relations that leave a box at (almost) the same
-  -- point would have their lines or markers on top of each other (e.g. a
-  -- relation to a nesting and one to a nesting inside it, or two relations
-  -- to different boxes in a similar direction). Relations at a box whose
-  -- exit points are closer than MIN_GAP are spread like parallel relations
-  -- (key bundle=<node>:<k>). lay.bundle[i] = bundle name of relation i.
-  lay.bundle = {}
-  if not opts.waypoints then
-    local function centre(id)
-      local g = lay.node[id]
-      if g.w then return g.x, g.y end
-      return (g.x1 + g.x2) / 2, (g.y1 + g.y2) / 2
-    end
-    local function halfsize(id)
-      local g = lay.node[id]
-      if g.w then return g.w / 2, g.h / 2 end
-      return (g.x2 - g.x1) / 2, (g.y1 - g.y2) / 2
-    end
-    -- cm: a marker (10.3pt = 0.36cm) plus the sideways shift of a spread
-    -- line (the parallel distance, 13.5pt = 0.48cm), so that neighbours
-    -- do not collide after spreading either
-    local MIN_GAP = 0.85
-    -- A box with half sizes (hw, hh) at the origin, a line in direction
-    -- (ux, uy) shifted by o along (px, py): the range of o for which the
-    -- line leaves the box through the same side as for o = 0, at least
-    -- MARGIN (half a marker and a little) from the corners.
-    local MARGIN = 0.25
-    local function side_range(hw, hh, ux, uy, px, py)
-      local eps = 1e-9
-      local k, b, lim
-      if math.abs(ux) < eps or (math.abs(uy) > eps and hh / math.abs(uy) < hw / math.abs(ux)) then
-        -- leaves through the top or bottom: x of the exit point
-        local sy = uy >= 0 and 1 or -1
-        k, b, lim = px - py * ux / uy, sy * hh * ux / uy, hw - MARGIN
-      else
-        -- leaves through the left or right side: y of the exit point
-        local sx = ux >= 0 and 1 or -1
-        k, b, lim = py - px * uy / ux, sx * hw * uy / ux, hh - MARGIN
+  -- Ports: where each straight relation meets its two boxes. Every line
+  -- gets its own attachment point (port) on each end, independently:
+  -- per box and side, the lines attached there are sorted along the side
+  -- (by where they would leave it, so that they do not cross; parallel
+  -- relations in mirrored order at their two ends, so that they stay
+  -- parallel) and placed at even distances (the parallel distance),
+  -- centred on where they would leave; groups that come too close are
+  -- merged, a group longer than the side is squeezed. Markers sit at the
+  -- ports, so no two of them overlap on a box. The line runs straight from
+  -- port to port: emitted as via={(port 1),(port 2)}, two points on the
+  -- box outlines, which the package uses as the exact start and end (not
+  -- as anchors <id>.<angle>: TikZ rounds those angles to whole degrees,
+  -- differently at the two ends, and parallel lines came out tilted).
+  -- Not for: self-relations, relations along a route (waypoints), adjusted
+  -- relations (\adjustrelation), relations between a box and a box inside
+  -- it. lay.port[i] = {{x, y} at the source, {x, y} at the target} in cm;
+  -- lay.ports[node id] = list of {side, t} (t along the side, see below).
+  lay.port, lay.ports = {}, {}
+  local PD = 0.4745             -- the parallel distance, 13.5pt, in cm
+  local MARGIN = 0.3            -- from the corners (half a marker + a little)
+  local function box(id)        -- centre and half sizes
+    local g = lay.node[id]
+    if g.w then return g.x, g.y, g.w / 2, g.h / 2 end
+    return (g.x1 + g.x2) / 2, (g.y1 + g.y2) / 2, (g.x2 - g.x1) / 2, (g.y1 - g.y2) / 2
+  end
+  local function inside(a, b)   -- box a inside box b (or the same)
+    local ax, ay, aw, ah = box(a)
+    local bx, by, bw, bh = box(b)
+    return ax - aw >= bx - bw - 1e-6 and ax + aw <= bx + bw + 1e-6
+       and ay - ah >= by - bh - 1e-6 and ay + ah <= by + bh + 1e-6
+  end
+  -- a side's coordinate t: from the middle of the side, counterclockwise
+  -- around the box (right side: up, top: to the left, left: down,
+  -- bottom: to the right); half: half the length of the side
+  local function to_t(side, cx, cy, x, y)
+    if side == "right" then return y - cy
+    elseif side == "top" then return cx - x
+    elseif side == "left" then return cy - y
+    else return x - cx end
+  end
+  local function from_t(side, cx, cy, hw, hh, t)
+    if side == "right" then return cx + hw, cy + t
+    elseif side == "top" then return cx - t, cy + hh
+    elseif side == "left" then return cx - hw, cy - t
+    else return cx + t, cy - hh end
+  end
+  -- the markers of self-relations sit on the top edge from the left
+  -- corner (see below): that part of the top edge is kept free of ports
+  local SELFSTEP = 0.3634 + 0.0703   -- marker + 2pt, as below
+  local nself = {}
+  for _, r in ipairs(graph.relations) do
+    if r.from == r.to then nself[r.from] = (nself[r.from] or 0) + 1 end
+  end
+  local attach = {}             -- "id|side" -> list of attachments
+  for i, r in ipairs(graph.relations) do
+    local routed = opts.waypoints and lay.via[i]
+    if r.from ~= r.to and lay.node[r.from] and lay.node[r.to] and not routed
+       and not lay.radj[i] and not inside(r.from, r.to) and not inside(r.to, r.from) then
+      lay.port[i] = {}
+      for e, at in ipairs({ r.from, r.to }) do
+        local other = (e == 1) and r.to or r.from
+        local cx, cy, hw, hh = box(at)
+        local ox, oy = box(other)
+        local dx, dy = ox - cx, oy - cy
+        -- where the line between the centres leaves the box
+        local tx = dx ~= 0 and hw / math.abs(dx) or math.huge
+        local ty = dy ~= 0 and hh / math.abs(dy) or math.huge
+        local side = (tx < ty) and (dx > 0 and "right" or "left")
+                                or (dy > 0 and "top" or "bottom")
+        local k = math.min(tx, ty)
+        local key = at .. "|" .. side
+        attach[key] = attach[key] or { id = at, side = side }
+        -- parallel relations: the same order at both ends seen from one of
+        -- them, i.e. mirrored around the boxes: the index counts up at the
+        -- end with the smaller id, down at the other
+        local tie = ((at < other) and 1 or -1) * i
+        table.insert(attach[key], { i = i, e = e,
+          t = to_t(side, cx, cy, cx + k * dx, cy + k * dy), tie = tie })
       end
-      if lim < 0 then return 0, 0 end
-      if math.abs(k) < eps then
-        if math.abs(b) <= lim then return -math.huge, math.huge end
-        return 0, 0
-      end
-      local o1, o2 = (-lim - b) / k, (lim - b) / k
-      return math.min(o1, o2), math.max(o1, o2)
     end
-    -- a relation can be in one bundle only: handle the most crowded boxes
-    -- first, where collisions are most likely
-    local degree, order = {}, {}
-    for _, r in ipairs(graph.relations) do
-      degree[r.from] = (degree[r.from] or 0) + 1
-      degree[r.to] = (degree[r.to] or 0) + 1
+  end
+  local keys = {}
+  for key in pairs(attach) do keys[#keys + 1] = key end
+  table.sort(keys)              -- (deterministic output)
+  for _, key in ipairs(keys) do
+    local list = attach[key]
+    local side, id = list.side, list.id
+    local cx, cy, hw, hh = box(id)
+    local half = (side == "right" or side == "left") and hh or hw
+    local lo, hi = -half + MARGIN, half - MARGIN
+    -- top edge: t runs from right to left, the self markers take the left end
+    if side == "top" and nself[id] then
+      -- (the ports' clearance from the self markers, see below: half a
+      -- marker for the line, a step for its marker up to half a marker
+      -- further along a slanted line)
+      local h2 = half - nself[id] * SELFSTEP - 0.3634 / 2 - 0.05
+      if h2 > lo then hi = math.min(hi, h2) end   -- (no room: ignore them)
     end
-    for k, n in ipairs(graph.nodes) do order[#order + 1] = { n = n, k = k } end
-    table.sort(order, function(p, q)
-      local dp, dq = degree[p.n.id] or 0, degree[q.n.id] or 0
-      if dp ~= dq then return dp > dq end
-      return p.k < q.k
+    if lo > hi then lo, hi = 0, 0 end
+    table.sort(list, function(p, q)
+      if math.abs(p.t - q.t) > 1e-6 then return p.t < q.t end
+      return p.tie < q.tie
     end)
-    for _, entry in ipairs(order) do
-      local n = entry.n
-      local ax, ay = centre(n.id)
-      local hw, hh = halfsize(n.id)
-      local ends = {}   -- relations at n: {index, angle, exit point, other end}
-      for i, r in ipairs(graph.relations) do
-        if r.from ~= r.to and not lay.bundle[i] and not lay.radj[i]
-           and lay.node[r.from] and lay.node[r.to]
-           and (r.from == n.id or r.to == n.id) then
-          local other = (r.from == n.id) and r.to or r.from
-          local bx, by = centre(other)
-          local dx, dy = bx - ax, by - ay
-          -- where the line from the centre leaves the box
-          local t = math.min(dx ~= 0 and hw / math.abs(dx) or math.huge,
-                             dy ~= 0 and hh / math.abs(dy) or math.huge)
-          -- how far the line may be shifted sideways (to the left, seen from
-          -- n: offset o along p = (-uy, ux)) and still leave both boxes
-          -- through the same side as unshifted, at least MARGIN from the
-          -- corners, so that its marker sits flush on that side
-          local len = math.max(math.sqrt(dx * dx + dy * dy), 1e-6)
-          local ux, uy = dx / len, dy / len
-          local omin1, omax1 = side_range(hw, hh, ux, uy, -uy, ux)
-          local ow, oh = halfsize(other)
-          local omin2, omax2 = side_range(ow, oh, -ux, -uy, -uy, ux)
-          ends[#ends + 1] = { i = i, a = math.atan(dy, dx), other = other,
-                              px = ax + t * dx, py = ay + t * dy,
-                              omin = math.max(omin1, omin2),
-                              omax = math.min(omax1, omax2) }
+    -- groups of consecutive attachments: {first, last, centre, spacing}
+    local groups = {}
+    for j = 1, #list do groups[j] = { a = j, b = j } end
+    local function place(g)     -- centre and spacing of a group, on the side
+      local n, sum = g.b - g.a + 1, 0
+      for j = g.a, g.b do sum = sum + list[j].t end
+      local sp = PD
+      if n > 1 and (n - 1) * PD > hi - lo then sp = (hi - lo) / (n - 1) end
+      local len = (n - 1) * sp
+      local c = sum / n
+      c = math.max(lo + len / 2, math.min(hi - len / 2, c))
+      g.c, g.sp, g.len = c, sp, len
+    end
+    for _, g in ipairs(groups) do place(g) end
+    local merged = true
+    while merged do
+      merged = false
+      for q = 1, #groups - 1 do
+        local g, h = groups[q], groups[q + 1]
+        -- the gap between the last port of g and the first of h
+        if (h.c - h.len / 2) - (g.c + g.len / 2) < math.min(g.sp, h.sp) - 1e-9 then
+          groups[q] = { a = g.a, b = h.b }
+          place(groups[q])
+          table.remove(groups, q + 1)
+          merged = true
+          break
         end
       end
-      table.sort(ends, function(p, q) return p.a < q.a end)
-      local function dist(p, q)
-        return math.sqrt((p.px - q.px) ^ 2 + (p.py - q.py) ^ 2)
-      end
-      -- groups of neighbouring relations (in the order around the box):
-      -- start with one group per relation, merge neighbours that are too
-      -- close. In a group of m lines the outer ones are shifted by
-      -- (m-1)/2 parallel distances, so a neighbour must be further away.
-      local PD = 0.4745   -- the parallel distance, 13.5pt, in cm
-      local groups = {}
-      for j = 1, #ends do groups[j] = { g = j, h = j } end
-      local merged = true
-      while merged do
-        merged = false
-        for q = 1, #groups - 1 do
-          local a, b = groups[q], groups[q + 1]
-          local need = MIN_GAP + ((a.h - a.g) + (b.h - b.g)) / 2 * PD
-          if dist(ends[a.h], ends[b.g]) < need then
-            groups[q] = { g = a.g, h = b.h }
-            table.remove(groups, q + 1)
-            merged = true
-            break
-          end
-        end
-      end
-      local k = 0
-      for _, grp in ipairs(groups) do
-        local g, h = grp.g, grp.h
-        local others = {}
-        for j = g, h do others[ends[j].other] = true end
-        local count = 0
-        for _ in pairs(others) do count = count + 1 end
-        if count > 1 then   -- several different targets: a bundle
-          -- positions in the bundle in the geometric order (0 = the most
-          -- counterclockwise line, which the package shifts furthest to
-          -- the left), so that neighbouring lines move apart, not across
-          k = k + 1
-          local total = h - g + 1
-          -- the centre of the bundle (in positions): the middle, unless an
-          -- outer line would then miss a box -- then the whole bundle is
-          -- moved towards the middle of the boxes, keeping the spacing
-          local lo, hi = -math.huge, math.huge
-          for j = g, h do
-            -- offset of position pos: (centre - pos) * PD, within its range
-            local pos = h - j
-            lo = math.max(lo, pos + ends[j].omin / PD)
-            hi = math.min(hi, pos + ends[j].omax / PD)
-          end
-          local centre = (total - 1) / 2
-          if lo <= hi then centre = math.min(math.max(centre, lo), hi)
-          else centre = (lo + hi) / 2 end   -- impossible: the package limits
-          for j = g, h do
-            lay.bundle[ends[j].i] = string.format("%s:%d:%d:%d:%s",
-              lay.ids[n.id], k, h - j, total, fmt(centre))
-          end
-        end
+    end
+    lay.ports[id] = lay.ports[id] or {}
+    for _, g in ipairs(groups) do
+      for j = g.a, g.b do
+        local t = g.c - g.len / 2 + (j - g.a) * g.sp
+        local x, y = from_t(side, cx, cy, hw, hh, t)
+        local at = list[j]
+        lay.port[at.i][at.e] = { x, y }
+        table.insert(lay.ports[id], { side = side, t = t, i = at.i, e = at.e })
       end
     end
   end
 
   -- Self-relations: their markers are lined up on the top edge of the box
   -- from the left corner, in the portal's order, skipping the places where
-  -- markers of other relations sit on that edge (as the portal does).
+  -- other relations meet that edge (their ports, see above).
   -- lay.selfpos[i] = centre of the marker from the box's left edge, in cm.
   lay.selfpos = {}
   do
-    local PD = 0.4745             -- parallel distance (13.5pt)
     local RS = 0.3634             -- marker size (10.3pt)
     local STEP = RS + 0.0703      -- marker + 2pt
-    local function box(id)        -- centre and half sizes
-      local g = lay.node[id]
-      if g.w then return g.x, g.y, g.w / 2, g.h / 2 end
-      return (g.x1 + g.x2) / 2, (g.y1 + g.y2) / 2, (g.x2 - g.x1) / 2, (g.y1 - g.y2) / 2
-    end
-    local target_marker = { condition = true, precondition = true, milestone = true }
-    -- sideways shift of each line (as the package draws it), as an offset
-    -- along the left perpendicular of the direction from `ref' to the other end
-    local shift = {}    -- i -> {ref = node id, o = offset in cm}
-    local pairs_seen = {}
-    for i, r in ipairs(graph.relations) do
-      local straight = not (opts.waypoints and lay.via[i])   -- not along a route
-      if r.from ~= r.to and not lay.radj[i] and straight then
-        if lay.bundle[i] then
-          local node, _, pos, total, centre = lay.bundle[i]:match("^(.-):(%d+):(%d+):(%d+):(.*)$")
-          for _, n in ipairs(graph.nodes) do
-            if lay.ids[n.id] == node then node = n.id break end
-          end
-          shift[i] = { ref = node, o = (tonumber(centre) - tonumber(pos)) * PD }
-        elseif r.from ~= r.to then
-          local key = r.from < r.to and (r.from .. "|" .. r.to) or (r.to .. "|" .. r.from)
-          pairs_seen[key] = pairs_seen[key] or { list = {}, first = r }
-          table.insert(pairs_seen[key].list, i)
+    local occupied = {}           -- node id -> list of x (from the left edge)
+    -- a line on the top edge occupies its port (a self marker must keep
+    -- half a marker from it) and its marker, which on a slanted line sits a
+    -- little further along the line (a self marker must keep a full step
+    -- from it): occupied[id] = list of {x, clearance}
+    for id, list in pairs(lay.ports) do
+      local _, _, hw = box(id)
+      for _, p in ipairs(list) do
+        if p.side == "top" then
+          occupied[id] = occupied[id] or {}
+          local x = hw - p.t
+          local a, b = lay.port[p.i][p.e], lay.port[p.i][3 - p.e]
+          local dx, dy = b[1] - a[1], b[2] - a[2]
+          local run = 0
+          if dy > 1e-6 then run = math.max(-RS, math.min(RS, RS / 2 * dx / dy)) end
+          table.insert(occupied[id], { x, RS / 2 + 0.05 })
+          table.insert(occupied[id], { x + run, STEP })
         end
-      end
-    end
-    for _, p in pairs(pairs_seen) do   -- parallel relations, in writing order
-      local t = #p.list
-      for n, i in ipairs(p.list) do
-        shift[i] = { ref = p.first.from, o = ((t - 1) / 2 - (n - 1)) * PD }
-      end
-    end
-    -- where lines of other relations (with or without their marker) meet
-    -- each box's top edge
-    local occupied = {}   -- node id -> list of x (from the left edge)
-    for i, r in ipairs(graph.relations) do
-      if r.from ~= r.to and lay.node[r.from] and lay.node[r.to] and not lay.radj[i] then
-       for _, at in ipairs({ r.from, r.to }) do
-        local other = (at == r.from) and r.to or r.from
-        local cx, cy, hw, hh = box(at)
-        local ox, oy = box(other)
-        local dx, dy = ox - cx, oy - cy
-        local len = math.max(math.sqrt(dx * dx + dy * dy), 1e-6)
-        local ux, uy = dx / len, dy / len
-        local o = 0
-        if shift[i] then o = (shift[i].ref == at) and shift[i].o or -shift[i].o end
-        local px, py = -uy, ux
-        if uy > 1e-6 then
-          local t = (hh - o * py) / uy
-          local x = o * px + t * ux
-          if math.abs(x) <= hw then
-            occupied[at] = occupied[at] or {}
-            table.insert(occupied[at], x + hw)
-          end
-        end
-       end
       end
     end
     -- the self-relations of each box, in the portal's order
@@ -2608,16 +2586,16 @@ local function layout(graph, opts)
       -- left to right; a marker of another relation in the way: continue
       -- right next to it
       local occ = occupied[id] or {}
-      table.sort(occ)
+      table.sort(occ, function(p, q) return p[1] < q[1] end)
       local x = RS / 2
       for _, i in ipairs(list) do
         local moved = true
         while moved do
           moved = false
-          for _, ox in ipairs(occ) do
-            -- (tolerance: (ox + STEP) - ox can come out a hair below STEP,
-            -- which would loop forever)
-            if math.abs(x - ox) < STEP - 1e-9 then x = ox + STEP; moved = true end
+          for _, o in ipairs(occ) do
+            -- (tolerance: (o + c) - o can come out a hair below c, which
+            -- would loop forever)
+            if math.abs(x - o[1]) < o[2] - 1e-9 then x = o[1] + o[2]; moved = true end
           end
         end
         lay.selfpos[i] = x
@@ -2747,7 +2725,10 @@ local function emit(graph, opts, lay)
       if r.delay then o[#o + 1] = "delay={" .. escape(r.delay) .. "}" end
       if r.guard then o[#o + 1] = "guard={" .. escape(r.guard) .. "}" end
       if explicit[i] then o[#o + 1] = "explicit={" .. table.concat(explicit[i], ",") .. "}" end
-      if lay.bundle[i] then o[#o + 1] = "bundle=" .. lay.bundle[i] end
+      -- the ports: the exact start and end of the line on the two box
+      -- outlines (see layout)
+      local port = lay.port[i]
+      if port then o[#o + 1] = "via={" .. pt(port[1]) .. "," .. pt(port[2]) .. "}" end
       if lay.selfpos[i] then o[#o + 1] = "selfpos=" .. fmt(lay.selfpos[i]) .. "cm" end
       if opts.waypoints and lay.via[i] then
         local p = {}
@@ -3036,9 +3017,10 @@ function M.describe_layout(graph, opts)
     end
   end
   for i, r in ipairs(graph.relations) do
-    if lay.bundle[i] then
-      lines[#lines + 1] = string.format("bundle %s: %s %s -> %s", lay.bundle[i],
-        r.kind, r.from, r.to)
+    if lay.port[i] then
+      local p, q = lay.port[i][1], lay.port[i][2]
+      lines[#lines + 1] = string.format("port %s %s (%s,%s) -> %s (%s,%s)", r.kind,
+        r.from, fmt(p[1]), fmt(p[2]), r.to, fmt(q[1]), fmt(q[2]))
     end
     if lay.selfpos[i] then
       lines[#lines + 1] = string.format("self %s %s at %s", r.kind, r.from, fmt(lay.selfpos[i]))
