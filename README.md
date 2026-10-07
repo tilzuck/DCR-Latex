@@ -30,6 +30,7 @@ for `\includedcrgraph` set *Menu → Settings → Compiler* to LuaLaTeX.
 \end{dcrgraph}
 \end{document}
 ```
+<img width="273" height="133" alt="image" src="https://github.com/user-attachments/assets/2dcfe85b-80c0-4ed3-8891-7e06a7526f51" />
 
 Import test (LuaLaTeX), with any file from [`xml/`](xml/):
 
