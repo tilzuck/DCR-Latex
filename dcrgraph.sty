@@ -79,6 +79,7 @@
 \definecolor{dcr multi border}{HTML}{3D96EC}
 \colorlet{dcr icon}{black!45}                 % global, #, f, n, s, |||
 \colorlet{dcr dmn}{dcr response}
+\definecolor{dcr receiver}{HTML}{D3D3D3}  % receiver band (choreographies)
 
 \newlength\dcr@header  \setlength\dcr@header{0.45cm}
 % marker sizes as in the DCR portal: 16px at 115px box width (2.6cm)
@@ -116,6 +117,13 @@
   % from it the same way -- half the line width + half the marker -- so
   % all markers touch the outline alike, self-relation markers included)
   dcr/role/.style={font=\dcr@font\bfseries\small},
+  dcr/receiver/.style={dcr/role},
+  % with a receiver: the box is one header taller (the band at the
+  % bottom), as in the DCR portal; an explicit minimum height still wins
+  dcr/receiver band/.code={%
+    \pgfmathsetlength\dimen@ii{\pgfkeysvalueof{/pgf/minimum height}}%
+    \advance\dimen@ii by \dcr@header
+    \pgfkeyssetevalue{/pgf/minimum height}{\the\dimen@ii}},
   % the label: as wide as the box (minus 0.3cm), see dcr/fit label
   dcr/label/.style={font=\dcr@font\small, text width=\dcr@lw, align=flush center,
     execute at begin node={\hyphenpenalty=10000\exhyphenpenalty=10000}},
@@ -133,6 +141,7 @@
     \endpgfinterruptpicture
     \dimen@=\ht\dcr@lbox \advance\dimen@ by \dp\dcr@lbox
     \ifx\dcr@subtitle\@empty\else\advance\dimen@ by 13pt\fi
+    \ifx\dcr@receiver\@empty\else\advance\dimen@ by \dcr@header\fi
     \advance\dimen@ by \dcr@header \advance\dimen@ by 0.7cm  % + margins, inner sep
     \pgfmathsetlength\dimen@ii{\pgfkeysvalueof{/pgf/minimum height}}%
     \ifdim\dimen@>\dimen@ii
@@ -300,6 +309,7 @@
 \pgfkeys{
   /dcr@act/.is family, /dcr@act,
   role/.store in=\dcr@role,
+  receiver/.store in=\dcr@receiver,   % choreographies: band at the bottom
   subtitle/.store in=\dcr@subtitle,
   bgcolor/.store in=\dcr@bg,          % background colour, any xcolor colour
   bordercolor/.store in=\dcr@bc,      % outline and header line
@@ -337,8 +347,8 @@
 % \activity[options]{label}{id}
 \newcommand\dcr@activity[3][]{%
   \begingroup
-    \def\dcr@role{}\def\dcr@subtitle{}\def\dcr@bg{}\def\dcr@tikzopts{}%
-    \def\dcr@bc{dcr border}\def\dcr@tc{dcr text}%
+    \def\dcr@role{}\def\dcr@receiver{}\def\dcr@subtitle{}\def\dcr@bg{}%
+    \def\dcr@tikzopts{}\def\dcr@bc{dcr border}\def\dcr@tc{dcr text}%
     \dcr@resetflags
     \pgfkeys{/dcr@act,#1}%
     \def\dcr@labeltext{#2}%
@@ -346,8 +356,31 @@
       \ifx\dcr@bg\@empty\else fill=\dcr@bg,\fi
       \ifdcr@excluded dcr/excluded,\fi
       \ifdcr@subgraph dcr/subgraph,\fi
+      \ifx\dcr@receiver\@empty\else dcr/receiver band,\fi
       \unexpanded\expandafter{\dcr@tikzopts}, dcr/fit label] (#3)}%
     \dcr@do {};
+    % receiver (choreographies): a grey band at the bottom, as high as the
+    % header, with the receiver roles. Filled inside the outline only (the
+    % clip is the inner edge of the border line), then the line above it.
+    % \dcr@band: height of the band, the bottom icons sit above it.
+    \ifx\dcr@receiver\@empty
+      \def\dcr@band{0pt}%
+    \else
+      \def\dcr@band{\dcr@header}%
+      \begin{scope}
+        \clip[rounded corners=4pt-0.5\dcr@border]
+          ([shift={(0.5\dcr@border,0.5\dcr@border)}]#3.south west) rectangle
+          ([shift={(-0.5\dcr@border,-0.5\dcr@border)}]#3.north east);
+        \fill[dcr receiver] (#3.south west) rectangle
+          ([yshift=\dcr@header]#3.south east);
+      \end{scope}
+      \draw[draw=\dcr@bc, line width=\dcr@border,
+            \ifdcr@excluded dcr/excluded\fi]
+        ([yshift=\dcr@header]#3.south west) --
+        ([yshift=\dcr@header]#3.south east);
+      \node[dcr/receiver, text=\dcr@tc] at ([yshift=0.5\dcr@header]#3.south)
+        {\dcr@receiver};
+    \fi
     % header: always drawn, as in the DCR portal; role text if given.
     % A subgraph (template) has no header; its label is centred in the box.
     \ifdcr@subgraph
@@ -362,7 +395,8 @@
         \node[dcr/role, text=\dcr@tc] at ([yshift=-0.5\dcr@header]#3.north) {\dcr@role};
       \fi
     \fi
-    % label, centred in the body below the header
+    \ifx\dcr@receiver\@empty\else\edef\dcr@ly{\dcr@ly+0.5\noexpand\dcr@header}\fi
+    % label, centred in the body between the header and the receiver band
     \ifx\dcr@subtitle\@empty
       \node[dcr/label, text=\dcr@tc] at ([yshift=\dcr@ly]#3.center) {#2};
     \else  % label, and below it a grey subtitle cut off with "..."
@@ -415,21 +449,21 @@
     \fi
     % bottom corners: global event (two overlapping pages), form ("f")
     \ifdcr@global
-      \begin{scope}[shift={([xshift=6pt,yshift=6pt]#3.south west)}]
+      \begin{scope}[shift={([xshift=6pt,yshift=6pt+\dcr@band]#3.south west)}]
         \draw[dcr/global icon] (-2.5pt,-1pt) rectangle (1pt,2.5pt);
         \draw[dcr/global icon] (-1pt,-2.5pt) rectangle (2.5pt,1pt);
       \end{scope}
     \fi
     \ifdcr@form
       \node[dcr/form marker, anchor=south east]
-        at ([xshift=-3pt,yshift=1pt]#3.south east) {f};
+        at ([xshift=-3pt,yshift=1pt+\dcr@band]#3.south east) {f};
     \fi
     % subgraph: blue "|||" at the bottom centre, grey "g" bottom right
     \ifdcr@subgraph
       \draw[dcr/subgraph bars] \foreach \dcr@x in {-2.5pt,0pt,2.5pt}
-        {([xshift=\dcr@x,yshift=4pt]#3.south) -- ++(0,7pt)};
+        {([xshift=\dcr@x,yshift=4pt+\dcr@band]#3.south) -- ++(0,7pt)};
       \node[dcr/nesting marker, anchor=south east]
-        at ([xshift=-3pt,yshift=1pt]#3.south east) {g};
+        at ([xshift=-3pt,yshift=1pt+\dcr@band]#3.south east) {g};
     \fi
   \endgroup
 }
@@ -496,6 +530,9 @@
 %                 text, whatever the settings for the graph say (delay: the
 %                 time of a condition etc., deadline: the time of a
 %                 response); plain `explicit' = all three
+%   corner=north west   self-relation in Classic / CoopIS2023: the corner
+%                 of the loop (north east, north west, south east, south
+%                 west); default: the corners in turn
 %   via={(x1,y1),(x2,y2),...}   route the line through these points
 %   bundle=<node>:<name>   spread this relation with the others of the same
 %                 bundle, as if they were parallel (for relations with a
@@ -522,6 +559,7 @@
   explicit/.default={guard,delay,deadline},
   bundle/.store in=\dcr@bundle,
   selfpos/.store in=\dcr@selfpos,
+  corner/.store in=\dcr@corner,
   % internal, for the classic translation of pre-condition / logical include
   dcr@nodelay/.code={\def\dcr@delay{}},
   dcr@negateguard/.code={%
@@ -545,7 +583,7 @@
   \def\dcr@from{#6}\def\dcr@to{#7}%
   \def\dcr@ropts{}\def\dcr@delay{}\def\dcr@via{}\dcr@guardfalse\def\dcr@gexpr{}\def\dcr@off{0}%
   \dcr@xguardfalse\dcr@xdelayfalse\dcr@xdeadlinefalse\def\dcr@bundle{}%
-  \def\dcr@selfpos{}%
+  \def\dcr@selfpos{}\def\dcr@corner{}%
   \pgfkeys{/dcr@rel,#5}%
   \ifx\dcr@via\@empty\dcr@routedfalse\else\dcr@routedtrue\fi
   % How this relation's guard and time (a deadline for responses, a delay
@@ -1128,6 +1166,22 @@
 % (or bottom) edge round to the side edge; markers flush as above. The
 % corners are used in turn (top right, top left, bottom right, bottom left).
 \newcount\dcr@k
+% the key corner=...: this corner instead of the next one in turn
+\def\dcr@corner{}
+\def\dcr@cornerNE{north east}\def\dcr@cornerNW{north west}
+\def\dcr@cornerSE{south east}\def\dcr@cornerSW{south west}
+\newcommand\dcr@usecorner{%
+  \ifx\dcr@corner\@empty\else
+    \ifx\dcr@corner\dcr@cornerNE \def\dcr@sx{1}\def\dcr@sy{1}%
+    \else\ifx\dcr@corner\dcr@cornerNW \def\dcr@sx{-1}\def\dcr@sy{1}%
+    \else\ifx\dcr@corner\dcr@cornerSE \def\dcr@sx{1}\def\dcr@sy{-1}%
+    \else\ifx\dcr@corner\dcr@cornerSW \def\dcr@sx{-1}\def\dcr@sy{-1}%
+    \else
+      \PackageError{dcrgraph}{corner=\dcr@corner: use north east, north
+        west, south east or south west}{}%
+    \fi\fi\fi\fi
+    \let\dcr@c\dcr@corner
+  \fi}
 \newcommand\dcr@classicself[3]{%
   \ifcsname dcr@cself@\the\dcr@graph @#3\endcsname
     \dcr@k=\csname dcr@cself@\the\dcr@graph @#3\endcsname\relax
@@ -1136,6 +1190,7 @@
   \or           \def\dcr@c{north west}\def\dcr@sx{-1}\def\dcr@sy{1}%
   \or           \def\dcr@c{south east}\def\dcr@sx{1}\def\dcr@sy{-1}%
   \else         \def\dcr@c{south west}\def\dcr@sx{-1}\def\dcr@sy{-1}\fi
+  \dcr@usecorner
   \coordinate (dcr@ls) at ([xshift=-\dcr@sx*0.5cm]#3.\dcr@c);  % on top/bottom edge
   \coordinate (dcr@le) at ([yshift=-\dcr@sy*0.5cm]#3.\dcr@c);  % on the side edge
   \setlength\dcr@tstart{0.5\dcr@border}%
@@ -1414,6 +1469,7 @@
   \or           \def\dcr@c{north east}\def\dcr@sx{1}\def\dcr@sy{1}%
   \or           \def\dcr@c{south west}\def\dcr@sx{-1}\def\dcr@sy{-1}%
   \else         \def\dcr@c{south east}\def\dcr@sx{1}\def\dcr@sy{-1}\fi
+  \dcr@usecorner
   \coordinate (dcr@ls) at ([xshift=-\dcr@sx*0.3cm]#2.\dcr@c);  % on top/bottom edge
   \coordinate (dcr@le) at ([yshift=-\dcr@sy*0.3cm]#2.\dcr@c);  % on the side edge
   \draw[#1, dcr/coopis line]
@@ -2025,6 +2081,13 @@ local function read_dcrsolutions(dom)
       local t = r:get_text()
       if t and t ~= "" then roles[#roles + 1] = t end
     end
+    -- receivers (choreographies): the portal's "read roles", all of them
+    -- as in the file (the portal shows the sender too, if listed)
+    local receivers = {}
+    for _, r in ipairs(elements(child(custom, "readRoles"), "readRole")) do
+      local t = r:get_text()
+      if t and t ~= "" then receivers[#receivers + 1] = t end
+    end
     local loc = child(custom, "visualization", "location")
     local size = child(custom, "visualization", "size")
     if not loc then warn("event `" .. id .. "' has no position; placed at (0,0)") end
@@ -2054,6 +2117,8 @@ local function read_dcrsolutions(dom)
     end
     graph.nodes[#graph.nodes + 1] = {
       id = id, label = labels[id] or id, roles = roles, kind = kind,
+      -- only events show receivers (not collections)
+      receivers = kind == "activity" and receivers or {},
       children = kids,
       x = num(loc and attr(loc, "xLoc")),
       y = num(loc and attr(loc, "yLoc")),
@@ -2077,6 +2142,11 @@ local function read_dcrsolutions(dom)
       autosize = kind ~= "activity" and not size,
     }
     local n = graph.nodes[#graph.nodes]
+    -- with receivers the portal draws the box one header strip taller
+    -- (the receiver band at the bottom; same top edge)
+    if #n.receivers > 0 and not size and tool == "portal" then
+      n.h = n.h + PORTAL_HEADER
+    end
     -- the nominal box (at the location, default size): a collection's box
     -- is computed from its children's nominal boxes
     n.ny, n.nh = n.y, n.h
@@ -2683,6 +2753,11 @@ local function emit(graph, opts, lay)
       if role:find("[,=]") then role = "{" .. role .. "}" end
       o[#o + 1] = "role=" .. role
     end
+    if n.receivers and #n.receivers > 0 then
+      local receiver = escape(table.concat(n.receivers, ","))
+      if receiver:find("[,=]") then receiver = "{" .. receiver .. "}" end
+      o[#o + 1] = "receiver=" .. receiver
+    end
     if opts.marking then
       if n.executed then o[#o + 1] = "executed" end
       if n.pending then o[#o + 1] = "pending" end
@@ -2974,6 +3049,9 @@ function M.describe_content(graph)
   for _, n in ipairs(graph.nodes) do
     local t = { n.kind, n.id, string.format("label=%q", n.label) }
     if #n.roles > 0 then t[#t + 1] = "roles=" .. table.concat(n.roles, "|") end
+    if n.receivers and #n.receivers > 0 then
+      t[#t + 1] = "receivers=" .. table.concat(n.receivers, "|")
+    end
     for _, f in ipairs(node_flags) do if n[f] then t[#t + 1] = f end end
     if n.bg then t[#t + 1] = "bg=" .. n.bg end
     if n.stroke then t[#t + 1] = "stroke=" .. n.stroke end

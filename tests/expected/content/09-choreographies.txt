@@ -1,0 +1,1 @@
+activity A1 label="A1" roles=User receivers=Receiver|User

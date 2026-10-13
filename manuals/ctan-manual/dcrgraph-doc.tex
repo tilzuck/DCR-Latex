@@ -106,6 +106,9 @@ to the target.
 The marking (pending, executed, excluded) and the type of an event are
 keys of \cs{activity}; \key{role=} and \key{subtitle=} add text.
 \example{events}
+For choreographies, \key{receiver=} adds the receiving role(s) in a band at
+the bottom, as in the DCR portal:
+\example{receivers}
 Events are placed with Ti\emph{k}Z: relative to others
 (\key{right=1.5cm of a}, \key{below=2cm of a}) or at coordinates
 (\key{at=\{(4,0)\}}). Their size is \key{minimum width=}, \key{minimum height=}
@@ -252,7 +255,8 @@ files''; copy it into your project.
 Two formats are read; which one a file has is recognised automatically:
 \begin{itemize}
   \item \textbf{DCR Solutions XML}, the format of the DCR portal (DCR-js can
-    export it too): events with labels, roles, types, marking and colours;
+    export it too): events with labels, roles, receivers (the portal's
+    read roles), types, marking and colours;
     nestings, subprocesses, forms and subgraphs (with their own events); all
     relations with their guards and times.
   \item \textbf{DCR-js XML}, the format DCR-js saves its graphs in: events
@@ -289,6 +293,8 @@ warning. Details: Appendix~\ref{sec:compat}.
 Key & Meaning\\
 \midrule
 \key{role=}\meta{text} & role in the header; several: \key{role=\{A, B\}}\\
+\key{receiver=}\meta{text} & choreographies: receiver in a grey band at the
+  bottom (the box is one header taller); several: \key{receiver=\{A, B\}}\\
 \key{subtitle=}\meta{text} & grey italic text below the label, cut off with \dots\\
 \key{pending} & blue ``!'' top left\\
 \key{executed} & green tick top left\\
@@ -439,6 +445,7 @@ Colour & Used for\\
 \key{dcr spawn} & relations\\
 \key{dcr executed}, \key{dcr delay}, \key{dcr subtitle}, \key{dcr icon},
 \key{dcr dmn} & markers, labels and icons\\
+\key{dcr receiver} & receiver band (choreographies)\\
 \key{dcr multi}, \key{dcr multi border}, \key{dcr subgraph},
 \key{dcr subgraph collection} & multi-instance subprocesses, subgraphs\\
 \bottomrule
@@ -508,7 +515,8 @@ elements and relation types are skipped with a warning.
 
 The rest of this appendix is about DCR Solutions XML.
 
-\paragraph{Read from the file.} Events: label, roles, position, colours
+\paragraph{Read from the file.} Events: label, roles, receivers
+(\texttt{readRoles}), position, colours
 (background, border, text), marking (executed, pending, included), type
 (data, computation, DMN, global, form, subgraph). Collections: nestings,
 subprocesses, forms, subgraphs with their own graph; their boxes are

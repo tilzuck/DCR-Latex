@@ -1,0 +1,115 @@
+<dcrgraph title="choreographies" dataTypesStatus="hide" filterLevel="-1" insightFilter="false" zoomLevel="0" formGroupStyle="Normal" formLayoutStyle="Horizontal" formShowPendingCount="true" graphBG="#f1f6fe" graphType="0" exercise="false" version="1.1">
+    <meta>
+        <graph id="2014166" hash="b14c59776f7722d595dee2dcc02cb639a2c48782a34b91cba56a16b1431a14e5" guid="7531B24E-5CFD-4B05-8A10-83EF488D391D" OwnerName="Tilman Zuckmantel" OwnerId="150304" categoryId="15026" categoryTitle="Default" Keywords=""/>
+        <revision id="5823595" type="minor" date="2026-10-13T23:55:15.0000000+02:00" title="" comment=""/>
+        <organization id="1157" name="DCR Hackathon"/>
+    </meta>
+    <specification>
+        <resources>
+            <events>
+                <event id="A1">
+                    <precondition message="&quot;hi&quot;"/>
+                    <custom>
+                        <visualization>
+                            <location xLoc="125" yLoc="22"/>
+                            <colors bg="#f9f7ed" textStroke="#000000" stroke="#cccccc"/>
+                        </visualization>
+                        <roles>
+                            <role description="" specification="">User</role>
+                        </roles>
+                        <readRoles>
+                            <readRole description="" specification="">Receiver</readRole>
+                            <readRole description="" specification="">User</readRole>
+                        </readRoles>
+                        <groups>
+                            <group/>
+                        </groups>
+                        <phases>
+                            <phase/>
+                        </phases>
+                        <eventType/>
+                        <eventScope>private</eventScope>
+                        <eventTypeData/>
+                        <eventDescription/>
+                        <purpose/>
+                        <guide/>
+                        <insight use="false"/>
+                        <level>100</level>
+                        <sequence>1</sequence>
+                        <costs>0</costs>
+                        <eventData>
+                            <styles/>
+                        </eventData>
+                        <interfaces/>
+                    </custom>
+                </event>
+            </events>
+            <subProcesses/>
+            <labels>
+                <label id="A1"/>
+            </labels>
+            <labelMappings>
+                <labelMapping eventId="A1" labelId="A1"/>
+            </labelMappings>
+            <expressions/>
+            <variables/>
+            <variableAccesses>
+                <writeAccesses/>
+            </variableAccesses>
+            <custom>
+                <keywords/>
+                <roles>
+                    <role description="" specification="">User</role>
+                    <role description="" specification="">Receiver</role>
+                </roles>
+                <groups/>
+                <phases/>
+                <eventTypes/>
+                <eventParameters/>
+                <graphDetails>DCR Process</graphDetails>
+                <graphDocumentation/>
+                <graphLanguage>en-US</graphLanguage>
+                <graphDomain>process</graphDomain>
+                <graphFilters>
+                    <filteredGroups/>
+                    <filteredRoles/>
+                    <filteredPhases/>
+                </graphFilters>
+                <highlighterMarkup>
+                    <highlightLayers/>
+                    <highlights/>
+                </highlighterMarkup>
+            </custom>
+        </resources>
+        <constraints>
+            <conditions/>
+            <responses/>
+            <coresponses/>
+            <includes/>
+            <excludes/>
+            <milestones/>
+            <spawns/>
+            <templateSpawns/>
+            <updates/>
+        </constraints>
+    </specification>
+    <runtime accepting="false">
+        <custom>
+            <globalMarking>
+                <enabled/>
+                <enabledSubprocesses/>
+                <executed/>
+                <pending/>
+                <included/>
+            </globalMarking>
+        </custom>
+        <marking>
+            <globalStore/>
+            <executed/>
+            <included>
+                <event id="A1"/>
+            </included>
+            <pendingResponses/>
+        </marking>
+    </runtime>
+</dcrgraph>
