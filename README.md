@@ -44,7 +44,7 @@ Import test (LuaLaTeX), with any file from [`xml/`](xml/):
 | | |
 |---|---|
 | [`manuals/cookbook/`](manuals/cookbook/) | Cookbook: example graphs built step by step, then imported. Source `dcrgraph-cookbook.tex`, each example a file in `examples/`, XML files in `xml/`. |
-| [`manuals/ctan-manual/`](manuals/ctan-manual/) | Manual: all features with examples, reference of all commands, keys and options. Source `dcrgraph-doc.tex`, examples in `examples/`. |
+| [`manuals/ctan-manual/`](manuals/ctan-manual/) | Manual: all features with examples, reference of all commands, keys and options. **[Read the PDF](manuals/ctan-manual/dcrgraph-doc.pdf)**. Source `dcrgraph-doc.tex`, examples in `examples/`. |
 | [`notation-example.tex`](notation-example.tex) | every element of a DCR graph, drawn by hand |
 | [`dcrjs-example.tex`](dcrjs-example.tex) | import from a DCR-js file |
 | [`xml/`](xml/), [`tests/xml/`](tests/xml/) | sample XML files (DCR portal and DCR-js) |
