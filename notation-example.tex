@@ -49,7 +49,7 @@
   \condition[delay=PT1S]{C}{D}
   \spawn{D}{U}                                                    % 11
   \logicalinclude[guard={A>10}]{G}{E}                             % 12
-  \response[delay=PT5S]{D}{H}                                     % 24
+  \response[deadline=PT5S]{D}{H}                                     % 24
   \update{G}{H}                                                   % 14 (value)
   \condition{V}{M}
   \response{O}{J}

@@ -25,25 +25,23 @@
 
 % Notation of the RELATIONS (activities, nestings etc. look the same):
 %   \usepackage{dcrgraph}         DCR Solutions portal markers (default;
-%                                 = option DCRSolutions)
-%   \usepackage[Classic]{dcrgraph}  traditional arrows from the literature
+%                                 = option dcr-solutions)
+%   \usepackage[classic]{dcrgraph}  traditional arrows from the literature
 %                                 (->•, •->, ->+, ->%, ->◇)
-%   \usepackage[CoopIS2023]{dcrgraph}  the proposal of "Designing
+%   \usepackage[coopis23]{dcrgraph}  the proposal of "Designing
 %                                 Semantically Transparent Declarative
 %                                 Process Constraints" (CoopIS 2023; as in
 %                                 DCR-js): triangle at the source, circled
 %                                 symbol at the target
-% It can also be switched per document or per graph with notation=...
-% The old names portal and classic still work.
-% CoopIS2023 is Classic with other symbols: \ifdcr@classic is true for
+% It can also be switched per document (\dcrset{notation=...}), per graph
+% (\begin{dcrgraph}[dcr/notation=...]) or per inline symbol (notation=...).
+% coopis23 is classic with other symbols: \ifdcr@classic is true for
 % both (same relations, same translations, values as text).
 \newif\ifdcr@classic
 \newif\ifdcr@coopis
-\DeclareOption{Classic}{\dcr@classictrue\dcr@coopisfalse}
-\DeclareOption{CoopIS2023}{\dcr@classictrue\dcr@coopistrue}
-\DeclareOption{DCRSolutions}{\dcr@classicfalse\dcr@coopisfalse}
+\DeclareOption{dcr-solutions}{\dcr@classicfalse\dcr@coopisfalse}
 \DeclareOption{classic}{\dcr@classictrue\dcr@coopisfalse}
-\DeclareOption{portal}{\dcr@classicfalse\dcr@coopisfalse}
+\DeclareOption{coopis23}{\dcr@classictrue\dcr@coopistrue}
 \ProcessOptions\relax
 
 \RequirePackage{tikz}
@@ -248,12 +246,9 @@
 
 \tikzset{
   dcr/notation/.is choice,
-  dcr/notation/DCRSolutions/.code={\dcr@classicfalse\dcr@coopisfalse},
-  dcr/notation/Classic/.code={\dcr@classictrue\dcr@coopisfalse},
-  dcr/notation/CoopIS2023/.code={\dcr@classictrue\dcr@coopistrue},
-  % old names, still accepted
-  dcr/notation/portal/.code={\dcr@classicfalse\dcr@coopisfalse},
+  dcr/notation/dcr-solutions/.code={\dcr@classicfalse\dcr@coopisfalse},
   dcr/notation/classic/.code={\dcr@classictrue\dcr@coopisfalse},
+  dcr/notation/coopis23/.code={\dcr@classictrue\dcr@coopistrue},
   % arrows and symbols in the classic notation
   dcr/classic arrow/.style={},   % extra style for classic arrows (e.g. thinner lines)
 }
@@ -521,8 +516,10 @@
 % #5 user options, #6 from, #7 to
 % Relation options: DCR keys are handled here, everything else goes to
 % TikZ (bend left, out=..., etc.).
-%   delay=PT10S   timed relation: clock marker (+ the duration as text,
-%                 see delays= / deadlines= below)
+%   delay=PT10S   delay of a condition (also a pre-condition)
+%   deadline=P5D  deadline of a response
+%                 Other relations have no time. Shown as a clock marker
+%                 (+ the duration as text, see delays= / deadlines=)
 %   guard         shield icon next to the marker (relation has a guard)
 %   guard=expr    a guard with its expression (shown as shield or as text
 %                 [ expr ] on the line, see guards= below)
@@ -552,6 +549,7 @@
 \pgfkeys{
   /dcr@rel/.is family, /dcr@rel,
   delay/.store in=\dcr@delay,
+  deadline/.store in=\dcr@deadline,
   via/.store in=\dcr@via,
   guard/.code={\dcr@guardtrue\def\dcr@gexpr{#1}},
   guard/.default={},
@@ -578,16 +576,45 @@
     \fi},
 }
 
+\def\dcr@kw@condition{dcr/condition}\def\dcr@kw@response{dcr/response}
+\def\dcr@kw@precondition{dcr/precondition}
 \newcommand\dcr@relation[7]{%
   \begingroup
   \def\dcr@from{#6}\def\dcr@to{#7}%
-  \def\dcr@ropts{}\def\dcr@delay{}\def\dcr@via{}\dcr@guardfalse\def\dcr@gexpr{}\def\dcr@off{0}%
+  \def\dcr@ropts{}\def\dcr@delay{}\def\dcr@deadline{}\def\dcr@via{}%
+  \dcr@guardfalse\def\dcr@gexpr{}\def\dcr@off{0}%
   \dcr@xguardfalse\dcr@xdelayfalse\dcr@xdeadlinefalse\def\dcr@bundle{}%
   \def\dcr@selfpos{}\def\dcr@corner{}%
   \pgfkeys{/dcr@rel,#5}%
   \ifx\dcr@via\@empty\dcr@routedfalse\else\dcr@routedtrue\fi
+  % The time: a condition (also the condition in a pre-condition) has a
+  % delay, a response a deadline, other relations none. From here on, the
+  % time of either kind is \dcr@delay.
+  \def\dcr@tmp{#1}%
+  \ifx\dcr@tmp\dcr@kw@response
+    \ifx\dcr@delay\@empty\else
+      \PackageError{dcrgraph}{delay=\dcr@delay: a response has a deadline,
+        not a delay}{Write deadline=\dcr@delay. The time is left out.}%
+    \fi
+    \let\dcr@delay\dcr@deadline
+  \else
+    \ifx\dcr@deadline\@empty\else
+      \PackageError{dcrgraph}{deadline=\dcr@deadline: only a response has a
+        deadline}{A condition has a delay (delay=), other relations have no
+        time. The deadline is left out.}%
+    \fi
+    \ifx\dcr@delay\@empty\else
+      \ifx\dcr@tmp\dcr@kw@condition\else\ifx\dcr@tmp\dcr@kw@precondition\else
+        \PackageError{dcrgraph}{delay=\dcr@delay: only a condition (or a
+          pre-condition) has a delay}{A response has a deadline
+          (deadline=), other relations have no time. The delay is left
+          out.}%
+        \def\dcr@delay{}%
+      \fi\fi
+    \fi
+  \fi
   % How this relation's guard and time (a deadline for responses, a delay
-  % for the others) are shown, from the settings of the graph (see
+  % for conditions) are shown, from the settings of the graph (see
   % guards=, delays=, deadlines= below) and the key explicit={...}:
   %   portal:  guard = shield, time = clock marker; explicit adds the text
   %   classic: no shields, no clocks -- the values as text
@@ -848,6 +875,7 @@
 \AtEndDocument{\ifdcr@rerun\PackageWarningNoLine{dcrgraph}{Parallel relations
   have changed. Rerun LaTeX to get them right}\fi}
 \newif\ifdcr@atsource
+\newif\ifdcr@inlinesym   % drawing an inline symbol (\dcrcondition etc.)
 \newlength\dcr@pardist \setlength\dcr@pardist{13.5pt}  % portal: 21px
 \tikzset{dcr/parallel distance/.code={\setlength\dcr@pardist{#1}}}
 \newcount\dcr@n
@@ -894,17 +922,24 @@
   % The total number of relations between the pair comes from the last
   % run (.aux), so the bundle can be centred: the first relation written
   % is on one side, the last on the other, in the order of the source.
+  % (Inline symbols know their number, \dcr@itotal, and use no .aux: in a
+  % table that is typeset several times, e.g. tabularx, they would never
+  % match the last run.)
   \ifx\dcr@bidx\@empty
-  \ifcsname dcr@tot@\dcr@key\endcsname
+  \ifdcr@inlinesym
+    \let\dcr@total\dcr@itotal
+  \else\ifcsname dcr@tot@\dcr@key\endcsname
     \edef\dcr@total{\csname dcr@tot@\dcr@key\endcsname}%
     \ifnum\dcr@n<\dcr@total\relax\else\global\dcr@reruntrue\fi
   \else
     \edef\dcr@total{\the\numexpr\dcr@n+1\relax}\global\dcr@reruntrue
-  \fi
+  \fi\fi
   \pgfmathsetmacro\dcr@off{\dcr@sign*((\dcr@total-1)/2-\dcr@n)*\dcr@pardist}%
   \advance\dcr@n 1
   \expandafter\xdef\csname dcr@pair@\dcr@key\endcsname{\the\dcr@n}%
-  \immediate\write\@auxout{\string\dcr@auxtot{\dcr@key}{\the\dcr@n}}%
+  \ifdcr@inlinesym\else
+    \immediate\write\@auxout{\string\dcr@auxtot{\dcr@key}{\the\dcr@n}}%
+  \fi
   \else   % position and count given (bundle=node:name:position:count
           % [:centre]); the centre (in positions) defaults to the middle
     \let\dcr@total\dcr@btot
@@ -1735,15 +1770,204 @@
 }
 
 % ------------------------------------------------------------------
-%  Relation symbols for running text and formulas, e.g.
-%     $A \dcrcondition B$   A ->• B
-%  They work in math mode and are usable anywhere in the document.
+%  Relation symbols for running text and formulas:
+%     A \dcrcondition B,  $A \dcrlogicalinclude[guard={x > 5}] B$
+%  One command per relation, \dcr<relation>[options]; usable in text and
+%  in math (spaced as a relation). Each symbol is a small picture with the
+%  relation drawn by the same code as in a graph, from a point to a point
+%  -- so it looks as in the graphs, in the current notation.
+%  Like \xrightarrow: the guard is written above the line, the time
+%  (delay of a condition, deadline of a response) below it, both close to
+%  the line and centred; the line grows to fit them.
+%  Options:
+%    guard=expr          the guard, above the line
+%    delay=P7D           delay of a condition / pre-condition, below the
+%                        line (dcr-solutions: and the clock marker)
+%    deadline=P5D        deadline of a response, the same
+%    notation=classic    notation of this symbol (default: as the document)
+%    length=2em          shortest length of the line (default 1.8em)
+%    other options: as for a relation in a graph (TikZ options, ...)
+%  Sizes: the style dcr/inline (\dcrset{inline/.append style={...}}); in
+%  em, so the symbols follow the font size. dcr/inline label distance:
+%  between the line and the guard / time.
 % ------------------------------------------------------------------
-\DeclareRobustCommand\dcrcondition{\mathrel{\rightarrow\mkern-5mu\bullet}}
-\DeclareRobustCommand\dcrresponse{\mathrel{\bullet\mkern-5mu\rightarrow}}
-\DeclareRobustCommand\dcrinclude{\mathrel{\rightarrow\mkern-2mu{+}}}
-\DeclareRobustCommand\dcrexclude{\mathrel{\rightarrow\mkern-2mu\%}}
-\DeclareRobustCommand\dcrmilestone{\mathrel{\rightarrow\mkern-3mu\diamond}}
+\def\dcr@isep{0.12em}
+\def\dcr@iclear{1.1em}   % room for the markers at each end of the line
+                         % (classic: arrow tip and symbol, about 1.05em)
+\tikzset{
+  dcr/inline/.style={dcr/marker size=0.8em, dcr/relation width=0.06em,
+    dcr/classic marker size=0.45em, dcr/border width=0pt,
+    dcr/parallel distance=0.75em,
+    dcr/classic tip/.style={-{Triangle[length=0.55em,width=0.5em]}}},
+  dcr/inline label distance/.code={\def\dcr@isep{#1}},
+  % values: 0.7 of the size of the symbol (\dcr@ilabelsize), so they shrink
+  % with it in sub- and superscripts
+  dcr/inline guard/.style={font=\dcr@font\dcr@ilabelsize, inner sep=0pt},
+  dcr/inline time/.style={dcr/delay label, font=\dcr@font\bfseries\dcr@ilabelsize,
+    inner sep=0pt},
+}
+\pgfkeys{
+  /dcr@inl/.is family, /dcr@inl,
+  notation/.code={\tikzset{dcr/notation=#1}},
+  length/.store in=\dcr@ilen,
+  guard/.store in=\dcr@ig,
+  guard/.default={},
+  % the time (delay of a condition, deadline of a response): written here,
+  % and given to the relation (clock marker in dcr-solutions; and the
+  % relation checks that it may have this time)
+  delay/.code={\def\dcr@idelay{#1}%
+    \edef\dcr@iopts{\unexpanded\expandafter{\dcr@iopts}delay={\unexpanded{#1}},}},
+  deadline/.code={\def\dcr@idelay{#1}%
+    \edef\dcr@iopts{\unexpanded\expandafter{\dcr@iopts}deadline={\unexpanded{#1}},}},
+  explicit/.code={},   % inline, the values are always written
+  .unknown/.code={%   everything else: options of the relation
+    \let\dcr@key\pgfkeyscurrentname
+    \def\dcr@val{#1}%
+    \ifx\dcr@val\pgfkeysnovalue@text
+      \edef\dcr@iopts{\unexpanded\expandafter{\dcr@iopts}\dcr@key,}%
+    \else
+      \edef\dcr@iopts{\unexpanded\expandafter{\dcr@iopts}%
+        \dcr@key={\unexpanded{#1}},}%
+    \fi},
+}
+% #1 relation (condition, response, ...), #2 options.
+% A relation symbol, exactly like \rightarrow: in math \mathrel (TeX does
+% the spacing, its stretching, line breaks after it), and \mathpalette:
+% drawn for the math style it is in, so it shrinks in sub- and
+% superscripts. In text as $\rightarrow$ between two words: a formula with
+% only the symbol, word spaces around it. The space after the command is
+% swallowed by TeX, so it is put back (as the xspace package does), except
+% before punctuation, closing brackets, an explicit space or {}.
+\newcommand\dcr@inline[2]{%
+  \ifmmode
+    \mathrel{\mathpalette\dcr@inlinestyle{{#1}{#2}}}%
+  \else
+    $\m@th\mathrel{\mathpalette\dcr@inlinestyle{{#1}{#2}}}$%
+    \expandafter\dcr@xspace
+  \fi}
+\def\dcr@xspace{\futurelet\dcr@next\dcr@xspace@}
+\def\dcr@xspace@{%
+  \let\dcr@do\space
+  \@tfor\dcr@tok:=,.;:!?)]'/-~\ \/\bgroup\egroup\@xobeysp\footnote
+    \do{\expandafter\ifx\dcr@tok\dcr@next\let\dcr@do\relax\fi}%
+  \dcr@do}
+% #1 math style, #2 {relation}{options}
+\def\dcr@inlinestyle#1#2{\dcr@inlinebox#1#2}
+% #1 math style, #2 relation, #3 options
+\newcommand\dcr@inlinebox[3]{%
+  \hbox{\begingroup
+    % the size of the math style (as \rightarrow would be): text and
+    % display the current size, script \sf@size, scriptscript \ssf@size;
+    % the font for the math axis of that style
+    \let\dcr@iaxisfont\textfont
+    \ifx#1\scriptstyle
+      \let\dcr@iaxisfont\scriptfont\fontsize\sf@size\z@\selectfont
+    \else\ifx#1\scriptscriptstyle
+      \let\dcr@iaxisfont\scriptscriptfont\fontsize\ssf@size\z@\selectfont
+    \fi\fi
+    \dimen@=\f@size pt\dimen@=0.7\dimen@
+    \edef\dcr@ilabelsize{\noexpand\fontsize{\strip@pt\dimen@}{\z@}%
+      \noexpand\selectfont}%
+    \global\advance\dcr@graph 1
+    \dcr@inlinesymtrue
+    \def\dcr@ilen{1.8em}\def\dcr@iopts{}\def\dcr@ig{}\def\dcr@idelay{}%
+    \tikzset{dcr/inline}%
+    \pgfkeys{/dcr@inl,#3}%
+    % the relation itself writes no values (they are written below);
+    % dcr-solutions keeps the clock marker of a time
+    \tikzset{dcr/guards=none}%
+    \ifdcr@classic\tikzset{dcr/delays=none, dcr/deadlines=none}%
+    \else\tikzset{dcr/delays=marker, dcr/deadlines=marker}\fi
+    % classic/coopis23 draw a pre-condition and a logical include as two
+    % relations, stacked (condition / include on top)
+    \def\dcr@itotal{1}\dcr@inegfalse
+    \def\dcr@tmp{#2}%
+    \ifdcr@classic
+      \def\dcr@tmpb{precondition}\ifx\dcr@tmp\dcr@tmpb\def\dcr@itotal{2}\fi
+      \def\dcr@tmpb{logicalinclude}\ifx\dcr@tmp\dcr@tmpb\def\dcr@itotal{2}%
+        \ifx\dcr@ig\@empty\else\dcr@inegtrue\fi\fi   % exclude: not(guard)
+    \fi
+    % colour of the guard: that of the relation (classic/coopis23 logical
+    % include: of its include); of the time: as in a graph
+    \def\dcr@tmpb{logicalinclude}%
+    \ifx\dcr@tmp\dcr@tmpb
+      \ifdcr@classic\def\dcr@istyle{dcr/include}\else
+        \def\dcr@istyle{dcr/logical include}\fi
+    \else
+      \def\dcr@istyle{dcr/#2}%
+    \fi
+    \def\dcr@tmpb{response}%
+    \ifx\dcr@tmp\dcr@tmpb\def\dcr@itstyle{dcr/response delay label}%
+    \else\def\dcr@itstyle{}\fi
+    % the length: at least \dcr@ilen, else the widest value and room for
+    % the markers at both ends (so the values are over/under the line)
+    \dimen@=0pt
+    \ifx\dcr@ig\@empty\else
+      \setbox\z@\hbox{\dcr@font\dcr@ilabelsize\dcrguardformat{\dcr@ig}}%
+      \ifdim\wd\z@>\dimen@\dimen@=\wd\z@\fi
+      \ifdcr@ineg
+        \setbox\z@\hbox{\dcr@font\dcr@ilabelsize
+          \dcrguardformat{\dcrnotguard{\dcr@ig}}}%
+        \ifdim\wd\z@>\dimen@\dimen@=\wd\z@\fi
+      \fi
+    \fi
+    \ifx\dcr@idelay\@empty\else
+      \setbox\z@\hbox{\dcr@font\bfseries\dcr@ilabelsize\dcr@idelay}%
+      \ifdim\wd\z@>\dimen@\dimen@=\wd\z@\fi
+    \fi
+    \ifdim\dimen@>0pt \advance\dimen@ by 2\dimexpr\dcr@iclear\relax\fi
+    \dimen@ii=\dcr@ilen\relax
+    \ifdim\dimen@>\dimen@ii\dimen@ii=\dimen@\fi
+    \edef\dcr@iL{\the\dimen@ii}%
+    % how far the values are from the axis: the line (half its width),
+    % the upper / lower of two stacked lines, and the distance
+    \dimen@=\dcr@isep\relax
+    \advance\dimen@ by 0.5\dcr@rwidth
+    \ifnum\dcr@itotal=2 \advance\dimen@ by 0.5\dcr@pardist\fi
+    \edef\dcr@ioff{\the\dimen@}%
+    \edef\dcr@do{\noexpand\csname dcr@#2\endcsname
+      [\unexpanded\expandafter{\dcr@iopts}]{dcr@ia}{dcr@ib}}%
+    % The line on the math axis (the height of the middle of a "+"). The
+    % ends are small boxes, left out of the size of the symbol (overlay):
+    % not empty ones, as the markers are placed by the side of the box the
+    % line hits, and tall enough for two stacked lines.
+    \begin{tikzpicture}[baseline={(0pt,-\the\fontdimen22\dcr@iaxisfont2)},
+        dcr@iend/.style={inner sep=0pt, outer sep=0pt, minimum width=0.5pt,
+          minimum height=2em}]
+      \path[overlay] (0,0) node[dcr@iend] (dcr@ia) {}
+        (\dcr@iL,0) node[dcr@iend] (dcr@ib) {};
+      \dcr@do
+      \ifx\dcr@ig\@empty\else
+        \node[\dcr@istyle, dcr/inline guard, anchor=south]
+          at (0.5*\dcr@iL,\dcr@ioff) {\dcrguardformat{\dcr@ig}};
+        \ifdcr@ineg
+          \node[dcr/exclude, dcr/inline guard, anchor=north]
+            at (0.5*\dcr@iL,-\dcr@ioff) {\dcrguardformat{\dcrnotguard{\dcr@ig}}};
+        \fi
+      \fi
+      \ifx\dcr@idelay\@empty\else
+        \node[dcr/inline time, \dcr@itstyle, anchor=north]
+          at (0.5*\dcr@iL,-\dcr@ioff) {\dcr@idelay};
+      \fi
+      % the size of the symbol: exactly as wide as the line (no room for
+      % the helper points of the relation), as high as what is drawn
+      \edef\dcr@do{\noexpand\pgfresetboundingbox
+        \noexpand\path[use as bounding box]
+          (0pt,\the\pgf@picminy) rectangle (\dcr@iL,\the\pgf@picmaxy);}%
+      \dcr@do
+    \end{tikzpicture}%
+  \endgroup}}
+\newif\ifdcr@ineg
+\NewDocumentCommand\dcrcondition{O{}}{\dcr@inline{condition}{#1}}
+\NewDocumentCommand\dcrresponse{O{}}{\dcr@inline{response}{#1}}
+\NewDocumentCommand\dcrinclude{O{}}{\dcr@inline{include}{#1}}
+\NewDocumentCommand\dcrexclude{O{}}{\dcr@inline{exclude}{#1}}
+\NewDocumentCommand\dcrmilestone{O{}}{\dcr@inline{milestone}{#1}}
+\NewDocumentCommand\dcrupdate{O{}}{\dcr@inline{update}{#1}}
+\NewDocumentCommand\dcrnoresponse{O{}}{\dcr@inline{noresponse}{#1}}
+\NewDocumentCommand\dcrprecondition{O{}}{\dcr@inline{precondition}{#1}}
+\NewDocumentCommand\dcrspawn{O{}}{\dcr@inline{spawn}{#1}}
+\NewDocumentCommand\dcrlogicalinclude{O{}}{\dcr@inline{logicalinclude}{#1}}
 
 % ------------------------------------------------------------------
 %  \includedcrgraph[options]{file}  -- draw a graph from a file, converted
@@ -1752,7 +1976,7 @@
 %                        or DCR-js XML); dcrsolutions, dcrjs accepted
 %    waypoints           draw relations along the routes stored in the file
 %                        (default: straight lines between the boxes)
-%    notation=Classic    notation (DCRSolutions, Classic, CoopIS2023), as for the dcrgraph environment
+%    notation=classic    notation (dcr-solutions, classic, coopis23), as for the dcrgraph environment
 %    scale=0.8           scale positions (box sizes and text stay the same)
 %    marking=false       leave out executed / pending / excluded
 %    By default the graph looks like the DCR portal: guards, delays and
@@ -1868,10 +2092,10 @@
 local M = {}
 
 -- notations with the relation set of the literature (no pre-condition, no
--- logical include, values as text): Classic and CoopIS2023 ("classic" is
--- the old name of Classic)
+-- logical include, values as text): classic and coopis23
+local NOTATIONS = { ["dcr-solutions"] = true, classic = true, coopis23 = true }
 local function literature_notation(n)
-  return n == "Classic" or n == "classic" or n == "CoopIS2023"
+  return n == "classic" or n == "coopis23"
 end
 
 -- Pixels per cm, per tool, chosen so that a default box of the tool comes
@@ -2186,7 +2410,18 @@ local function read_dcrsolutions(dom)
         for _, w in ipairs(elements(child(r, "custom", "waypoints"), "waypoint")) do
           wps[#wps + 1] = { num(attr(w, "x")), num(attr(w, "y")) }
         end
+        -- a time: only conditions (delay) and responses (deadline) have one;
+        -- the portal also stores it on the milestone half of a
+        -- pre-condition (linked to its condition, see merge_linked)
         local delay = attr(r, "time")
+        local linked_milestone = rk.kind == "milestone" and (attr(r, "link") or "") ~= ""
+        if delay and delay ~= "" and rk.kind ~= "condition" and rk.kind ~= "response"
+            and not linked_milestone then
+          warn(rk.kind .. " from `" .. tostring(attr(r, "sourceId")) .. "' to `"
+            .. tostring(attr(r, "targetId")) .. "' has a time; only conditions and"
+            .. " responses have one, ignored")
+          delay = nil
+        end
         local link = attr(r, "link")
         -- guard: the expression referenced by expressionId
         local eid = attr(r, "expressionId")
@@ -2797,7 +3032,11 @@ local function emit(graph, opts, lay)
         .. "': unknown event; skipped")
     else
       local o = {}
-      if r.delay then o[#o + 1] = "delay={" .. escape(r.delay) .. "}" end
+      -- the time: the deadline of a response, the delay of a condition
+      if r.delay then
+        o[#o + 1] = (r.kind == "response" and "deadline" or "delay")
+          .. "={" .. escape(r.delay) .. "}"
+      end
       if r.guard then o[#o + 1] = "guard={" .. escape(r.guard) .. "}" end
       if explicit[i] then o[#o + 1] = "explicit={" .. table.concat(explicit[i], ",") .. "}" end
       -- the ports: the exact start and end of the line on the two box
@@ -2890,7 +3129,11 @@ local function parse_options(str)
       k = trim(k)
       if v then v = trim(v):gsub("^{(.*)}$", "%1") end
       if k == "format" then opts.format = v
-      elseif k == "notation" then opts.notation = v
+      elseif k == "notation" then
+        if not NOTATIONS[v] then
+          fail("notation=" .. tostring(v) .. ": use dcr-solutions, classic or coopis23")
+        end
+        opts.notation = v
       elseif k == "scale" then opts.scale = tonumber(v) or fail("scale=" .. tostring(v) .. " is not a number")
       elseif k == "waypoints" then opts.waypoints = truthy(v)
       elseif k == "marking" then opts.marking = truthy(v)
@@ -3226,7 +3469,7 @@ function M.main(args)
     if o then optlist[#optlist + 1] = o else file = a end
   end
   if not file then
-    io.stderr:write("usage: texlua dcrgraph-cli.lua [--waypoints] [--notation=DCRSolutions|Classic|CoopIS2023]\n"
+    io.stderr:write("usage: texlua dcrgraph-cli.lua [--waypoints] [--notation=dcr-solutions|classic|coopis23]\n"
       .. "         [--scale=N] [--marking=false] [--export=out.tex] file\n")
     os.exit(1)
   end

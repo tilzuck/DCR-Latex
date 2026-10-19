@@ -1,0 +1,18 @@
+By default the symbols use the notation of the document; the
+\texttt{notation} option changes it for one symbol. The same
+condition in the three notations: $A \dcrcondition B$,
+$A \dcrcondition[notation=classic] B$ and
+$A \dcrcondition[notation=coopis23] B$.
+
+The classic and coopis23 notations have no logical include: it is
+drawn as an include with the guard and an exclude with the negated
+guard, $A \dcrlogicalinclude[notation=classic, guard={x > 5}] B$.
+A pre-condition becomes a condition and a milestone:
+$A \dcrprecondition[notation=coopis23, delay=5d] B$.
+
+The symbols also work without math mode, as in A \dcrresponse B, and
+shrink in sub- and superscripts like $\rightarrow$:
+$X_{A \dcrcondition B}$, $Y^{A \dcrinclude[guard=g] B}$.
+
+With \texttt{length}, a line is longer than its minimum:
+$A \dcrexclude[length=4em] B$.

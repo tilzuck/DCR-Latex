@@ -32,9 +32,11 @@
 % \example{name}: examples/name.tex as code, and below it what it produces
 % (not tcblisting: running dcrgraph code through its listing mechanism
 % fails, the environment's commands stay undefined)
+% (flush center = \centering: tcolorbox's center fixes the word spaces, so
+% the spaces in formulas of a text example would stretch instead)
 \newcommand\example[1]{%
   \begin{tcolorbox}[colback=white, colframe=black!25, boxrule=0.4pt,
-      arc=1mm, left=2mm, right=2mm, halign lower=center]
+      arc=1mm, left=2mm, right=2mm, halign lower=flush center]
     \lstinputlisting{examples/#1.tex}
     \tcblower
     \input{examples/#1}
@@ -60,9 +62,9 @@
 \section{Introduction}
 
 \textsf{dcrgraph} draws DCR (Dynamic Condition Response) graphs in
-\LaTeX, in one of three notations: \texttt{DCRSolutions}, the look of the
-DCR portal of DCR Solutions (the default); \texttt{Classic}, the arrows of the
-literature; \texttt{CoopIS2023}, the notation proposed at CoopIS 2023 and used
+\LaTeX, in one of three notations: \texttt{dcr-solutions}, the look of the
+DCR portal of DCR Solutions (the default); \texttt{classic}, the arrows of the
+literature; \texttt{coopis23}, the notation proposed at CoopIS 2023 and used
 by DCR-js. There are two ways to create a graph:
 \begin{itemize}
   \item \textbf{Drawing with Ti\emph{k}Z} (Section~\ref{sec:tikz}): you write
@@ -115,7 +117,7 @@ Events are placed with Ti\emph{k}Z: relative to others
 (default 2.6\,cm $\times$ 2.8\,cm).
 
 \subsection{Relations}
-All relations at a glance (DCRSolutions notation; the marker sits at the target
+All relations at a glance (dcr-solutions notation; the marker sits at the target
 for conditions, pre-conditions and milestones, at the source for all
 others):
 \example{relations-all}
@@ -129,9 +131,10 @@ A relation from an event to itself is a marker on its top edge.
 \example{routing}
 
 \subsection{Guards and time}\label{sec:values}
-A relation can have a guard (\key{guard=\{}\meta{expression}\key{\}}) and a
-time (\key{delay=}\meta{time}: for a response a deadline, for the others a
-delay). In the DCRSolutions notation they are shown as markers: a shield for a
+A relation can have a guard (\key{guard=\{}\meta{expression}\key{\}}). A
+condition (and a pre-condition) can have a delay (\key{delay=}\meta{time}),
+a response a deadline (\key{deadline=}\meta{time}); other relations have no
+time (the wrong key is an error). In the dcr-solutions notation they are shown as markers: a shield for a
 guard, a clock for a time. Their values can be written as text, for the
 whole graph or for single relations:
 \example{values}
@@ -143,7 +146,7 @@ whole graph or for single relations:
   \item For one relation: \key{explicit=guard}, \key{explicit=\{delay,guard\}},
     \key{explicit} (all).
 \end{itemize}
-In the Classic and CoopIS2023 notations there are no shields or clocks:
+In the classic and coopis23 notations there are no shields or clocks:
 there the values are written as text by default, and \key{none} leaves them out.
 
 \subsection{Collections}
@@ -152,28 +155,28 @@ events. They are written after their events and placed around them;
 relations can start and end at a collection like at an event.
 \example{collections}
 
-\subsection{Notations: DCRSolutions, Classic, CoopIS2023}
+\subsection{Notations: dcr-solutions, classic, coopis23}
 The relations can be drawn in three notations (events and collections look
 the same in all of them):
 \begin{itemize}
-  \item \texttt{DCRSolutions} (default): the markers of the DCR portal.
-  \item \texttt{Classic}: the arrows of the literature.
-  \item \texttt{CoopIS2023}: the notation proposed in \emph{Designing
+  \item \texttt{dcr-solutions} (default): the markers of the DCR portal.
+  \item \texttt{classic}: the arrows of the literature.
+  \item \texttt{coopis23}: the notation proposed in \emph{Designing
     Semantically Transparent Declarative Process Constraints} (CoopIS 2023)
     and used by DCR-js: a triangle at the source and a circle with the symbol
     at the target (a key for condition and milestone; the milestone's
     triangle is hollow, with a ``!'').
 \end{itemize}
 \example{notation}
-Classic and CoopIS2023 have no symbols for two relations of the DCR portal;
+The classic and coopis23 notations have no symbols for two relations of the DCR portal;
 they are drawn as what they mean: a pre-condition as a condition plus a
 milestone (a time on the condition only), a logical include with the guard
 $g$ as an include with the guard $g$ plus an exclude with the guard
 \texttt{not(}$g$\texttt{)} (format: \cs{dcrnotguard}). Update, no-response
-and spawn are not part of the CoopIS2023 proposal; there they get their
-DCRSolutions symbol in the circle. The notation of a whole document:
-\cs{usepackage[Classic]\{dcrgraph\}} or \cs{usepackage[CoopIS2023]\{dcrgraph\}};
-of one graph: \key{dcr/notation=Classic} or \key{dcr/notation=CoopIS2023}.
+and spawn are not part of the coopis23 proposal; there they get their
+dcr-solutions symbol in the circle. The notation of a whole document:
+\cs{usepackage[classic]\{dcrgraph\}} or \cs{usepackage[coopis23]\{dcrgraph\}};
+of one graph: \key{dcr/notation=classic} or \key{dcr/notation=coopis23}.
 
 \subsection{Customisation}
 \paragraph{Colours.} \key{bgcolor}, \key{bordercolor} and \key{textcolor} take
@@ -190,9 +193,15 @@ widths and the font are settings of the graph or the document
 \example{sizes}
 
 \subsection{Symbols in running text}
-For papers: $A \dcrcondition B$, $A \dcrresponse B$, $A \dcrinclude B$,
-$A \dcrexclude B$, $A \dcrmilestone B$, written
-\verb|$A \dcrcondition B$| and so on (Section~\ref{sec:symbols}).
+For papers, every relation has a command for running text and formulas,
+\cs{dcr}\meta{relation}\oarg{options}. It draws the relation as in a graph,
+in the current notation, with the same options (guards, times, notation):
+\example{inline}
+Guards are written above the line, times below it. The notation of a
+symbol, the symbols in running text and in sub- and superscripts, and the
+length of the line:
+\example{inline-options}
+All commands and options: Section~\ref{sec:symbols}.
 
 % =====================================================================
 \section{Importing XML}\label{sec:import}
@@ -210,7 +219,7 @@ display of guards and times, the settings.
 
 \subsection{Options}
 The options of \cs{includedcrgraph} (Section~\ref{sec:include}) choose the
-notation (\key{notation=Classic}), how guards and times are shown, and a
+notation (\key{notation=classic}), how guards and times are shown, and a
 few things of the import itself. Relations are drawn as straight lines by
 default; files from DCR-js also store the routes of the lines, which
 \key{waypoints} uses:
@@ -280,7 +289,7 @@ warning. Details: Appendix~\ref{sec:compat}.
 \toprule
 \cs{begin\{dcrgraph\}}\oarg{options} & A Ti\emph{k}Z picture; options:
   any Ti\emph{k}Z option, and the settings of Section~\ref{sec:settings} with
-  the prefix \key{dcr/} (e.g. \key{dcr/notation=Classic}).\\
+  the prefix \key{dcr/} (e.g. \key{dcr/notation=classic}).\\
 \bottomrule
 \end{tabularx}
 
@@ -343,7 +352,7 @@ Keys & \key{role=}, \key{subtitle=}, \key{pending}, \key{executed}, \key{exclude
 \medskip
 \begin{tabularx}{\linewidth}{@{}llL@{}}
 \toprule
-Command & Colour & Marker (DCRSolutions notation)\\
+Command & Colour & Marker (dcr-solutions notation)\\
 \midrule
 \cs{condition} & orange & open circle at the target\\
 \cs{precondition} & orange & filled dot at the target\\
@@ -363,7 +372,9 @@ Command & Colour & Marker (DCRSolutions notation)\\
 \toprule
 Option & Meaning\\
 \midrule
-\key{delay=}\meta{time} & timed relation: clock marker; for a response a deadline\\
+\key{delay=}\meta{time} & delay of a condition or pre-condition: clock marker\\
+\key{deadline=}\meta{time} & deadline of a response: clock marker (no other
+  relation has a time)\\
 \key{guard}, \key{guard=\{}\meta{expr}\key{\}} & guard: shield, or the expression\\
 \key{explicit=\{guard,delay,deadline\}} & write these values of this relation as
   text; \key{explicit} alone: all\\
@@ -382,7 +393,7 @@ anything else & Ti\emph{k}Z: \key{bend left=20}, \key{out=90}, \dots\\
 
 \medskip\noindent
 A relation from an event to itself is drawn as a marker above the event
-(DCRSolutions) or a loop round a corner (Classic, CoopIS2023). Several relations between the same two events
+(dcr-solutions) or a loop round a corner (classic, coopis23). Several relations between the same two events
 are spread out automatically, unless they have Ti\emph{k}Z options.
 
 \subsection{Settings}\label{sec:settings}
@@ -394,16 +405,15 @@ in the options of one graph.
 \toprule
 Setting & Meaning (default)\\
 \midrule
-\key{notation=DCRSolutions|Classic|CoopIS2023} & markers of the DCR portal,
-  arrows, or triangle and circle (DCRSolutions; the old names \key{portal} and
-  \key{classic} still work)\\
+\key{notation=dcr-solutions|classic|coopis23} & markers of the DCR portal,
+  arrows, or triangle and circle (default: dcr-solutions)\\
 \key{guards=shield|explicit|both|none} & how guards are shown\\
 \key{delays=marker|explicit|none} & times of conditions etc.\\
 \key{deadlines=marker|explicit|none} & times of responses\\
 \key{explicit} & all three explicit\\
-\multicolumn{2}{@{}p{\linewidth}@{}}{\small Defaults: DCRSolutions shows only
-  the markers (shield, clock); Classic and CoopIS2023 have no shields or
-  clocks and show the values as text. \key{explicit} adds the text (DCRSolutions),
+\multicolumn{2}{@{}p{\linewidth}@{}}{\small Defaults: dcr-solutions shows only
+  the markers (shield, clock); classic and coopis23 have no shields or
+  clocks and show the values as text. \key{explicit} adds the text (dcr-solutions),
   \key{none} shows nothing at all (all notations).}\\
 \key{font=} & font of the graph (\cs{sffamily})\\
 \key{subtitle font=} & font of subtitles\\
@@ -415,8 +425,8 @@ Setting & Meaning (default)\\
   \key{condition marker size=}, \key{response marker size=}\\
 \key{marker gap=} & gap between marker and box (0\,pt)\\
 \key{parallel distance=} & distance of parallel relations (13.5\,pt)\\
-\key{classic marker size=} & symbols in the Classic notation\\
-\key{coopis bend=} & CoopIS2023: with a radius, a slanted line leaves the
+\key{classic marker size=} & symbols in the classic notation\\
+\key{coopis bend=} & coopis23: with a radius, a slanted line leaves the
   triangle straight out and turns into its direction with a bend of this
   radius (0\,pt: straight lines)\\
 \key{data size=}, \key{dmn size=}, & sizes of the icons\\
@@ -425,8 +435,8 @@ Setting & Meaning (default)\\
 \end{tabularx}
 
 \medskip\noindent
-Package options: \cs{usepackage[Classic]\{dcrgraph\}},
-\cs{usepackage[CoopIS2023]\{dcrgraph\}} (or \key{DCRSolutions}, the default).
+Package options: \cs{usepackage[classic]\{dcrgraph\}},
+\cs{usepackage[coopis23]\{dcrgraph\}} (or \key{dcr-solutions}, the default).
 
 \subsection{Colours}\label{sec:colours}
 Change with \cs{definecolor} or \cs{colorlet}, e.g.
@@ -461,7 +471,7 @@ Option & Meaning\\
 \midrule
 \key{waypoints} & draw relations along the routes stored in the file
   (default: straight lines)\\
-\key{notation=Classic|CoopIS2023} & the notation (default DCRSolutions)\\
+\key{notation=classic|coopis23} & the notation (default dcr-solutions)\\
 \key{guards=}, \key{delays=}, \key{deadlines=} & as the settings above, or a list of
   relations: \key{guards=\{A4 response A6, A6 A7\}}; each entry
   ``\meta{source} \meta{type} \meta{target}'' or ``\meta{source} \meta{target}''
@@ -496,11 +506,61 @@ Command & Meaning\\
 \end{tabularx}
 
 \subsection{Symbols in text}\label{sec:symbols}
-In math mode: \cs{dcrcondition} $\dcrcondition$, \cs{dcrresponse} $\dcrresponse$,
-\cs{dcrinclude} $\dcrinclude$, \cs{dcrexclude} $\dcrexclude$,
-\cs{dcrmilestone} $\dcrmilestone$, e.g.\ \verb|$A \dcrcondition B$|.
+\cs{dcr}\meta{relation}\oarg{options}, in text (\verb|A \dcrcondition B|)
+or in math (\verb|$A \dcrcondition B$|, spaced as a relation symbol). The
+symbol is the relation of a graph, drawn from one point to another, so it
+follows the notation and the colours of the document.
+
+\medskip
+\begin{tabularx}{\linewidth}{@{}lccL@{}}
+\toprule
+Command & dcr-solutions & classic & coopis23\\
+\midrule
+\cs{dcrcondition} & $\dcrcondition$ & $\dcrcondition[notation=classic]$ & $\dcrcondition[notation=coopis23]$\\
+\cs{dcrresponse} & $\dcrresponse$ & $\dcrresponse[notation=classic]$ & $\dcrresponse[notation=coopis23]$\\
+\cs{dcrinclude} & $\dcrinclude$ & $\dcrinclude[notation=classic]$ & $\dcrinclude[notation=coopis23]$\\
+\cs{dcrexclude} & $\dcrexclude$ & $\dcrexclude[notation=classic]$ & $\dcrexclude[notation=coopis23]$\\
+\cs{dcrmilestone} & $\dcrmilestone$ & $\dcrmilestone[notation=classic]$ & $\dcrmilestone[notation=coopis23]$\\
+\cs{dcrupdate} & $\dcrupdate$ & $\dcrupdate[notation=classic]$ & $\dcrupdate[notation=coopis23]$\\
+\cs{dcrnoresponse} & $\dcrnoresponse$ & $\dcrnoresponse[notation=classic]$ & $\dcrnoresponse[notation=coopis23]$\\
+\cs{dcrspawn} & $\dcrspawn$ & $\dcrspawn[notation=classic]$ & $\dcrspawn[notation=coopis23]$\\
+\cs{dcrprecondition} & $\dcrprecondition$ & $\dcrprecondition[notation=classic]$ & $\dcrprecondition[notation=coopis23]$\\
+\cs{dcrlogicalinclude} & $\dcrlogicalinclude$ & $\dcrlogicalinclude[notation=classic, guard=g]$ & $\dcrlogicalinclude[notation=coopis23, guard=g]$\\
+\midrule
+Key & \multicolumn{3}{@{}l@{}}{Meaning}\\
+\midrule
+\key{guard=}\meta{expr} & \multicolumn{3}{@{}L@{}}{the guard, above the line (the line
+  grows to fit it); classic and coopis23: the negated guard of a logical
+  include below}\\
+\key{delay=}\meta{time} & \multicolumn{3}{@{}L@{}}{the delay of \cs{dcrcondition}
+  and \cs{dcrprecondition}, below the line; dcr-solutions also shows the
+  clock marker}\\
+\key{deadline=}\meta{time} & \multicolumn{3}{@{}L@{}}{the deadline of
+  \cs{dcrresponse}, the same (no other relation has a time)}\\
+\key{notation=} & \multicolumn{3}{@{}L@{}}{\key{dcr-solutions}, \key{classic} or
+  \key{coopis23}; default: the notation of the document}\\
+\key{length=} & \multicolumn{3}{@{}L@{}}{shortest length of the line (default 1.8em)}\\
+\bottomrule
+\end{tabularx}
+
+\medskip
+As with \cs{xrightarrow}, guard and time are centred on the line, close to
+it, and the symbol is exactly as wide as its line. Other options of
+relations (Ti\emph{k}Z options) work as in a graph. Sizes are in em, so the
+symbols follow the font size; the sizes are the style \key{dcr/inline}, e.g.\
+\cs{dcrset\{inline/.append style=\{dcr/relation width=0.08em\}\}}, the
+distance of guard and time from the line \key{dcr/inline label distance}
+(default 0.12em). A symbol behaves like \cs{rightarrow}, and with a guard or
+time like \cs{xrightarrow}: in math it is a relation (same spacing, line
+breaks), in sub- and superscripts it shrinks with its guard and time
+($X_{A \dcrcondition B}$); in text, \verb|A \dcrcondition B| is spaced as
+\verb|A $\rightarrow$ B|, with word spaces (no space is added before
+punctuation: \verb|A \dcrcondition.|).
+For \texttt{>} and \texttt{<} in guards, use \cs{usepackage[T1]\{fontenc\}}
+(with the old default encoding OT1 they print as other characters).
+
 The format of guards on lines: \cs{dcrguardformat}; of the negated guard of a
-logical include in the Classic and CoopIS2023 notations: \cs{dcrnotguard}.
+logical include in the classic and coopis23 notations: \cs{dcrnotguard}.
 
 % =====================================================================
 \appendix

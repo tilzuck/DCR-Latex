@@ -1,28 +1,28 @@
-\textsf{\small DCRSolutions notation (default)}\par
+\textsf{\small dcr-solutions notation (default)}\par
 \begin{dcrgraph}
   \activity{A}{a}
   \activity[right=3cm of a]{B}{b}
   \precondition{a}{b}
   \logicalinclude[guard={x > 0}]{a}{b}
-  \response[delay=P1D]{a}{b}
+  \response[deadline=P1D]{a}{b}
 \end{dcrgraph}
 
 \bigskip
-\textsf{\small the same graph, Classic notation}\par
-\begin{dcrgraph}[dcr/notation=Classic]
+\textsf{\small the same graph, classic notation}\par
+\begin{dcrgraph}[dcr/notation=classic]
   \activity{A}{a}
   \activity[right=3cm of a]{B}{b}
   \precondition{a}{b}
   \logicalinclude[guard={x > 0}]{a}{b}
-  \response[delay=P1D]{a}{b}
+  \response[deadline=P1D]{a}{b}
 \end{dcrgraph}
 
 \bigskip
-\textsf{\small the same graph, CoopIS2023 notation}\par
-\begin{dcrgraph}[dcr/notation=CoopIS2023]
+\textsf{\small the same graph, coopis23 notation}\par
+\begin{dcrgraph}[dcr/notation=coopis23]
   \activity{A}{a}
   \activity[right=3cm of a]{B}{b}
   \precondition{a}{b}
   \logicalinclude[guard={x > 0}]{a}{b}
-  \response[delay=P1D]{a}{b}
+  \response[deadline=P1D]{a}{b}
 \end{dcrgraph}

@@ -1,0 +1,19 @@
+The relation $A \dcrresponse B$ makes $B$ pending if $A$ is executed,
+while $A \dcrcondition B$ expresses that $A$ must have been executed
+before $B$ can be executed. Both of these relations can be timed, by
+using the \texttt{delay} or \texttt{deadline} option.
+$A \dcrcondition[delay=5d] B$ expresses that $A$ must have been executed
+5 days before $B$ can be executed, and $A \dcrresponse[deadline=5d] B$
+states that $B$ must be executed within 5 days.
+
+The other available inline relations are $A \dcrinclude B$ and
+$A \dcrexclude B$ ($A$ includes or excludes $B$), $A \dcrmilestone B$
+($B$ cannot be executed while $A$ is pending), $A \dcrprecondition B$
+(a condition and a milestone in one), $A \dcrlogicalinclude B$,
+$A \dcrupdate B$ ($A$ updates the value of $B$), $A \dcrnoresponse B$
+($A$ removes the pending of $B$) and $A \dcrspawn B$ ($A$ spawns $B$).
+
+Every relation can have a guard, written above the line with the
+\texttt{guard} option: $A \dcrinclude[guard={x > 5}] B$ includes $B$
+only if $x > 5$. Guard and time can be combined:
+$A \dcrresponse[guard=ok, deadline=5d] B$.

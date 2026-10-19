@@ -6,4 +6,4 @@
 # waypoint test needs a graph drawn in DCR-js.)
 
 # DCR-js draws in the CoopIS2023 notation
-coopis2023: notation=CoopIS2023
+coopis23: notation=coopis23
