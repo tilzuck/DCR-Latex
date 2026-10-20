@@ -150,7 +150,7 @@ In the classic and coopis23 notations there are no shields or clocks:
 there the values are written as text by default, and \key{none} leaves them out.
 
 \subsection{Collections}
-Nestings, subprocesses (also multi-instance), forms and subgraphs group
+Nestings, subprocesses, forms and subgraphs group
 events. They are written after their events and placed around them;
 relations can start and end at a collection like at an event.
 \example{collections}
@@ -269,8 +269,8 @@ Two formats are read; which one a file has is recognised automatically:
     nestings, subprocesses, forms and subgraphs (with their own events); all
     relations with their guards and times.
   \item \textbf{DCR-js XML}, the format DCR-js saves its graphs in: events
-    with labels, roles and marking; nestings and subprocesses (also
-    multi-instance); the relations DCR-js has (condition, response, include,
+    with labels, roles and marking; nestings and subprocesses; the
+    relations DCR-js has (condition, response, include,
     exclude, milestone, update, spawn, no-response). DCR-js has no guards,
     times, pre-conditions, logical includes, event types or colours.
 \end{itemize}
@@ -334,14 +334,13 @@ Written after their events; \meta{children} is a list of ids.
 Command & Meaning\\
 \midrule
 \cs{nesting}\oarg{options}\marg{label}\marg{id}\marg{children} & nesting, ``n''\\
-\cs{subprocess}\oarg{options}\marg{label}\marg{id}\marg{children} & subprocess, ``s'';
-  with \key{multi}: multi-instance\\
+\cs{subprocess}\oarg{options}\marg{label}\marg{id}\marg{children} & subprocess, ``s''\\
 \cs{form}\oarg{options}\marg{label}\marg{id}\marg{children} & form, ``f''\\
 \cs{subgraph}\oarg{options}\marg{label}\marg{id}\marg{children} & subgraph with its
   own events: dotted, ``$|||$'', ``g''\\
 \midrule
 Keys & \key{role=}, \key{subtitle=}, \key{pending}, \key{executed}, \key{excluded}, \key{bgcolor=},
-  \key{bordercolor=}, \key{textcolor=}, \key{multi};
+  \key{bordercolor=}, \key{textcolor=};
   \key{area=\{(x1,y1)(x2,y2)\}}: exact box instead of fitting the children\\
 \bottomrule
 \end{tabularx}
@@ -456,8 +455,7 @@ Colour & Used for\\
 \key{dcr executed}, \key{dcr delay}, \key{dcr subtitle}, \key{dcr icon},
 \key{dcr dmn} & markers, labels and icons\\
 \key{dcr receiver} & receiver band (choreographies)\\
-\key{dcr multi}, \key{dcr multi border}, \key{dcr subgraph},
-\key{dcr subgraph collection} & multi-instance subprocesses, subgraphs\\
+\key{dcr subgraph}, \key{dcr subgraph collection} & subgraphs\\
 \bottomrule
 \end{tabularx}
 
@@ -566,11 +564,11 @@ logical include in the classic and coopis23 notations: \cs{dcrnotguard}.
 \appendix
 \section{Compatibility with the DCR portal and DCR-js}\label{sec:compat}
 \paragraph{DCR-js XML.} Read: events (label = \texttt{description}, roles,
-position and size, marking), nestings, subprocesses (\texttt{multi-instance}),
+position and size, marking), nestings, subprocesses,
 relations of all types DCR-js has, their routes (with \key{waypoints}).
 DCR-js stores no guards, times, event types or colours; a graph imported into
 DCR-js from the portal has lost them (pre-conditions and logical includes
-become their two relations, subgraphs multi-instance subprocesses). Unknown
+become their two relations). Unknown
 elements and relation types are skipped with a warning.
 
 The rest of this appendix is about DCR Solutions XML.

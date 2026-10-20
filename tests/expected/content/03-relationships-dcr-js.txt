@@ -15,4 +15,4 @@ relation noresponse A1 -> A2
 relation response A1 -> A2
 relation spawn A5 -> A6
 relation update A1 -> A2
-subprocess A6 label="A6" multi
+subprocess A6 label="A6"

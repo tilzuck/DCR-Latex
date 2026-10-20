@@ -73,8 +73,6 @@
 \colorlet{dcr subgraph collection}{dcr subgraph}  % subgraph with events
 \colorlet{dcr precondition}{dcr condition}
 \colorlet{dcr logical include}{dcr include}
-\definecolor{dcr multi}{HTML}{8CC4F8}          % multi-instance subprocess
-\definecolor{dcr multi border}{HTML}{3D96EC}
 \colorlet{dcr icon}{black!45}                 % global, #, f, n, s, |||
 \colorlet{dcr dmn}{dcr response}
 \definecolor{dcr receiver}{HTML}{D3D3D3}  % receiver band (choreographies)
@@ -219,7 +217,6 @@
   dcr/dmn grid/.style={draw=dcr dmn, line width=0.6pt},
   dcr/global icon/.style={draw=dcr icon, line width=0.6pt, fill=white},
   dcr/form marker/.style={dcr/nesting marker},
-  dcr/multi marker/.style={draw=dcr icon, line width=0.9pt},
   % subgraph (template) event: fine dotted outline, blue "|||"
   dcr/subgraph/.style={dash pattern=on 0pt off 3pt, line cap=round},
   dcr/subgraph bars/.style={draw=dcr subgraph, line width=0.9pt},
@@ -294,12 +291,11 @@
 \newif\ifdcr@dmn
 \newif\ifdcr@access
 \newif\ifdcr@form
-\newif\ifdcr@multi
 \newif\ifdcr@subgraph
 % all flags off (start of \activity and of nestings)
 \def\dcr@resetflags{\dcr@pendingfalse\dcr@executedfalse\dcr@excludedfalse
   \dcr@datafalse\dcr@computationfalse\dcr@globalfalse\dcr@dmnfalse
-  \dcr@accessfalse\dcr@formfalse\dcr@multifalse\dcr@subgraphfalse}
+  \dcr@accessfalse\dcr@formfalse\dcr@subgraphfalse}
 
 \pgfkeys{
   /dcr@act/.is family, /dcr@act,
@@ -317,7 +313,6 @@
   dmn/.code=\dcr@dmntrue,             % DMN event: decision table icon
   access/.code=\dcr@accesstrue,       % access control: "#"
   form/.code=\dcr@formtrue,           % event with a form: "f" bottom right
-  multi/.code=\dcr@multitrue,         % subprocesses: multi-instance
   subgraph/.code=\dcr@subgraphtrue,   % subgraph (template) event, target
                                       % of spawns: dotted, "|||" and "g"
   area/.store in=\dcr@area,           % nestings: exact box {(x1,y1)(x2,y2)}
@@ -1616,8 +1611,7 @@
 
 \newcount\dcr@depth
 % \nesting[options]{label}{id}{children}     : "n" in the corner
-% \subprocess[options]{label}{id}{children}  : "s" in the corner;
-%   with the key multi: multi-instance, blue, "|||" at the bottom
+% \subprocess[options]{label}{id}{children}  : "s" in the corner
 % \form[options]{label}{id}{children}        : "f" in the corner
 \newcommand\dcr@nesting[4][]{\dcr@group{n}{#1}{#2}{#3}{#4}}
 \newcommand\dcr@subprocess[4][]{\dcr@group{s}{#1}{#2}{#3}{#4}}
@@ -1684,7 +1678,6 @@
         fit={(#4@box.north west)(#4@box.south east)
              ([yshift=\the\dimen@]#4@box.north)([yshift=-\the\dimen2]#4@box.south)},
         draw=\dcr@bc,
-        \ifdcr@multi fill=dcr multi, draw=dcr multi border,\fi
         \ifx\dcr@bg\@empty\else fill=\dcr@bg,\fi
         \ifdcr@subgraph dcr/subgraph,\fi
         \ifdcr@excluded dcr/excluded,\fi] (#4)}%
@@ -1721,13 +1714,10 @@
           {([xshift=\dcr@x,yshift=4pt]#4.south) -- ++(0,7pt)};
         \node[dcr/nesting marker, anchor=south east]
           at ([xshift=-3pt,yshift=1pt]#4.south east) {#1};
-      \else\ifdcr@multi   % multi-instance: three bars at the bottom centre
-        \draw[dcr/multi marker] \foreach \dcr@x in {-2.5pt,0pt,2.5pt}
-          {([xshift=\dcr@x,yshift=4pt]#4.south) -- ++(0,7pt)};
       \else
         \node[dcr/nesting marker, anchor=south east]
           at ([xshift=-3pt,yshift=1pt]#4.south east) {#1};
-      \fi\fi
+      \fi
       % marking, top left, as for events (below the header, if any)
       \ifdcr@withheader\dimen@=\dcr@header\else\dimen@=0pt\fi
       \ifdcr@pending
@@ -2453,7 +2443,7 @@ end
 --                       other) and relations (at any level)
 --        <dcr:event id description role included executed pending/>
 --        <dcr:nesting id description> ... </dcr:nesting>
---        <dcr:subProcess id description multi-instance ...> ... </>
+--        <dcr:subProcess id description ...> ... </>
 --        <dcr:relation id type sourceRef targetRef/>
 --      <dcrDi:dcrRootBoard><dcrDi:dcrPlane>   the drawing:
 --        <dcrDi:dcrShape boardElement=id><dc:Bounds x y width height/>
@@ -2526,7 +2516,6 @@ local function read_dcrjs(dom)
           -- nestings carry no marking
           excluded = kind ~= "nesting" and attr(c, "included") ~= nil
                      and not yes(c, "included"),
-          multi = kind == "subprocess" and yes(c, "multi-instance"),
         }
         ids[#ids + 1] = id
       elseif n == "relation" then
@@ -2998,7 +2987,7 @@ local function emit(graph, opts, lay)
       if n.pending then o[#o + 1] = "pending" end
       if n.excluded then o[#o + 1] = "excluded" end
     end
-    for _, flag in ipairs({ "data", "computation", "dmn", "global", "subgraph", "form", "multi" }) do
+    for _, flag in ipairs({ "data", "computation", "dmn", "global", "subgraph", "form" }) do
       if n[flag] then o[#o + 1] = flag end
     end
     if n.bg then o[#o + 1] = "bgcolor=dcrcol" .. n.bg end
@@ -3285,7 +3274,7 @@ end
 --  layout (where it is drawn), as sorted text lines, separately.
 -- ------------------------------------------------------------------
 local node_flags = { "executed", "pending", "excluded",
-                     "data", "computation", "dmn", "global", "subgraph", "form", "multi" }
+                     "data", "computation", "dmn", "global", "subgraph", "form" }
 
 function M.describe_content(graph)
   local lines = {}

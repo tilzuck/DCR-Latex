@@ -18,4 +18,4 @@ relation response A7 -> A10
 relation spawn A10 -> A6
 relation spawn A2 -> A6
 subprocess A5 label="A5" children=A4,A7
-subprocess A6 label="A6" multi children=A8,A9
+subprocess A6 label="A6" children=A8,A9

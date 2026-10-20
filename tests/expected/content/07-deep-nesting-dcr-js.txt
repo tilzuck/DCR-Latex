@@ -13,5 +13,5 @@ relation spawn A5 -> A2
 relation spawn A5 -> A4
 relation spawn A7 -> A2
 relation update A7 -> A3
-subprocess A2 label="A2" multi
-subprocess A4 label="A4" multi
+subprocess A2 label="A2"
+subprocess A4 label="A4"
