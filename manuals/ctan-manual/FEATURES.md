@@ -17,7 +17,7 @@ XML** → **3. Reference** (every command, key and colour, complete).
 - [ ] Notation of the rest of the document: `\dcrset{notation=…}`
 - [ ] The same graph in all three notations (side by side)
 - [ ] classic / coopis23: a pre-condition is drawn as condition + milestone
-- [ ] classic / coopis23: a logical include is drawn as include (guard) + exclude (negated guard, `\dcrnotguard`)
+- [ ] classic / coopis23: a logical include is one relation with "±" at the target (classic →±, coopis23 ± in the circle), one guard
 - [ ] coopis23: update, no-response and spawn get their dcr-solutions symbol in the circle
 - [ ] classic / coopis23: no shields or clocks, values always as text
 
@@ -79,7 +79,8 @@ Commands, all `\relation[options]{from}{to}`:
 - [ ] Graph settings `delays=marker|explicit|none`, `deadlines=marker|explicit|none`
 - [ ] `explicit` (all values as text, whole graph)
 - [ ] `explicit`, `explicit={guard,delay,deadline}` on one relation
-- [ ] Guard format: `\dcrguardformat`; negated guard: `\dcrnotguard`
+- [ ] `guard side=left|right` (side of the line for the guard text) and line breaks in long guards (`\\` with `guard label/.append style={align=center}`)
+- [ ] Guard format: `\dcrguardformat`
 
 ### Placing the lines
 - [ ] Straight line between the boxes (default)
@@ -128,7 +129,7 @@ All `\command[options]{label}{id}{child1, child2, …}`, written after their chi
 - [ ] `guard=` (above the line, line grows to fit)
 - [ ] `delay=` / `deadline=` (below the line)
 - [ ] `notation=` per symbol; default = notation of the document
-- [ ] classic / coopis23: stacked pre-condition and logical include (negated guard below)
+- [ ] classic / coopis23: stacked pre-condition (condition and milestone)
 - [ ] `length=` (minimum line length)
 - [ ] Sub- and superscripts shrink like `\rightarrow`
 - [ ] Follow `\Large`, `\footnotesize`, …

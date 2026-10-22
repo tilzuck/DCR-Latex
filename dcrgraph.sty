@@ -557,6 +557,8 @@
 %   guard         shield icon next to the marker (relation has a guard)
 %   guard=expr    a guard with its expression (shown as shield or as text
 %                 [ expr ] on the line, see guards= below)
+%   guard side=right   write the guard text on the right of the line
+%                 (seen from `from' to `to'); default left
 %   explicit={guard,delay,deadline}   show these values of this relation as
 %                 text, whatever the settings for the graph say (delay: the
 %                 time of a condition etc., deadline: the time of a
@@ -592,13 +594,13 @@
   bundle/.store in=\dcr@bundle,
   selfpos/.store in=\dcr@selfpos,
   corner/.store in=\dcr@corner,
-  % internal, for the classic translation of pre-condition / logical include
+  % the side of the line (seen from `from' to `to') where the guard is
+  % written as text; default left
+  guard side/.is choice,
+  guard side/left/.code={\def\dcr@gside{left}},
+  guard side/right/.code={\def\dcr@gside{right}},
+  % internal, for the classic translation of a pre-condition
   dcr@nodelay/.code={\def\dcr@delay{}},
-  dcr@negateguard/.code={%
-    \ifdcr@guard\ifx\dcr@gexpr\@empty\def\dcr@gexpr{true}\fi
-    \else\dcr@guardtrue\def\dcr@gexpr{true}\fi
-    \expandafter\def\expandafter\dcr@gexpr\expandafter{%
-      \expandafter\dcrnotguard\expandafter{\dcr@gexpr}}},
   .unknown/.code={%
     \let\dcr@key\pgfkeyscurrentname
     \def\dcr@val{#1}%
@@ -618,7 +620,7 @@
   \def\dcr@ropts{}\def\dcr@delay{}\def\dcr@deadline{}\def\dcr@via{}%
   \dcr@guardfalse\def\dcr@gexpr{}\def\dcr@off{0}%
   \dcr@xguardfalse\dcr@xdelayfalse\dcr@xdeadlinefalse\def\dcr@bundle{}%
-  \def\dcr@selfpos{}\def\dcr@corner{}%
+  \def\dcr@selfpos{}\def\dcr@corner{}\def\dcr@gside{left}%
   \pgfkeys{/dcr@rel,#5}%
   \ifx\dcr@via\@empty\dcr@routedfalse\else\dcr@routedtrue\fi
   % The time: a condition (also the condition in a pre-condition) has a
@@ -814,18 +816,21 @@
 \newcommand\dcrguardformat[1]{[\,#1\,]}
 % (its place, halfway along the line, is given where it is used: the same
 % style also writes the guard of a self-relation, which has no line)
-\tikzset{dcr/guard label/.style={font=\dcr@font\scriptsize, inner sep=2pt}}
+\tikzset{dcr/guard label/.style={font=\dcr@font\scriptsize, inner sep=2pt},
+  % the relation key guard side=right: the other side of the line
+  dcr/guard@side/.code={\ifx\dcr@gside\dcr@kw@right\pgfkeysalso{/tikz/swap}\fi}}
+\def\dcr@kw@right{right}
 \newcommand\dcr@guardlabel[4]{% #1 style, #2 tikz options, #3 from, #4 to
   \ifdcr@guard\ifdcr@gtext\ifx\dcr@gexpr\@empty\else
     \ifdcr@auto
-      \path (dcr@s) -- node[#1, midway, auto, sloped=false, dcr/guard label] {\dcrguardformat{\dcr@gexpr}} (dcr@e);
+      \path (dcr@s) -- node[#1, midway, auto, dcr/guard@side, sloped=false, dcr/guard label] {\dcrguardformat{\dcr@gexpr}} (dcr@e);
     \else\ifdcr@routed
       % routed relation: halfway along the middle segment
       \dcr@i=\numexpr(\dcr@np-1)/2\relax
-      \path (dcr@p\the\dcr@i) -- node[#1, midway, auto, sloped=false, dcr/guard label]
+      \path (dcr@p\the\dcr@i) -- node[#1, midway, auto, dcr/guard@side, sloped=false, dcr/guard label]
         {\dcrguardformat{\dcr@gexpr}} (dcr@p\the\numexpr\dcr@i+1\relax);
     \else
-      \path[#2] (#3) to node[#1, midway, auto, sloped=false, dcr/guard label] {\dcrguardformat{\dcr@gexpr}} (#4);
+      \path[#2] (#3) to node[#1, midway, auto, dcr/guard@side, sloped=false, dcr/guard label] {\dcrguardformat{\dcr@gexpr}} (#4);
     \fi\fi
   \fi\fi\fi}
 
@@ -1360,9 +1365,9 @@
 %  DCR-js: a triangle at the SOURCE (its base flush on the box, pointing
 %  along the line; milestone: hollow with a "!") and a circle with the
 %  relation's symbol at the TARGET (condition and milestone: a key,
-%  response "!", include "+", exclude "-"). update, no-response and spawn
-%  are not in the proposal; they get their portal symbol in the circle.
-%  Like classic otherwise: pre-conditions and logical includes are
+%  response "!", include "+", exclude "-"). update, no-response, spawn and
+%  logical include ("±") are not in the proposal; they get their portal
+%  symbol in the circle. Like classic otherwise: pre-conditions are
 %  translated, values are shown as text. Symbols stay upright.
 % ------------------------------------------------------------------
 \newlength\dcr@thalf  % half the length of the source triangle
@@ -1409,6 +1414,12 @@
     draw=dcr include, path picture={%
       \dcr@tglyph{dcr include}{-0.24}{-0.055}{0.24}{0.055}%
       \dcr@tglyph{dcr include}{-0.055}{-0.24}{0.055}{0.24}}},
+  % logical include: "±", a plus with a bar below it
+  dcr/logical include coopis marker/.style={dcr/coopis circle,
+    draw=dcr logical include, path picture={%
+      \dcr@tglyph{dcr logical include}{-0.22}{0.025}{0.22}{0.125}%
+      \dcr@tglyph{dcr logical include}{-0.05}{-0.145}{0.05}{0.295}%
+      \dcr@tglyph{dcr logical include}{-0.22}{-0.285}{0.22}{-0.185}}},
   dcr/exclude coopis marker/.style={dcr/coopis circle,
     draw=dcr exclude, path picture={%
       \dcr@tglyph{dcr exclude}{-0.24}{-0.055}{0.24}{0.055}}},
@@ -1692,18 +1703,16 @@
   \dcr@srcrelation{dcr/spawn}{dcr/spawn marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
 
 % \logicalinclude[opts]{from}{to} : green "+-" at from.
-% Classic notation has no logical include: it is what it means, an include
-% with the guard g plus an exclude with the guard not(g) (\dcrnotguard;
-% without a guard: not(true), as the DCR portal stores it).
+% Classic: an include arrow with "±" after the arrowhead (->±); coopis23:
+% "±" in the circle. The literature has no standard symbol for it; this
+% one is used in recent papers (user's choice). One relation with one
+% guard, in all notations (before, classic/coopis23 drew an include with
+% g plus an exclude with not(g)).
 \newcommand\dcr@logicalinclude[3][]{%
-  \ifdcr@classic
-    \dcr@include[#1]{#2}{#3}%
-    \dcr@exclude[#1,dcr@negateguard]{#2}{#3}%
-  \else
-    \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{$\overline{+}$}%
-    \dcr@srcrelation{dcr/logical include}{dcr/logical include marker}{}{0.5\dcr@rsize}%
-      {#1}{#2}{#3}%
-  \fi}
+  \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{\textpm}%
+  \dcr@srcrelation{dcr/logical include}{dcr/logical include marker}{}{0.5\dcr@rsize}%
+    {#1}{#2}{#3}}
+% (no longer used by the package; kept for documents that use it)
 \newcommand\dcrnotguard[1]{not(#1)}
 
 % \noresponse[opts]{from}{to} : brown "x" at from; from removes to's pending
@@ -1989,21 +1998,17 @@
     \tikzset{dcr/guards=none}%
     \ifdcr@classic\tikzset{dcr/delays=none, dcr/deadlines=none}%
     \else\tikzset{dcr/delays=marker, dcr/deadlines=marker}\fi
-    % classic/coopis23 draw a pre-condition and a logical include as two
-    % relations, stacked (condition / include on top)
-    \def\dcr@itotal{1}\dcr@inegfalse
+    % classic/coopis23 draw a pre-condition as two relations, stacked
+    % (condition on top)
+    \def\dcr@itotal{1}%
     \def\dcr@tmp{#2}%
     \ifdcr@classic
       \def\dcr@tmpb{precondition}\ifx\dcr@tmp\dcr@tmpb\def\dcr@itotal{2}\fi
-      \def\dcr@tmpb{logicalinclude}\ifx\dcr@tmp\dcr@tmpb\def\dcr@itotal{2}%
-        \ifx\dcr@ig\@empty\else\dcr@inegtrue\fi\fi   % exclude: not(guard)
     \fi
-    % colour of the guard: that of the relation (classic/coopis23 logical
-    % include: of its include); of the time: as in a graph
+    % colour of the guard: that of the relation; of the time: as in a graph
     \def\dcr@tmpb{logicalinclude}%
     \ifx\dcr@tmp\dcr@tmpb
-      \ifdcr@classic\def\dcr@istyle{dcr/include}\else
-        \def\dcr@istyle{dcr/logical include}\fi
+      \def\dcr@istyle{dcr/logical include}%
     \else
       \def\dcr@istyle{dcr/#2}%
     \fi
@@ -2016,11 +2021,6 @@
     \ifx\dcr@ig\@empty\else
       \setbox\z@\hbox{\dcr@font\dcr@ilabelsize\dcrguardformat{\dcr@ig}}%
       \ifdim\wd\z@>\dimen@\dimen@=\wd\z@\fi
-      \ifdcr@ineg
-        \setbox\z@\hbox{\dcr@font\dcr@ilabelsize
-          \dcrguardformat{\dcrnotguard{\dcr@ig}}}%
-        \ifdim\wd\z@>\dimen@\dimen@=\wd\z@\fi
-      \fi
     \fi
     \ifx\dcr@idelay\@empty\else
       \setbox\z@\hbox{\dcr@font\bfseries\dcr@ilabelsize\dcr@idelay}%
@@ -2051,10 +2051,6 @@
       \ifx\dcr@ig\@empty\else
         \node[\dcr@istyle, dcr/inline guard, anchor=south]
           at (0.5*\dcr@iL,\dcr@ioff) {\dcrguardformat{\dcr@ig}};
-        \ifdcr@ineg
-          \node[dcr/exclude, dcr/inline guard, anchor=north]
-            at (0.5*\dcr@iL,-\dcr@ioff) {\dcrguardformat{\dcrnotguard{\dcr@ig}}};
-        \fi
       \fi
       \ifx\dcr@idelay\@empty\else
         \node[dcr/inline time, \dcr@itstyle, anchor=north]
@@ -2068,7 +2064,6 @@
       \dcr@do
     \end{tikzpicture}%
   \endgroup}}
-\newif\ifdcr@ineg
 \NewDocumentCommand\dcrcondition{O{}}{\dcr@inline{condition}{#1}}
 \NewDocumentCommand\dcrresponse{O{}}{\dcr@inline{response}{#1}}
 \NewDocumentCommand\dcrinclude{O{}}{\dcr@inline{include}{#1}}
@@ -2202,8 +2197,8 @@
 
 local M = {}
 
--- notations with the relation set of the literature (no pre-condition, no
--- logical include, values as text): classic and coopis23
+-- notations with the relation set of the literature (no pre-condition,
+-- values as text): classic and coopis23
 local NOTATIONS = { ["dcr-solutions"] = true, classic = true, coopis23 = true }
 local function literature_notation(n)
   return n == "classic" or n == "coopis23"
@@ -2332,8 +2327,8 @@ local function merge_linked(rels)
           if not drop[j] and q.kind == b and q.link == r.link
              and q.from == r.from and q.to == r.to then
             -- keep both halves, for the classic notation (which has no
-            -- pre-condition or logical include: there they are drawn as
-            -- the two relations they are made of)
+            -- pre-condition: there it is drawn as the two relations it is
+            -- made of)
             local first = {}
             for k, v in pairs(r) do first[k] = v end
             r.parts = { first, q }
@@ -3363,14 +3358,15 @@ function M.read(file, optstring, adjustments)
   -- the DCR portal, is rejected as unbalanced)
   local dom = require("luaxml-domobject").parse(read_file(file), {})
   local graph = front_ends[detect_format(dom)](dom)
-  -- Classic and CoopIS2023 notation: pre-conditions and logical includes become the two
-  -- relations they are made of (condition + milestone; include + exclude,
-  -- each with its own guard); the milestone of a timed pre-condition
-  -- carries no time (milestones are not timed in the literature)
+  -- Classic and CoopIS2023 notation: pre-conditions become the two
+  -- relations they are made of (condition + milestone); the milestone of a
+  -- timed pre-condition carries no time (milestones are not timed in the
+  -- literature). A logical include stays one relation (->±, with the guard
+  -- of its include half)
   if literature_notation(opts.notation) then
     local rels = {}
     for _, r in ipairs(graph.relations) do
-      if r.parts then
+      if r.parts and r.kind == "precondition" then
         for _, p in ipairs(r.parts) do
           if p.kind == "milestone" then p.delay = nil end
           rels[#rels + 1] = p

@@ -29,9 +29,8 @@ port condition A21 (6.783,-14.666) -> A22 (6.217,-14.333)
 port condition A24 (6.783,-11.673) -> A22 (6.217,-12.006)
 port condition A5 (13.904,-3.233) -> A8 (19.217,-3.233)
 port exclude A19 (13.452,-13.17) -> A20 (15.374,-13.17)
-port exclude A6 (13.904,-6.63) -> A7 (15.826,-5.669)
 port include A3 (4.861,-6.404) -> A2 (6.783,-4.109)
-port include A6 (13.904,-7.105) -> A7 (15.826,-6.144)
+port logicalinclude A6 (13.904,-6.867) -> A7 (15.826,-5.907)
 port milestone A2 (9.383,-2.996) -> A5 (11.304,-2.996)
 port milestone A4 (9.383,-6.404) -> A5 (11.304,-4.109)
 port milestone A5 (13.904,-2.758) -> A8 (19.217,-2.758)
@@ -49,5 +48,4 @@ self exclude A2 at 0.182
 show deadline response A8 -> A9
 show delay condition A5 -> A8
 show guard condition A24 -> A22
-show guard exclude A6 -> A7
-show guard include A6 -> A7
+show guard logicalinclude A6 -> A7

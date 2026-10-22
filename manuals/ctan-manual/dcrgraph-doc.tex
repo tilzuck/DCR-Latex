@@ -148,6 +148,12 @@ whole graph or for single relations:
 \end{itemize}
 In the classic and coopis23 notations there are no shields or clocks:
 there the values are written as text by default, and \key{none} leaves them out.
+A guard is written on the left of its line (seen from the first event to
+the second); \key{guard side=right} puts it on the other side, e.g.\ below
+the lower of two parallel lines. Long guards break with \cs{\textbackslash}
+when the style has \key{align=center}
+(\key{guard label/.append style=\{align=center\}}); a line that starts with
+``\texttt{[}'' needs \cs{\textbackslash\{\}}.
 A relation from an event to itself shows its values too: next to its loop,
 away from the event (classic, coopis23), or above its marker
 (dcr-solutions). A loop goes round the corner given with
@@ -174,13 +180,13 @@ the same in all of them):
     triangle is hollow, with a ``!'').
 \end{itemize}
 \example{notation}
-The classic and coopis23 notations have no symbols for two relations of the DCR portal;
-they are drawn as what they mean: a pre-condition as a condition plus a
-milestone (a time on the condition only), a logical include with the guard
-$g$ as an include with the guard $g$ plus an exclude with the guard
-\texttt{not(}$g$\texttt{)} (format: \cs{dcrnotguard}). Update, no-response
-and spawn are not part of the coopis23 proposal; there they get their
-dcr-solutions symbol in the circle. The notation of a whole document:
+The classic and coopis23 notations have no symbol for the pre-condition;
+it is drawn as what it means: a condition plus a milestone (a time on the
+condition only). The logical include has no standard symbol in the
+literature either; it is drawn as in recent papers, an include arrow with
+``$\pm$'' instead of ``+'' (coopis23: ``$\pm$'' in the circle), with its one
+guard. Update, no-response, spawn and logical include are not part of the
+coopis23 proposal; there they get their dcr-solutions symbol in the circle. The notation of a whole document:
 \cs{usepackage[classic]\{dcrgraph\}} or \cs{usepackage[coopis23]\{dcrgraph\}};
 of one graph: \key{notation=classic} or \key{notation=coopis23}.
 
@@ -385,6 +391,9 @@ Option & Meaning\\
 \key{guard}, \key{guard=\{}\meta{expr}\key{\}} & guard: shield, or the expression\\
 \key{explicit=\{guard,delay,deadline\}} & write these values of this relation as
   text; \key{explicit} alone: all\\
+\key{guard side=left|right} & the side of the line (seen from the first to
+  the second event) where the guard is written as text (default
+  \key{left})\\
 \key{via=\{(x1,y1),(x2,y2)\}} & route the line through these points\\
 \key{selfpos=}\meta{length} & for a relation from an event to itself: where its
   marker sits on the top edge (its centre, from the left edge); without it,
@@ -575,8 +584,7 @@ punctuation: \verb|A \dcrcondition.|).
 For \texttt{>} and \texttt{<} in guards, use \cs{usepackage[T1]\{fontenc\}}
 (with the old default encoding OT1 they print as other characters).
 
-The format of guards on lines: \cs{dcrguardformat}; of the negated guard of a
-logical include in the classic and coopis23 notations: \cs{dcrnotguard}.
+The format of guards on lines: \cs{dcrguardformat}.
 
 % =====================================================================
 \appendix
