@@ -28,20 +28,15 @@
 \lstset{basicstyle=\ttfamily\footnotesize, columns=fullflexible, keepspaces,
   upquote=true, breaklines, breakindent=4em, postbreak={},
   moredelim=[il][\color{newcode}]{\\NEW}}
-% \example{name}: examples/name.tex as code, and below it what it produces,
-% scaled down to the width of the text if it is wider
-\newsavebox\cbpicture
+% every graph at most as wide as the text (scaled down if wider)
+\dcrset{max width=\linewidth}
+% \example{name}: examples/name.tex as code, and below it what it produces
 \newcommand\example[1]{%
   \begin{tcolorbox}[enhanced, breakable, colback=white, colframe=black!25,
       boxrule=0.4pt, arc=1mm, left=2mm, right=2mm, halign lower=center]
     \lstinputlisting{examples/#1.tex}
     \tcblower
-    \sbox\cbpicture{\input{examples/#1}}%
-    \ifdim\wd\cbpicture>\linewidth
-      \resizebox{\linewidth}{!}{\usebox\cbpicture}%
-    \else
-      \usebox\cbpicture
-    \fi
+    \input{examples/#1}%
   \end{tcolorbox}}
 \newcommand\cs[1]{\texttt{\textbackslash#1}}
 \newcommand\key[1]{\texttt{#1}}

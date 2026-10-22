@@ -45,6 +45,7 @@
 \ProcessOptions\relax
 
 \RequirePackage{tikz}
+\RequirePackage{graphicx}                   % \scalebox (width= etc.)
 \PassOptionsToPackage{breakall}{truncate}  % allow cutting inside words
 \RequirePackage{truncate}                   % "DCRAgent.Crea..." subtitles
 \usetikzlibrary{arrows.meta,positioning,calc,fit,shapes.geometric}
@@ -1864,6 +1865,61 @@
 
 \providecommand\checkmark{\ensuremath{\surd}}
 
+% Size of the whole graph, for a graph or (\dcrset) a document:
+%   width=, height=        exactly this size (both: as large as fits in
+%                          both, the aspect ratio is kept)
+%   max width=, max height= at most this size: only shrinks
+% The graph is scaled as a whole, text and markers included (like
+% \resizebox). The picture is typeset into a box, measured and scaled at
+% the end of the environment.
+\def\dcr@w{}\def\dcr@h{}\def\dcr@maxw{}\def\dcr@maxh{}
+\tikzset{
+  dcr/width/.code={\def\dcr@w{#1}},
+  dcr/height/.code={\def\dcr@h{#1}},
+  dcr/max width/.code={\def\dcr@maxw{#1}},
+  dcr/max height/.code={\def\dcr@maxh{#1}},
+}
+\newsavebox\dcr@gbox
+\ExplSyntaxOn
+\fp_new:N \l__dcr_scale_fp
+% #1 limit (a length or empty), #2 the size of the box in that direction:
+% the scale factor becomes at most #1 / #2
+\cs_new_protected:Npn \__dcr_limit:nn #1#2
+  {
+    \tl_if_blank:nF {#1}
+      {
+        \dim_compare:nNnT {#2} > { 0pt }
+          {
+            \fp_set:Nn \l__dcr_scale_fp
+              { min ( \l__dcr_scale_fp , \dim_to_fp:n {#1} / \dim_to_fp:n {#2} ) }
+          }
+      }
+  }
+\cs_generate_variant:Nn \__dcr_limit:nn { V }
+% the graph in \dcr@gbox, scaled to the sizes in \dcr@g@w etc.
+\cs_new_protected:Npn \dcr@placegraph
+  {
+    \bool_lazy_all:nTF
+      {
+        { \tl_if_blank_p:V \dcr@g@w } { \tl_if_blank_p:V \dcr@g@h }
+        { \tl_if_blank_p:V \dcr@g@maxw } { \tl_if_blank_p:V \dcr@g@maxh }
+      }
+      { \usebox \dcr@gbox }
+      {
+        % exact size: the smaller factor of width= and height=; none: 1
+        \fp_set_eq:NN \l__dcr_scale_fp \c_inf_fp
+        \__dcr_limit:Vn \dcr@g@w { \box_wd:N \dcr@gbox }
+        \__dcr_limit:Vn \dcr@g@h { \box_ht_plus_dp:N \dcr@gbox }
+        \fp_compare:nNnT \l__dcr_scale_fp = \c_inf_fp
+          { \fp_set:Nn \l__dcr_scale_fp { 1 } }
+        % at most: only shrink
+        \__dcr_limit:Vn \dcr@g@maxw { \box_wd:N \dcr@gbox }
+        \__dcr_limit:Vn \dcr@g@maxh { \box_ht_plus_dp:N \dcr@gbox }
+        \scalebox { \fp_use:N \l__dcr_scale_fp } { \usebox \dcr@gbox }
+      }
+  }
+\ExplSyntaxOff
+
 \def\dcr@begintikz#1{\begin{tikzpicture}[#1]}
 \newenvironment{dcrgraph}[1][]{%
   \let\activity\dcr@activity
@@ -1884,9 +1940,16 @@
   \let\exclude\dcr@exclude   % usual in the rest of the document
   \pgfsetlayers{dcrnest6,dcrnest5,dcrnest4,dcrnest3,dcrnest2,dcrnest1,main}%
   \dcr@mapopts{#1}%   settings without dcr/, see \dcrset
+  % into a box (as lrbox does), scaled at the end: see width= etc.
+  \setbox\dcr@gbox\hbox\bgroup\color@setgroup
   \expandafter\dcr@begintikz\expandafter{\dcr@opts}%
 }{%
+    % the sizes set in the options, out of the picture's group
+    \global\let\dcr@g@w\dcr@w \global\let\dcr@g@h\dcr@h
+    \global\let\dcr@g@maxw\dcr@maxw \global\let\dcr@g@maxh\dcr@maxh
   \end{tikzpicture}%
+  \color@endgroup\egroup
+  \dcr@placegraph
 }
 
 % ------------------------------------------------------------------
@@ -2084,6 +2147,8 @@
 %                        (default: straight lines between the boxes)
 %    notation=classic    notation (dcr-solutions, classic, coopis23), as for the dcrgraph environment
 %    scale=0.8           scale positions (box sizes and text stay the same)
+%    width=, height=, max width=, max height=   size of the whole graph,
+%                        scaled as a whole (as for the dcrgraph environment)
 %    marking=false       leave out executed / pending / excluded
 %    By default the graph looks like the DCR portal: guards, delays and
 %    deadlines only as markers (shield, clock), no values. To show values:
@@ -3081,6 +3146,7 @@ local function emit(graph, opts, lay)
   for _, k in ipairs({ "guards", "delays", "deadlines" }) do
     if opts[k] then env[#env + 1] = k .. "=" .. opts[k] end
   end
+  for _, sz in ipairs(opts.size) do env[#env + 1] = sz[1] .. "={" .. sz[2] .. "}" end
   -- guards/delays/deadlines={...}: mark the named relations; explicit[i]
   -- = the parts of relation i to show as text
   local explicit = M.explicit_parts(graph, opts)
@@ -3218,7 +3284,7 @@ end
 -- "a, b=c, d={e,f}" -> table; top-level commas only
 local function parse_options(str)
   local opts = { format = "auto", scale = 1, marking = true, waypoints = false,
-                 targets = {} }
+                 targets = {}, size = {} }
   local parts, depth, cur = {}, 0, ""
   for c in (str or ""):gmatch(".") do
     if c == "{" then depth = depth + 1 elseif c == "}" then depth = depth - 1 end
@@ -3256,6 +3322,10 @@ local function parse_options(str)
       elseif k == "explicit" then
         -- all values as text
         opts.explicit_all = true
+      elseif k == "width" or k == "height" or k == "max width" or k == "max height" then
+        -- the size of the whole graph: passed on to the environment
+        if not v or v == "" then fail(k .. "= needs a length") end
+        opts.size[#opts.size + 1] = { k, v }
       else warn("unknown option `" .. k .. "' ignored") end
     end
   end
@@ -3461,6 +3531,9 @@ function M.describe_layout(graph, opts)
   end
   for id, extra in pairs(lay.nextra) do
     lines[#lines + 1] = "adjust " .. id .. ": " .. table.concat(extra, ", ")
+  end
+  for _, sz in ipairs(opts.size) do
+    lines[#lines + 1] = "size " .. sz[1] .. "=" .. sz[2]
   end
   -- which values are written as text (options guards=, delays=,
   -- deadlines=, explicit; for the whole graph or single relations)

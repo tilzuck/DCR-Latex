@@ -204,6 +204,15 @@ widths and the font are settings of the graph or the document
 (Section~\ref{sec:settings}); boxes have any size.
 \example{sizes}
 
+\paragraph{Fitting the page.} A graph that is too wide for the page is
+scaled down as a whole with \key{max width=\cs{linewidth}}: for one graph
+(\cs{begin\{dcrgraph\}[max width=\cs{linewidth}]},
+\cs{includedcrgraph[max width=\cs{linewidth}]\{\dots\}}) or for the whole
+document (\cs{dcrset\{max width=\cs{linewidth}\}}). Graphs that fit stay as
+they are. \key{width=} and \key{height=} set the exact size;
+\key{max height=} limits the height. Text and markers are scaled with the
+graph; to spread out only the positions of an import, use \key{scale=}.
+
 \subsection{Symbols in running text}
 For papers, every relation has a command for running text and formulas,
 \cs{dcr}\meta{relation}\oarg{options}. It draws the relation as in a graph,
@@ -438,6 +447,11 @@ Setting & Meaning (default)\\
   the markers (shield, clock); classic and coopis23 have no shields or
   clocks and show the values as text. \key{explicit} adds the text (dcr-solutions),
   \key{none} shows nothing at all (all notations).}\\
+\key{width=}, \key{height=} & the whole graph exactly this wide / high
+  (both: as large as fits in both; the aspect ratio is kept)\\
+\key{max width=}, \key{max height=} & the whole graph at most this wide /
+  high: scaled down if larger, never enlarged. The graph is scaled as a
+  whole, text included (as with \cs{resizebox})\\
 \key{font=} & font of the graph (\cs{sffamily})\\
 \key{subtitle font=} & font of subtitles\\
 \key{bgcolor=}, \key{nesting bgcolor=} & default backgrounds\\
@@ -504,6 +518,9 @@ Option & Meaning\\
 \key{explicit} & all values as text\\
 \key{marking=false} & without executed / pending / excluded\\
 \key{scale=}\meta{factor} & scale the positions (not the boxes)\\
+\key{width=}, \key{height=}, & size of the whole graph, as for the
+  environment (Section~\ref{sec:settings})\\
+\key{max width=}, \key{max height=} & \\
 \key{export=}\meta{file.tex} & also write the generated code to a file, and
   into the \texttt{.log}\\
 \key{format=} & not needed: the format (DCR Solutions XML or DCR-js XML) is

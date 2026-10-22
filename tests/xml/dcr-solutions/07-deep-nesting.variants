@@ -31,3 +31,6 @@ unknown-activity:
   \adjustactivity{A9}{shift={(1,0)}}
 unknown-relation:
   \adjustrelation{A1 include A7}{from=south}
+
+# size of the whole graph (scaled as a whole; the layout itself is unchanged)
+max-width: max width=0.8\linewidth

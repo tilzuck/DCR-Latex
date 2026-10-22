@@ -148,6 +148,7 @@ All `\command[options]{label}{id}{child1, child2, …}`, written after their chi
 - [ ] `coopis bend=`
 - [ ] `data size=`, `dmn size=`, `tick size=`, `guard size=`
 - [ ] `parallel distance=`
+- [ ] Size of the whole graph: `max width=\linewidth` (only shrinks), `max height=`, `width=`, `height=` – per graph, per import, or document-wide with `\dcrset`; scales text too
 - [ ] Overriding a style with `\tikzset{dcr/… /.append style=…}`
 
 ### Colours (`\colorlet{…}{…}`)
