@@ -139,15 +139,21 @@ guard, a clock for a time. Their values can be written as text, for the
 whole graph or for single relations:
 \example{values}
 \begin{itemize}
-  \item For the graph: \key{dcr/guards=}, \key{dcr/delays=},
-    \key{dcr/deadlines=} with \key{explicit} (the value as text), \key{none}
+  \item For the graph: \key{guards=}, \key{delays=},
+    \key{deadlines=} with \key{explicit} (the value as text), \key{none}
     (nothing at all, not even the marker), or the default (\key{shield},
-    \key{marker}); \key{dcr/explicit} for all three.
+    \key{marker}); \key{explicit} for all three.
   \item For one relation: \key{explicit=guard}, \key{explicit=\{delay,guard\}},
     \key{explicit} (all).
 \end{itemize}
 In the classic and coopis23 notations there are no shields or clocks:
 there the values are written as text by default, and \key{none} leaves them out.
+A relation from an event to itself shows its values too: next to its loop,
+away from the event (classic, coopis23), or above its marker
+(dcr-solutions). A loop goes round the corner given with
+\key{corner=}, otherwise round the next free corner. The text size is the
+style \key{guard label} (guards) and \key{delay label} (times):
+\example{self-values}
 
 \subsection{Collections}
 Nestings, subprocesses, forms and subgraphs group
@@ -176,7 +182,7 @@ $g$ as an include with the guard $g$ plus an exclude with the guard
 and spawn are not part of the coopis23 proposal; there they get their
 dcr-solutions symbol in the circle. The notation of a whole document:
 \cs{usepackage[classic]\{dcrgraph\}} or \cs{usepackage[coopis23]\{dcrgraph\}};
-of one graph: \key{dcr/notation=classic} or \key{dcr/notation=coopis23}.
+of one graph: \key{notation=classic} or \key{notation=coopis23}.
 
 \subsection{Customisation}
 \paragraph{Colours.} \key{bgcolor}, \key{bordercolor} and \key{textcolor} take
@@ -288,8 +294,10 @@ warning. Details: Appendix~\ref{sec:compat}.
 \begin{tabularx}{\linewidth}{@{}lL@{}}
 \toprule
 \cs{begin\{dcrgraph\}}\oarg{options} & A Ti\emph{k}Z picture; options:
-  any Ti\emph{k}Z option, and the settings of Section~\ref{sec:settings} with
-  the prefix \key{dcr/} (e.g. \key{dcr/notation=classic}).\\
+  any Ti\emph{k}Z option, and the settings of Section~\ref{sec:settings}
+  (e.g. \key{notation=classic}). A setting wins over a Ti\emph{k}Z key of
+  the same name (\key{font=}); the prefix \key{dcr/}
+  (\key{dcr/notation=classic}) still works.\\
 \bottomrule
 \end{tabularx}
 
@@ -382,6 +390,10 @@ Option & Meaning\\
   marker sits on the top edge (its centre, from the left edge); without it,
   the markers are lined up from the left corner (\cs{includedcrgraph} sets
   it, keeping clear of other relations)\\
+\key{corner=}\meta{corner} & classic, coopis23: for a relation from an event
+  to itself, the corner of its loop (\key{north east}, \key{north west},
+  \key{south east}, \key{south west}); without it, the next corner no other
+  loop of the event uses\\
 \key{bundle=}\meta{node}\key{:}\meta{name} & spread this relation together with
   the others of the same bundle, as if they were parallel; for relations
   with a common end \meta{node} whose lines or markers would lie on top of
@@ -392,12 +404,15 @@ anything else & Ti\emph{k}Z: \key{bend left=20}, \key{out=90}, \dots\\
 
 \medskip\noindent
 A relation from an event to itself is drawn as a marker above the event
-(dcr-solutions) or a loop round a corner (classic, coopis23). Several relations between the same two events
+(dcr-solutions) or a loop round a corner (classic, coopis23); its guard
+and time, if shown as text, are written above the marker or next to the
+loop. Several relations between the same two events
 are spread out automatically, unless they have Ti\emph{k}Z options.
 
 \subsection{Settings}\label{sec:settings}
-With \cs{dcrset}\marg{settings} for the document, or as \key{dcr/}\meta{setting}
-in the options of one graph.
+With \cs{dcrset}\marg{settings} for the document, or in the options of one
+graph: \cs{begin\{dcrgraph\}[notation=classic, explicit]}. Styles are changed
+the same way: \key{guard label/.append style=\{font=\cs{sffamily}\cs{small}\}}.
 
 \medskip
 \begin{tabularx}{\linewidth}{@{}lL@{}}
@@ -430,6 +445,9 @@ Setting & Meaning (default)\\
   radius (0\,pt: straight lines)\\
 \key{data size=}, \key{dmn size=}, & sizes of the icons\\
 \key{guard size=}, \key{tick size=} & \\
+\key{guard label} (style) & guards as text (\cs{scriptsize}); change with
+  \key{guard label/.append style=\{\dots\}}\\
+\key{delay label} (style) & delays and deadlines as text (bold \cs{scriptsize})\\
 \bottomrule
 \end{tabularx}
 
@@ -545,9 +563,9 @@ Key & \multicolumn{3}{@{}l@{}}{Meaning}\\
 As with \cs{xrightarrow}, guard and time are centred on the line, close to
 it, and the symbol is exactly as wide as its line. Other options of
 relations (Ti\emph{k}Z options) work as in a graph. Sizes are in em, so the
-symbols follow the font size; the sizes are the style \key{dcr/inline}, e.g.\
+symbols follow the font size; the sizes are the style \key{inline}, e.g.\
 \cs{dcrset\{inline/.append style=\{dcr/relation width=0.08em\}\}}, the
-distance of guard and time from the line \key{dcr/inline label distance}
+distance of guard and time from the line \key{inline label distance}
 (default 0.12em). A symbol behaves like \cs{rightarrow}, and with a guard or
 time like \cs{xrightarrow}: in math it is a relation (same spacing, line
 breaks), in sub- and superscripts it shrinks with its guard and time

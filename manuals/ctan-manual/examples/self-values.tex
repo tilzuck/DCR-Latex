@@ -1,0 +1,10 @@
+\begin{dcrgraph}[notation=classic,
+                 guard label/.append style={font=\sffamily\small}]
+  \activity[pending]{Approve or Reject}{a}
+  \activity[right=3cm of a, excluded]{Justify rejection}{j}
+  \exclude[guard={Approve=1}]{a}{j}
+  \response[guard={Approve=0}]{a}{j}
+  \include[guard={Approve=0}]{a}{j}
+  \response[guard={Approve=null}, corner=north west]{a}{a}  % loop top left
+  \response[guard={Justify=null}, deadline=P2D]{j}{j}        % next free corner
+\end{dcrgraph}

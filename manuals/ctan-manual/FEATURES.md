@@ -13,7 +13,7 @@ XML** → **3. Reference** (every command, key and colour, complete).
 
 - [ ] `\usepackage{dcrgraph}`: default notation dcr-solutions (DCR portal look)
 - [ ] Package options: `[dcr-solutions]`, `[classic]`, `[coopis23]`
-- [ ] Notation of one graph: `\begin{dcrgraph}[dcr/notation=classic]`
+- [ ] Notation of one graph: `\begin{dcrgraph}[notation=classic]` (settings need no `dcr/` prefix; it still works)
 - [ ] Notation of the rest of the document: `\dcrset{notation=…}`
 - [ ] The same graph in all three notations (side by side)
 - [ ] classic / coopis23: a pre-condition is drawn as condition + milestone
@@ -75,9 +75,9 @@ Commands, all `\relation[options]{from}{to}`:
 - [ ] `deadline=…`: only responses
 - [ ] Error for a wrong time key (`delay=` on a response, `deadline=` on anything but a response, a time on other relations) — mention in text
 - [ ] dcr-solutions: shield for guards, clock marker for times (default)
-- [ ] Graph settings `dcr/guards=shield|explicit|both|none`
-- [ ] Graph settings `dcr/delays=marker|explicit|none`, `dcr/deadlines=marker|explicit|none`
-- [ ] `dcr/explicit` (all values as text, whole graph)
+- [ ] Graph settings `guards=shield|explicit|both|none`
+- [ ] Graph settings `delays=marker|explicit|none`, `deadlines=marker|explicit|none`
+- [ ] `explicit` (all values as text, whole graph)
 - [ ] `explicit`, `explicit={guard,delay,deadline}` on one relation
 - [ ] Guard format: `\dcrguardformat`; negated guard: `\dcrnotguard`
 
@@ -94,7 +94,9 @@ Commands, all `\relation[options]{from}{to}`:
 - [ ] `\exclude{a}{a}` etc.: dcr-solutions marker on the top edge; several side by side
 - [ ] `selfpos=` (dcr-solutions: position of the marker on the top edge)
 - [ ] classic / coopis23: a loop at a corner, corners in turn
-- [ ] `corner=north west|north east|south east|south west` (classic / coopis23)
+- [ ] `corner=north west|north east|south east|south west` (classic / coopis23); without it the next free corner
+- [x] Guard and time of a self-relation as text (next to the loop / above the marker) – examples/self-values.tex
+- [x] Text size of guards and times: styles `guard label`, `delay label` (`guard label/.append style={font=...}`) – examples/self-values.tex
 
 ## 4. Collections
 
