@@ -34,7 +34,7 @@
 %                                 DCR-js): triangle at the source, circled
 %                                 symbol at the target
 % It can also be switched per document (\dcrset{notation=...}), per graph
-% (\begin{dcrgraph}[dcr/notation=...]) or per inline symbol (notation=...).
+% (\begin{dcrgraph}[notation=...]) or per inline symbol (notation=...).
 % coopis23 is classic with other symbols: \ifdcr@classic is true for
 % both (same relations, same translations, values as text).
 \newif\ifdcr@classic
@@ -318,6 +318,18 @@
     rectangle
     ([shift={(#3\dcr@rsize,#4\dcr@rsize)}]path picture bounding box.center);}
 
+% The marking of box #1, top left, #2 below its top edge (the header):
+% "!" (pending), then the tick (executed), standing on the baseline of the
+% "!". As in the DCR portal, the tick always has the same place, also
+% without "!" (an invisible "!" keeps the geometry the same).
+\newcommand\dcr@marking[2]{%
+  \ifdcr@pending\dcr@markingnode{#1}{#2}{!}%
+  \else\ifdcr@executed\dcr@markingnode{#1}{#2}{\phantom{!}}\fi\fi}
+\newcommand\dcr@markingnode[3]{%
+  \node[dcr/pending marker, inner xsep=0pt, anchor=north west]
+    (#1@pending) at ([xshift=7pt,yshift=-#2-1pt]#1.north west) {#3};
+  \ifdcr@executed \dcr@tick[2.5pt]{#1@pending.base east}\fi}
+
 % ------------------------------------------------------------------
 %  Option parsing for \activity: DCR keys are handled here, every
 %  other key (at=, right=of, xshift=, ...) is forwarded to the node.
@@ -336,6 +348,16 @@
 \def\dcr@resetflags{\dcr@pendingfalse\dcr@executedfalse\dcr@excludedfalse
   \dcr@datafalse\dcr@computationfalse\dcr@globalfalse\dcr@dmnfalse
   \dcr@accessfalse\dcr@formfalse\dcr@subgraphfalse}
+
+% for the .unknown handlers: the current key, with its value #2 (if
+% any), appended to the option list in macro #1 (passed on to TikZ)
+\newcommand\dcr@passon[2]{%
+  \def\dcr@val{#2}%
+  \ifx\dcr@val\pgfkeysnovalue@text
+    \edef#1{\unexpanded\expandafter{#1}\pgfkeyscurrentname,}%
+  \else
+    \edef#1{\unexpanded\expandafter{#1}\pgfkeyscurrentname={\unexpanded{#2}},}%
+  \fi}
 
 \pgfkeys{
   /dcr@act/.is family, /dcr@act,
@@ -358,15 +380,7 @@
   area/.store in=\dcr@area,           % nestings: exact box {(x1,y1)(x2,y2)}
   excluded/.code=\dcr@excludedtrue,
   included/.code=\dcr@excludedfalse,
-  .unknown/.code={%
-    \let\dcr@key\pgfkeyscurrentname
-    \def\dcr@val{#1}%
-    \ifx\dcr@val\pgfkeysnovalue@text
-      \edef\dcr@tikzopts{\unexpanded\expandafter{\dcr@tikzopts}\dcr@key,}%
-    \else
-      \edef\dcr@tikzopts{\unexpanded\expandafter{\dcr@tikzopts}%
-        \dcr@key={\unexpanded{#1}},}%
-    \fi},
+  .unknown/.code={\dcr@passon\dcr@tikzopts{#1}},
 }
 
 % ------------------------------------------------------------------
@@ -389,6 +403,9 @@
       \ifx\dcr@receiver\@empty\else dcr/receiver band,\fi
       \unexpanded\expandafter{\dcr@tikzopts}, dcr/fit label] (#3)}%
     \dcr@do {};
+    % the rest relative to the box, which does not scale: on the canvas
+    % (else scale= would move the header line, icons etc.)
+    \pgftransformreset
     % receiver (choreographies): a grey band at the bottom, as high as the
     % header, with the receiver roles. Filled inside the outline only (the
     % clip is the inner edge of the border line), then the line above it.
@@ -434,20 +451,7 @@
         {#2\\[3pt]{\dcr@font\dcr@subfont\color{dcr subtitle}%
           \truncate{\dimexpr\dcr@lw-0.1cm\relax}{\dcr@subtitle}}};
     \fi
-    % state markers, top left: "!" (pending), then the tick (executed),
-    % standing on the baseline of the "!". As in the DCR portal, the tick
-    % always has the same place, also without "!" (an invisible "!" keeps
-    % the geometry the same).
-    \ifdcr@pending
-      \node[dcr/pending marker, inner xsep=0pt, anchor=north west]
-        (#3@pending) at ([xshift=7pt,yshift=-\dcr@header-1pt]#3.north west) {!};
-      \ifdcr@executed \dcr@tick[2.5pt]{#3@pending.base east}\fi
-    \else\ifdcr@executed
-      \node[dcr/pending marker, inner xsep=0pt, anchor=north west]
-        (#3@pending) at ([xshift=7pt,yshift=-\dcr@header-1pt]#3.north west)
-        {\phantom{!}};
-      \dcr@tick[2.5pt]{#3@pending.base east}%
-    \fi\fi
+    \dcr@marking{#3}{\dcr@header}%
     % right-hand icons, placed right to left: data page, DMN table, =, #
     \setlength\dcr@rx{3pt}%
     \ifdcr@data   % a "page" tucked into the corner under the header
@@ -547,8 +551,8 @@
   \pgfmathsetmacro\dcr@py{\dcr@by+\dcr@tt*\dcr@uy}%
 }
 
-% #1 line style, #2 marker style, #3 marker text, #4 marker half size,
-% #5 user options, #6 from, #7 to
+% #1 line style, #2 marker style, #3 marker half size, #4 user options,
+% #5 from, #6 to
 % Relation options: DCR keys are handled here, everything else goes to
 % TikZ (bend left, out=..., etc.).
 %   delay=PT10S   delay of a condition (also a pre-condition)
@@ -564,9 +568,9 @@
 %                 text, whatever the settings for the graph say (delay: the
 %                 time of a condition etc., deadline: the time of a
 %                 response); plain `explicit' = all three
-%   corner=north west   self-relation in Classic / CoopIS2023: the corner
-%                 of the loop (north east, north west, south east, south
-%                 west); default: the corners in turn
+%   corner=north west   self-relation in Classic: the corner of the loop
+%                 (north east, north west, south east, south west);
+%                 default: the next free corner
 %   via={(x1,y1),(x2,y2),...}   route the line through these points
 %   bundle=<node>:<name>   spread this relation with the others of the same
 %                 bundle, as if they were parallel (for relations with a
@@ -600,30 +604,35 @@
   guard side/.is choice,
   guard side/left/.code={\def\dcr@gside{left}},
   guard side/right/.code={\def\dcr@gside{right}},
-  % internal, for the classic translation of a pre-condition
+  % internal, for the classic translation of a pre-condition: the milestone
+  % has no time and no guard (both are written at the condition), and the
+  % two lines of a route run side by side (dcr@shift: the route moved
+  % sideways, to the left seen from `from')
   dcr@nodelay/.code={\def\dcr@delay{}},
-  .unknown/.code={%
-    \let\dcr@key\pgfkeyscurrentname
-    \def\dcr@val{#1}%
-    \ifx\dcr@val\pgfkeysnovalue@text
-      \edef\dcr@ropts{\unexpanded\expandafter{\dcr@ropts}\dcr@key,}%
-    \else
-      \edef\dcr@ropts{\unexpanded\expandafter{\dcr@ropts}%
-        \dcr@key={\unexpanded{#1}},}%
-    \fi},
+  dcr@noguard/.code={\dcr@guardfalse\def\dcr@gexpr{}},
+  dcr@shift/.store in=\dcr@rshift,
+  .unknown/.code={\dcr@passon\dcr@ropts{#1}},
 }
 
 \def\dcr@kw@condition{dcr/condition}\def\dcr@kw@response{dcr/response}
 \def\dcr@kw@precondition{dcr/precondition}
-\newcommand\dcr@relation[7]{%
+\newcommand\dcr@relation[6]{%
   \begingroup
-  \def\dcr@from{#6}\def\dcr@to{#7}%
+  \def\dcr@from{#5}\def\dcr@to{#6}%
   \def\dcr@ropts{}\def\dcr@delay{}\def\dcr@deadline{}\def\dcr@via{}%
   \dcr@guardfalse\def\dcr@gexpr{}\def\dcr@off{0}%
   \dcr@xguardfalse\dcr@xdelayfalse\dcr@xdeadlinefalse\def\dcr@bundle{}%
-  \def\dcr@selfpos{}\def\dcr@corner{}\def\dcr@gside{left}%
-  \pgfkeys{/dcr@rel,#5}%
+  \def\dcr@selfpos{}\def\dcr@corner{}\def\dcr@gside{left}\def\dcr@rshift{0pt}%
+  \pgfkeys{/dcr@rel,#4}%
   \ifx\dcr@via\@empty\dcr@routedfalse\else\dcr@routedtrue\fi
+  % The points of a route are in the coordinates of the picture (scale=
+  % etc. apply); everything else is drawn relative to the boxes, which do
+  % not scale, from points computed on the canvas: no transformation from
+  % here on (else scale= would move the markers off the lines)
+  \ifdcr@routed
+    \dcr@nv=0 \expandafter\dcr@vp@next\dcr@via\dcr@vp@end
+  \fi
+  \pgftransformreset
   % The time: a condition (also the condition in a pre-condition) has a
   % delay, a response a deadline, other relations none. From here on, the
   % time of either kind is \dcr@delay.
@@ -669,9 +678,8 @@
     \fi
   \fi
   \ifdcr@xguard\dcr@gtexttrue\dcr@gshieldfalse\fi
-  % time
-  \def\dcr@tmp{#1}\def\dcr@tmpb{dcr/response}%
-  \ifx\dcr@tmp\dcr@tmpb\let\dcr@tm\dcr@lmode\else\let\dcr@tm\dcr@dmode\fi
+  % time (\dcr@tmp is still the relation style)
+  \ifx\dcr@tmp\dcr@kw@response\let\dcr@tm\dcr@lmode\else\let\dcr@tm\dcr@dmode\fi
   \dcr@ttextfalse\dcr@tclockfalse
   \ifx\dcr@tm\dcr@kw@none\else
     \ifdcr@classic
@@ -681,7 +689,7 @@
       \ifx\dcr@tm\dcr@kw@explicit\dcr@ttexttrue\fi
     \fi
   \fi
-  \ifx\dcr@tmp\dcr@tmpb
+  \ifx\dcr@tmp\dcr@kw@response
     \ifdcr@xdeadline\dcr@ttexttrue\fi
   \else
     \ifdcr@xdelay\dcr@ttexttrue\fi
@@ -696,14 +704,14 @@
   \fi\fi
   \ifdcr@coopis
     \edef\dcr@next{\noexpand\dcr@coopisrelation{\unexpanded{#1}}%
-      {\unexpanded\expandafter{\dcr@ropts}}{\unexpanded{#6}}{\unexpanded{#7}}}%
+      {\unexpanded\expandafter{\dcr@ropts}}{\unexpanded{#5}}{\unexpanded{#6}}}%
   \else\ifdcr@classic
     \edef\dcr@next{\noexpand\dcr@classicrelation{\unexpanded{#1}}%
-      {\unexpanded\expandafter{\dcr@ropts}}{\unexpanded{#6}}{\unexpanded{#7}}}%
+      {\unexpanded\expandafter{\dcr@ropts}}{\unexpanded{#5}}{\unexpanded{#6}}}%
   \else
     \edef\dcr@next{\noexpand\dcr@portalrelation{\unexpanded{#1}}%
-      {\unexpanded\expandafter{\dcr@mstyle}}{\unexpanded{#3}}{\unexpanded{#4}}%
-      {\unexpanded\expandafter{\dcr@ropts}}{\unexpanded{#6}}{\unexpanded{#7}}}%
+      {\unexpanded\expandafter{\dcr@mstyle}}{\unexpanded{#3}}%
+      {\unexpanded\expandafter{\dcr@ropts}}{\unexpanded{#5}}{\unexpanded{#6}}}%
   \fi\fi
   \dcr@next
   \endgroup}
@@ -759,10 +767,7 @@
     \pgfmathsetmacro\dcr@lx{\dcr@px+(#2+2)*\dcr@ux+5*\dcr@nx}%
     \pgfmathsetmacro\dcr@ly{\dcr@py+(#2+2)*\dcr@uy+5*\dcr@ny}%
     \pgfmathsetmacro\dcr@la{atan2(-\dcr@ny-\dcr@uy,-\dcr@nx-\dcr@ux)}%
-    % colour: "<relation> delay label" if defined (response: blue)
-    \pgfkeysifdefined{/tikz/#1 delay label/.@cmd}%
-      {\tikzset{dcr/this delay label/.style={#1 delay label}}}%
-      {\tikzset{dcr/this delay label/.style={}}}%
+    \dcr@thisdelaylabel{#1}%   colour (response: blue)
     \node[dcr/delay label, dcr/this delay label, anchor=\dcr@la]
       at (\dcr@lx pt,\dcr@ly pt) {\dcr@delay};
   \fi\fi
@@ -819,21 +824,29 @@
 % style also writes the guard of a self-relation, which has no line)
 \tikzset{dcr/guard label/.style={font=\dcr@font\scriptsize, inner sep=2pt},
   % the relation key guard side=right: the other side of the line
-  dcr/guard@side/.code={\ifx\dcr@gside\dcr@kw@right\pgfkeysalso{/tikz/swap}\fi}}
+  dcr/guard@side/.code={\ifx\dcr@gside\dcr@kw@right\pgfkeysalso{/tikz/swap}\fi},
+  % the guard as a label of a line, halfway along it
+  dcr/guard@line/.style={midway, auto, dcr/guard@side, sloped=false, dcr/guard label}}
 \def\dcr@kw@right{right}
 \newcommand\dcr@guardlabel[4]{% #1 style, #2 tikz options, #3 from, #4 to
   \ifdcr@guard\ifdcr@gtext\ifx\dcr@gexpr\@empty\else
     \ifdcr@auto
-      \path (dcr@s) -- node[#1, midway, auto, dcr/guard@side, sloped=false, dcr/guard label] {\dcrguardformat{\dcr@gexpr}} (dcr@e);
+      \path (dcr@s) -- node[#1, dcr/guard@line] {\dcrguardformat{\dcr@gexpr}} (dcr@e);
     \else\ifdcr@routed
       % routed relation: halfway along the middle segment
       \dcr@i=\numexpr(\dcr@np-1)/2\relax
-      \path (dcr@p\the\dcr@i) -- node[#1, midway, auto, dcr/guard@side, sloped=false, dcr/guard label]
+      \path (dcr@p\the\dcr@i) -- node[#1, dcr/guard@line]
         {\dcrguardformat{\dcr@gexpr}} (dcr@p\the\numexpr\dcr@i+1\relax);
     \else
-      \path[#2] (#3) to node[#1, midway, auto, dcr/guard@side, sloped=false, dcr/guard label] {\dcrguardformat{\dcr@gexpr}} (#4);
+      \path[#2] (#3) to node[#1, dcr/guard@line] {\dcrguardformat{\dcr@gexpr}} (#4);
     \fi\fi
   \fi\fi\fi}
+% the style dcr/this delay label: "<relation> delay label" if relation
+% style #1 has one (response: blue), else nothing extra
+\newcommand\dcr@thisdelaylabel[1]{%
+  \pgfkeysifdefined{/tikz/#1 delay label/.@cmd}%
+    {\tikzset{dcr/this delay label/.style={#1 delay label}}}%
+    {\tikzset{dcr/this delay label/.style={}}}}
 
 % The values of a self-relation as text (guard, then the time beyond it),
 % outside the box next to its loop or marker: from the point (#2,#3) (in
@@ -851,9 +864,7 @@
     \edef\dcr@selfend{\strip@pt\pgf@y}%
   \fi\fi\fi
   \ifx\dcr@delay\@empty\else\ifdcr@ttext
-    \pgfkeysifdefined{/tikz/#1 delay label/.@cmd}%
-      {\tikzset{dcr/this delay label/.style={#1 delay label}}}%
-      {\tikzset{dcr/this delay label/.style={}}}%
+    \dcr@thisdelaylabel{#1}%
     \node[dcr/delay label, dcr/this delay label, anchor=\dcr@sanchor] (dcr@sl)
       at (#2pt,\dcr@selfend pt) {\dcr@delay};
     \pgfpointanchor{dcr@sl}{\ifdim#5pt>0pt north\else south\fi}%
@@ -870,71 +881,80 @@
       (0,1) -- (1,1) -- (1,0) .. controls (1,-0.7) and (0.4,-1.1) .. (0,-1.35) -- cycle;
   \end{scope}}
 
-\newcommand\dcr@portalrelation[7]{%
-  \ifx\dcr@from\dcr@to
-    \dcr@portalself{#2}{#3}{#6}{#1}{#4}%
+% Where the line of a relation runs, for all notations; #1 TikZ options of
+% the relation, #2 from, #3 to (node or node.anchor). Results:
+%   \ifdcr@auto  spread with other relations between the same boxes (see
+%                \dcr@parallel): only for plain node names and no TikZ
+%                options (with options such as bend, the user is in charge)
+%   (dcr@s), (dcr@e)    start and end, on the outlines
+%   (dcr@s2), (dcr@e2)  points a little after the start / before the end,
+%                       for the direction of the line there
+%   \dcr@line    the path to draw: route, straight line or (#2) to (#3)
+\newcommand\dcr@geometry[3]{%
+  \dcr@split#2.\@nil\let\dcr@fromnode\dcr@node
+  \dcr@split#3.\@nil\let\dcr@tonode\dcr@node
+  \dcr@autofalse
+  \if\relax\detokenize{#1}\relax\ifdcr@routed\else
+    \ifx\dcr@fromnode\dcr@from\ifx\dcr@tonode\dcr@to\dcr@autotrue\fi\fi
+  \fi\fi
+  \ifdcr@routed
+    \dcr@route{#2}{#3}%
+    \coordinate (dcr@s) at (dcr@p0);
+    \coordinate (dcr@s2) at (dcr@p1);
+    \coordinate (dcr@e) at (dcr@p\the\dcr@np);
+    \coordinate (dcr@e2) at (dcr@p\the\numexpr\dcr@np-1\relax);
+    \let\dcr@line\dcr@ppath
+  \else\ifdcr@auto
+    \dcr@parallel{#2}{#3}%
+    \pgfcoordinate{dcr@s2}{\pgfpointadd{\pgfpointanchor{dcr@s}{center}}%
+      {\pgfpoint{5*\dcr@dx pt}{5*\dcr@dy pt}}}%
+    \pgfcoordinate{dcr@e2}{\pgfpointadd{\pgfpointanchor{dcr@e}{center}}%
+      {\pgfpoint{-5*\dcr@dx pt}{-5*\dcr@dy pt}}}%
+    \def\dcr@line{(dcr@s) -- (dcr@e)}%
   \else
-    % automatic layout of parallel edges: only for plain node names and
-    % no user options (with options such as bend, the user is in charge)
-    \dcr@split#6.\@nil\let\dcr@fromnode\dcr@node
-    \dcr@split#7.\@nil\let\dcr@tonode\dcr@node
-    \dcr@autofalse
-    \if\relax\detokenize{#5}\relax\ifdcr@routed\else
-      \ifx\dcr@fromnode\dcr@from\ifx\dcr@tonode\dcr@to\dcr@autotrue\fi\fi
-    \fi\fi
+    \path[#1] (#2) to coordinate[pos=0] (dcr@s) coordinate[pos=0.03] (dcr@s2)
+                      coordinate[pos=0.97] (dcr@e2) coordinate[pos=1] (dcr@e) (#3);
+    \def\dcr@line{(#2) to (#3)}%
+  \fi\fi}
+
+% #1 line style, #2 marker style, #3 marker half size, #4 TikZ options,
+% #5 from, #6 to
+\newcommand\dcr@portalrelation[6]{%
+  \ifx\dcr@from\dcr@to
+    \dcr@portalself{#2}{#5}{#1}{#3}%
+  \else
+    \dcr@geometry{#4}{#5}{#6}%
     % the marker sits at the target, except for relations flagged with
     % \dcr@atsourcetrue (response: "!" on the activity that causes it)
-    \ifdcr@routed
-      \dcr@route{#6}{#7}%
-      \ifdcr@atsource
-        \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@p0}{center}}%
-        \pgfcoordinate{dcr@a}{\pgfpointanchor{dcr@p1}{center}}%
-        \dcr@computeend{#6}{#4}%
-        \draw[#1,#5,shorten <=\dcr@t] \dcr@ppath;
-      \else
-        \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@p\the\dcr@np}{center}}%
-        \pgfcoordinate{dcr@a}{\pgfpointanchor{dcr@p\the\numexpr\dcr@np-1\relax}{center}}%
-        \dcr@computeend{#7}{#4}%
-        \draw[#1,#5,shorten >=\dcr@t] \dcr@ppath;
-      \fi
-    \else\ifdcr@auto
-      \dcr@parallel{#6}{#7}%
-      \ifdcr@atsource
-        \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@s}{center}}%
-        \pgfcoordinate{dcr@a}{\pgfpoint{\dcr@sx pt+5*\dcr@dx pt}{\dcr@sy pt+5*\dcr@dy pt}}%
-        \dcr@computeend{#6}{#4}%
-        \draw[#1,shorten <=\dcr@t] (dcr@s) -- (dcr@e);
-      \else
-        \dcr@computeend{#7}{#4}%
-        \draw[#1,shorten >=\dcr@t] (dcr@s) -- (dcr@e);
-      \fi
+    \ifdcr@atsource
+      \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@s}{center}}%
+      \pgfcoordinate{dcr@a}{\pgfpointanchor{dcr@s2}{center}}%
+      \dcr@computeend{#5}{#3}%
+      \draw[#1,#4,shorten <=\dcr@t] \dcr@line;
     \else
-      \ifdcr@atsource
-        \path[#5] (#6) to coordinate[pos=0.03] (dcr@a) coordinate[pos=0] (dcr@b) (#7);
-        \dcr@computeend{#6}{#4}%
-        \draw[#1,#5,shorten <=\dcr@t] (#6) to (#7);
-      \else
-        \path[#5] (#6) to coordinate[pos=0.97] (dcr@a) coordinate[pos=1] (dcr@b) (#7);
-        \dcr@computeend{#7}{#4}%
-        \draw[#1,#5,shorten >=\dcr@t] (#6) to (#7);
-      \fi
-    \fi\fi
-    \node[#2] at (\dcr@px pt,\dcr@py pt) {#3};
-    \dcr@decorate{#1}{#4}%
-    \dcr@guardlabel{#1}{#5}{#6}{#7}%
+      \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@e}{center}}%
+      \pgfcoordinate{dcr@a}{\pgfpointanchor{dcr@e2}{center}}%
+      \dcr@computeend{#6}{#3}%
+      \draw[#1,#4,shorten >=\dcr@t] \dcr@line;
+    \fi
+    \node[#2] at (\dcr@px pt,\dcr@py pt) {};
+    \dcr@decorate{#1}{#3}%
+    \dcr@guardlabel{#1}{#4}{#5}{#6}%
   \fi
 }
 
 % ------------------------------------------------------------------
 %  Parallel edges. Relations between the same two nodes (in either
-%  direction) are numbered; the n-th one is shifted sideways by
-%  0, +d, -d, +2d, -2d, ... so lines and markers never overlap.
-%  The shifted line is clipped to both boxes, giving
-%  (dcr@s) start, (dcr@b) end, (dcr@a) a point just before the end.
+%  direction) are numbered; the n-th of N is shifted sideways by
+%  ((N-1)/2 - n) d (d = parallel distance): even steps, centred on the
+%  line between the boxes, so lines and markers never overlap.
+%  The shifted line is clipped to both boxes, giving (dcr@s) start and
+%  (dcr@e) end, and \dcr@dx, \dcr@dy its direction.
 % ------------------------------------------------------------------
 \newif\ifdcr@auto
 \newif\ifdcr@rerun
 \newcount\dcr@graph
+\newcount\dcr@isym   % inline symbols, see \dcr@inlinebox
 % totals of parallel relations, read back from the .aux file
 \def\dcr@auxtot#1#2{\expandafter\gdef\csname dcr@tot@#1\endcsname{#2}}
 \AtBeginDocument{\immediate\write\@auxout{\string\providecommand\string\dcr@auxtot[2]{}}}
@@ -1045,9 +1065,7 @@
   \pgfmathsetmacro\dcr@ex{\dcr@bx+\dcr@ox-\dcr@te*\dcr@dx}%
   \pgfmathsetmacro\dcr@ey{\dcr@by+\dcr@oy-\dcr@te*\dcr@dy}%
   \pgfcoordinate{dcr@s}{\pgfpoint{\dcr@sx pt}{\dcr@sy pt}}%
-  \pgfcoordinate{dcr@b}{\pgfpoint{\dcr@ex pt}{\dcr@ey pt}}%
   \pgfcoordinate{dcr@e}{\pgfpoint{\dcr@ex pt}{\dcr@ey pt}}%
-  \pgfcoordinate{dcr@a}{\pgfpoint{\dcr@ex pt-5*\dcr@dx pt}{\dcr@ey pt-5*\dcr@dy pt}}%
 }
 
 % distance from (centre + sideways shift) to the border of a box with
@@ -1105,8 +1123,7 @@
     \dcr@onborderfalse
     \coordinate (#4) at (#3);
   \fi}
-\newcommand\dcr@route[2]{% #1 from, #2 to
-  \dcr@nv=0 \expandafter\dcr@vp@next\dcr@via\dcr@vp@end
+\newcommand\dcr@route[2]{% #1 from, #2 to (the points: see \dcr@relation)
   % where the outlines are on the way to the first and last point
   \path (dcr@v1) -- coordinate[pos=1] (dcr@sb) (#1);
   \path (dcr@v\the\dcr@nv) -- coordinate[pos=1] (dcr@eb) (#2);
@@ -1129,7 +1146,46 @@
   \advance\dcr@np 1
   \coordinate (dcr@p\the\dcr@np) at (dcr@we);
   \edef\dcr@ppath{\dcr@ppath -- (dcr@p\the\dcr@np)}%
+  \pgfmathsetmacro\dcr@rs{\dcr@rshift}%
+  \ifdim\dcr@rs pt=0pt \else\dcr@shiftroute\fi
 }
+% unit direction from dcr@p#1 to dcr@p#2 -> macros #3, #4
+\newcommand\dcr@segdir[4]{%
+  \dcr@xy{dcr@p#1}\dcr@wx\dcr@wy \dcr@xy{dcr@p#2}\dcr@wqx\dcr@wqy
+  \pgfmathsetmacro\dcr@wl{max(veclen(\dcr@wqx-\dcr@wx,\dcr@wqy-\dcr@wy),0.001)}%
+  \pgfmathsetmacro#3{(\dcr@wqx-\dcr@wx)/\dcr@wl}%
+  \pgfmathsetmacro#4{(\dcr@wqy-\dcr@wy)/\dcr@wl}}
+% the route dcr@p0 ... moved sideways by \dcr@rs (pt, to the left of the
+% direction of travel); each corner along its bisector, so every segment
+% stays parallel to the original one (and ends on a box outline stay on
+% it when the route leaves the box at a right angle)
+\newcommand\dcr@shiftroute{%
+  \dcr@i=0
+  \loop\ifnum\dcr@i>\dcr@np\else
+    % the segments before and after point i (at an end: the one segment)
+    \ifnum\dcr@i>0
+      \dcr@segdir{\the\numexpr\dcr@i-1\relax}{\the\dcr@i}\dcr@dax\dcr@day
+    \else
+      \dcr@segdir{0}{1}\dcr@dax\dcr@day
+    \fi
+    \ifnum\dcr@i<\dcr@np
+      \dcr@segdir{\the\dcr@i}{\the\numexpr\dcr@i+1\relax}\dcr@dbx\dcr@dby
+    \else
+      \let\dcr@dbx\dcr@dax \let\dcr@dby\dcr@day
+    \fi
+    % offset = shift * (na + nb) / (1 + na.nb), n = left normal (-dy, dx)
+    \pgfmathsetmacro\dcr@dk{\dcr@rs/max(1+\dcr@dax*\dcr@dbx+\dcr@day*\dcr@dby,0.2)}%
+    \dcr@xy{dcr@p\the\dcr@i}\dcr@wx\dcr@wy
+    \coordinate (dcr@q\the\dcr@i) at
+      (\dcr@wx pt-\dcr@dk*\dcr@day pt-\dcr@dk*\dcr@dby pt,
+       \dcr@wy pt+\dcr@dk*\dcr@dax pt+\dcr@dk*\dcr@dbx pt);
+    \advance\dcr@i 1
+  \repeat
+  \dcr@i=0
+  \loop\ifnum\dcr@i>\dcr@np\else
+    \coordinate (dcr@p\the\dcr@i) at (dcr@q\the\dcr@i);
+    \advance\dcr@i 1
+  \repeat}
 
 % Relation from an activity to itself (e.g. \exclude{A}{A}): no line, just
 % the marker on the top edge, as in the DCR portal. Several self-relations
@@ -1138,47 +1194,73 @@
 % the left edge; set by \includedcrgraph to avoid the markers of other
 % relations) at that place instead.
 \newdimen\dcr@selfx
-% #1 marker style, #2 marker text, #3 node, #4 relation style, #5 marker
-% half size. A guard shield sits right of the marker, as on a line; the
-% values as text above it (several self-relations of a box: each one's
-% text above the text of the one before, so they never overlap).
-\newcommand\dcr@portalself[5]{%
-  \ifcsname dcr@self@\the\dcr@graph @#3\endcsname
-    \dcr@selfx=\csname dcr@self@\the\dcr@graph @#3\endcsname\relax
+\def\dcr@selfgap{2pt}   % between two self-relation markers
+% \dimen@ (the centre of a marker on the top edge of node #1) moved right
+% until it keeps a marker and the gap from every marker placed there with
+% selfpos=
+\newif\ifdcr@moved
+\newcommand\dcr@selffree[1]{%
+  \ifcsname dcr@selfused@\the\dcr@graph @#1\endcsname
+    \edef\dcr@used{\csname dcr@selfused@\the\dcr@graph @#1\endcsname}%
+    \loop
+      \dcr@movedfalse
+      \@for\dcr@u:=\dcr@used\do{%
+        \dimen2=\dimexpr\dimen@-\dcr@u\relax
+        \ifdim\dimen2<0pt \dimen2=-\dimen2 \fi
+        \ifdim\dimen2<\dimexpr\dcr@rsize+\dcr@selfgap-0.01pt\relax
+          \dimen@=\dimexpr\dcr@u+\dcr@rsize+\dcr@selfgap\relax
+          \dcr@movedtrue
+        \fi}%
+    \ifdcr@moved\repeat
+  \fi}
+% #1 marker style, #2 node, #3 relation style, #4 marker half size. A
+% guard shield sits right of the marker, as on a line; the values as text
+% above it (several self-relations of a box: each one's text above the
+% text of the one before, so they never overlap).
+\newcommand\dcr@portalself[4]{%
+  \ifcsname dcr@self@\the\dcr@graph @#2\endcsname
+    \dcr@selfx=\csname dcr@self@\the\dcr@graph @#2\endcsname\relax
   \else
     \dcr@selfx=0pt
   \fi
-  % the marker's centre: flush on the top edge, exactly like the other
-  % markers (as in the portal); centre anchor, so that dots and squares
-  % line up
+  % \dimen@: the marker's centre from the left edge
   \ifx\dcr@selfpos\@empty
     \dimen@=\dimexpr\dcr@selfx+0.5\dcr@rsize\relax
-    \advance\dcr@selfx by \dcr@rsize
-    \advance\dcr@selfx by 2pt
-    \expandafter\xdef\csname dcr@self@\the\dcr@graph @#3\endcsname{\the\dcr@selfx}%
+    \dcr@selffree{#2}%
+    \dcr@selfx=\dimexpr\dimen@+0.5\dcr@rsize+\dcr@selfgap\relax
+    \expandafter\xdef\csname dcr@self@\the\dcr@graph @#2\endcsname{\the\dcr@selfx}%
   \else
+    % at the given place, which later markers of the box leave free
     \dimen@=\dcr@selfpos\relax
+    \edef\dcr@used{%   (built first: \csname would define it as \relax)
+      \ifcsname dcr@selfused@\the\dcr@graph @#2\endcsname
+        \csname dcr@selfused@\the\dcr@graph @#2\endcsname,\fi\the\dimen@}%
+    \expandafter\global\expandafter\let
+      \csname dcr@selfused@\the\dcr@graph @#2\endcsname\dcr@used
   \fi
+  % the marker: flush on the top edge, exactly like the other markers (as
+  % in the portal); by its centre, so that dots and squares line up
   \node[#1, anchor=center]
-    at ([xshift=\dimen@, yshift=0.5\dcr@border+\dcr@gap+0.5\dcr@rsize]#3.north west) {#2};
-  % shield and text: the marker's centre, the direction away from the box
-  % (up) for \dcr@decorate, which draws the shield only
-  \pgfpointanchor{#3}{north west}%
+    at ([xshift=\dimen@, yshift=0.5\dcr@border+\dcr@gap+0.5\dcr@rsize]#2.north west) {};
+  \pgfpointanchor{#2}{north west}%
   \pgfmathsetmacro\dcr@px{\pgf@x+\dimen@}%
   \pgfmathsetmacro\dcr@py{\pgf@y+0.5*\dcr@border+\dcr@gap+0.5*\dcr@rsize}%
+  % the shield: \dcr@decorate with the direction away from the box (up)
   \def\dcr@ux{0}\def\dcr@uy{1}\def\dcr@off{0}%
-  \begingroup\dcr@ttextfalse\dcr@decorate{#4}{#5}\endgroup
+  \begingroup\dcr@ttextfalse\dcr@decorate{#3}{#4}\endgroup
   % the text starts above the markers and above the row of shields (also
-  % of self-relations that come later)
-  \pgfmathsetmacro\dcr@sy{\dcr@py+#5+1+2.6*\dcr@guardsize}%
-  \ifcsname dcr@selfend@\the\dcr@graph @#3\endcsname
+  % of self-relations that come later; coopis23, which uses this too, has
+  % no shields)
+  \pgfmathsetmacro\dcr@sy{\dcr@py+#4+1}%
+  \ifdcr@classic\else\pgfmathsetmacro\dcr@sy{\dcr@sy+2.6*\dcr@guardsize}\fi
+  \ifcsname dcr@selfend@\the\dcr@graph @#2\endcsname
     \pgfmathsetmacro\dcr@sy{max(\dcr@sy,
-      \csname dcr@selfend@\the\dcr@graph @#3\endcsname+1)}%
+      \csname dcr@selfend@\the\dcr@graph @#2\endcsname+1)}%
   \fi
-  \pgfmathsetmacro\dcr@sx{\dcr@px-#5}%
-  \dcr@selflabels{#4}{\dcr@sx}{\dcr@sy}{1}{1}%
+  \pgfmathsetmacro\dcr@sx{\dcr@px-#4}%
+  \dcr@selflabels{#3}{\dcr@sx}{\dcr@sy}{1}{1}%
   \ifx\dcr@selfend\dcr@sy\else
-    \expandafter\xdef\csname dcr@selfend@\the\dcr@graph @#3\endcsname{\dcr@selfend}%
+    \expandafter\xdef\csname dcr@selfend@\the\dcr@graph @#2\endcsname{\dcr@selfend}%
   \fi
 }
 
@@ -1225,29 +1307,7 @@
   \ifx\dcr@from\dcr@to
     \dcr@classicself{#1}{}{#3}%
   \else
-    \dcr@split#3.\@nil\let\dcr@fromnode\dcr@node
-    \dcr@split#4.\@nil\let\dcr@tonode\dcr@node
-    \dcr@autofalse
-    \if\relax\detokenize{#2}\relax\ifdcr@routed\else
-      \ifx\dcr@fromnode\dcr@from\ifx\dcr@tonode\dcr@to\dcr@autotrue\fi\fi
-    \fi\fi
-    % ---- geometry: start/end on the borders and points just inside ----
-    \ifdcr@routed
-      \dcr@route{#3}{#4}%
-      \coordinate (dcr@s) at (dcr@p0);
-      \coordinate (dcr@s2) at (dcr@p1);
-      \coordinate (dcr@e) at (dcr@p\the\dcr@np);
-      \coordinate (dcr@e2) at (dcr@p\the\numexpr\dcr@np-1\relax);
-    \else\ifdcr@auto
-      \dcr@parallel{#3}{#4}%
-      \pgfcoordinate{dcr@s2}{\pgfpointadd{\pgfpointanchor{dcr@s}{center}}%
-        {\pgfpoint{5*\dcr@dx pt}{5*\dcr@dy pt}}}%
-      \pgfcoordinate{dcr@e2}{\pgfpointadd{\pgfpointanchor{dcr@e}{center}}%
-        {\pgfpoint{-5*\dcr@dx pt}{-5*\dcr@dy pt}}}%
-    \else
-      \path[#2] (#3) to coordinate[pos=0] (dcr@s) coordinate[pos=0.03] (dcr@s2)
-                        coordinate[pos=0.97] (dcr@e2) coordinate[pos=1] (dcr@e) (#4);
-    \fi\fi
+    \dcr@geometry{#2}{#3}{#4}%
     % ---- source dot (response, no-response) ----
     \setlength\dcr@tstart{0.5\dcr@border}%
     \ifx\dcr@csrc\@empty\else
@@ -1270,16 +1330,8 @@
       \setlength\dcr@tend{\dimexpr\dcr@t+\dcr@chalf+0.6pt\relax}%
     \fi
     % ---- the arrow ----
-    \ifdcr@routed
-      \draw[#1, dcr/classic tip, dcr/classic arrow, #2,
-            shorten >=\dcr@tend, shorten <=\dcr@tstart] \dcr@ppath;
-    \else\ifdcr@auto
-      \draw[#1, dcr/classic tip, dcr/classic arrow,
-            shorten >=\dcr@tend, shorten <=\dcr@tstart] (dcr@s) -- (dcr@e);
-    \else
-      \draw[#1, dcr/classic tip, dcr/classic arrow, #2,
-            shorten >=\dcr@tend, shorten <=\dcr@tstart] (#3) to (#4);
-    \fi\fi
+    \draw[#1, dcr/classic tip, dcr/classic arrow, #2,
+          shorten >=\dcr@tend, shorten <=\dcr@tstart] \dcr@line;
     \dcr@guardlabel{#1}{#2}{#3}{#4}%
   \fi}
 
@@ -1287,6 +1339,9 @@
 % (or bottom) edge round to the side edge; markers flush as above. The
 % corners are used in turn (top right, top left, bottom right, bottom left).
 \newcount\dcr@k
+% the loop: from the corner \dcr@loopa along both edges, a curve with
+% control points \dcr@loopb out from the box
+\def\dcr@loopa{0.5cm}\def\dcr@loopb{1.1cm}
 % the key corner=...: this corner instead of the next one in turn
 \def\dcr@corner{}
 \def\dcr@cornerNE{north east}\def\dcr@cornerNW{north west}
@@ -1328,8 +1383,8 @@
   \else         \def\dcr@c{south west}\def\dcr@sx{-1}\def\dcr@sy{-1}\fi
   \fi
   \dcr@usecorner{#3}%
-  \coordinate (dcr@ls) at ([xshift=-\dcr@sx*0.5cm]#3.\dcr@c);  % on top/bottom edge
-  \coordinate (dcr@le) at ([yshift=-\dcr@sy*0.5cm]#3.\dcr@c);  % on the side edge
+  \coordinate (dcr@ls) at ([xshift=-\dcr@sx*\dcr@loopa]#3.\dcr@c);  % on top/bottom edge
+  \coordinate (dcr@le) at ([yshift=-\dcr@sy*\dcr@loopa]#3.\dcr@c);  % on the side edge
   \setlength\dcr@tstart{0.5\dcr@border}%
   \ifx\dcr@csrc\@empty\else
     \node[#1, dcr/classic dot]
@@ -1347,13 +1402,15 @@
   \fi
   \draw[#1, dcr/classic tip, dcr/classic arrow,
         shorten >=\dcr@tend, shorten <=\dcr@tstart]
-    (dcr@ls) .. controls +(0,\dcr@sy*1.1cm) and +(\dcr@sx*1.1cm,0) .. (dcr@le);
+    (dcr@ls) .. controls +(0,\dcr@sy*\dcr@loopb) and +(\dcr@sx*\dcr@loopb,0) .. (dcr@le);
   % values as text: just beyond the loop's outermost point (the middle of
-  % the curve, 0.1625cm diagonally out from the corner), away from the box
+  % the curve, (3 loopb - 4 loopa)/8 diagonally out from the corner),
+  % away from the box
   \pgfpointanchor{#3}{\dcr@c}%
   \edef\dcr@lx{\strip@pt\pgf@x}\edef\dcr@ly{\strip@pt\pgf@y}%
-  \pgfmathsetmacro\dcr@lx{\dcr@lx+\dcr@sx*(0.1625cm+2pt)}%
-  \pgfmathsetmacro\dcr@ly{\dcr@ly+\dcr@sy*(0.1625cm+2pt)}%
+  \pgfmathsetmacro\dcr@lm{(3*\dcr@loopb-4*\dcr@loopa)/8+2pt}%
+  \pgfmathsetmacro\dcr@lx{\dcr@lx+\dcr@sx*\dcr@lm}%
+  \pgfmathsetmacro\dcr@ly{\dcr@ly+\dcr@sy*\dcr@lm}%
   \dcr@selflabels{#1}{\dcr@lx}{\dcr@ly}{\dcr@sx}{\dcr@sy}%
   \advance\dcr@k 1
   \expandafter\xdef\csname dcr@cself@\the\dcr@graph @#3\endcsname{\the\dcr@k}%
@@ -1485,29 +1542,7 @@
   \ifx\dcr@from\dcr@to
     \dcr@coopisself{#1}{#3}%
   \else
-    \dcr@split#3.\@nil\let\dcr@fromnode\dcr@node
-    \dcr@split#4.\@nil\let\dcr@tonode\dcr@node
-    \dcr@autofalse
-    \if\relax\detokenize{#2}\relax\ifdcr@routed\else
-      \ifx\dcr@fromnode\dcr@from\ifx\dcr@tonode\dcr@to\dcr@autotrue\fi\fi
-    \fi\fi
-    % ---- geometry: start/end on the borders and points just inside ----
-    \ifdcr@routed
-      \dcr@route{#3}{#4}%
-      \coordinate (dcr@s) at (dcr@p0);
-      \coordinate (dcr@s2) at (dcr@p1);
-      \coordinate (dcr@e) at (dcr@p\the\dcr@np);
-      \coordinate (dcr@e2) at (dcr@p\the\numexpr\dcr@np-1\relax);
-    \else\ifdcr@auto
-      \dcr@parallel{#3}{#4}%
-      \pgfcoordinate{dcr@s2}{\pgfpointadd{\pgfpointanchor{dcr@s}{center}}%
-        {\pgfpoint{5*\dcr@dx pt}{5*\dcr@dy pt}}}%
-      \pgfcoordinate{dcr@e2}{\pgfpointadd{\pgfpointanchor{dcr@e}{center}}%
-        {\pgfpoint{-5*\dcr@dx pt}{-5*\dcr@dy pt}}}%
-    \else
-      \path[#2] (#3) to coordinate[pos=0] (dcr@s) coordinate[pos=0.03] (dcr@s2)
-                        coordinate[pos=0.97] (dcr@e2) coordinate[pos=1] (dcr@e) (#4);
-    \fi\fi
+    \dcr@geometry{#2}{#3}{#4}%
     % ---- source triangle ----
     \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@s}{center}}%
     \pgfcoordinate{dcr@a}{\pgfpointanchor{dcr@s2}{center}}%
@@ -1607,119 +1642,82 @@
     \dcr@guardlabel{#1}{#2}{#3}{#4}%
   \fi}
 
-% Self-relations: a right-angled loop round a corner, as in DCR-js: from
-% the triangle on the top (bottom) edge out, round the corner, back to the
-% circle on the side edge. Corners in turn: top left (as in DCR-js), top
-% right, bottom left, bottom right.
+% Self-relations: as in the dcr-solutions notation, only the target circle
+% with the symbol, flush on the top edge; several lined up from the left
+% corner, or at selfpos= (user: the DCR-js loop round a corner took too
+% much room and got in the way of other lines). Values as text above it.
 \newcommand\dcr@coopisself[2]{% #1 style, #2 node
-  \ifcsname dcr@tself@\the\dcr@graph @#2\endcsname
-    \dcr@k=\csname dcr@tself@\the\dcr@graph @#2\endcsname\relax
-  \else \dcr@k=0 \fi
-  \def\dcr@c{}%
-  \dcr@trycorner{#2}{north west}{-1}{1}\dcr@trycorner{#2}{north east}{1}{1}%
-  \dcr@trycorner{#2}{south west}{-1}{-1}\dcr@trycorner{#2}{south east}{1}{-1}%
-  \ifx\dcr@c\@empty
-  \ifcase\dcr@k \def\dcr@c{north west}\def\dcr@sx{-1}\def\dcr@sy{1}%
-  \or           \def\dcr@c{north east}\def\dcr@sx{1}\def\dcr@sy{1}%
-  \or           \def\dcr@c{south west}\def\dcr@sx{-1}\def\dcr@sy{-1}%
-  \else         \def\dcr@c{south east}\def\dcr@sx{1}\def\dcr@sy{-1}\fi
-  \fi
-  \dcr@usecorner{#2}%
-  \coordinate (dcr@ls) at ([xshift=-\dcr@sx*0.3cm]#2.\dcr@c);  % on top/bottom edge
-  \coordinate (dcr@le) at ([yshift=-\dcr@sy*0.3cm]#2.\dcr@c);  % on the side edge
-  \draw[#1, dcr/coopis line]
-    ([yshift=\dcr@sy*(1.4\dcr@thalf+0.5\dcr@border)]dcr@ls) --  % behind the tip
-    ([yshift=\dcr@sy*0.45cm]dcr@ls) -|
-    ([xshift=\dcr@sx*0.75cm]dcr@le) --
-    ([xshift=\dcr@sx*(2\dcr@tchalf+0.5\dcr@border)]dcr@le);
-  \pgfpointanchor{dcr@ls}{center}%
-  \pgfmathsetmacro\dcr@spx{\pgf@x}%
-  \pgfmathsetmacro\dcr@spy{\pgf@y+\dcr@sy*(\dcr@thalf+0.5*\dcr@border)}%
-  \dcr@ttriangle{#1}{\dcr@spx}{\dcr@spy}{0}{\dcr@sy}%
-  \node[\dcr@tstyle]
-    at ([xshift=\dcr@sx*(\dcr@tchalf+0.5\dcr@border)]dcr@le) {};
-  % values as text: beyond the outer corner of the loop, away from the box
-  \pgfpointanchor{#2}{\dcr@c}%
-  \edef\dcr@lx{\strip@pt\pgf@x}\edef\dcr@ly{\strip@pt\pgf@y}%
-  \pgfmathsetmacro\dcr@lx{\dcr@lx+\dcr@sx*(0.75cm+2pt)}%
-  \pgfmathsetmacro\dcr@ly{\dcr@ly+\dcr@sy*(0.45cm+2pt)}%
-  \dcr@selflabels{#1}{\dcr@lx}{\dcr@ly}{\dcr@sx}{\dcr@sy}%
-  \advance\dcr@k 1
-  \expandafter\xdef\csname dcr@tself@\the\dcr@graph @#2\endcsname{\the\dcr@k}%
-}
+  \dcr@portalself{\dcr@tstyle}{#2}{#1}{\dcr@tchalf}}
 
-% Direction: every relation is written \relation{from}{to}.
-%   condition, milestone : symbol at the TARGET (the activity that is blocked)
-%   all others           : symbol at the SOURCE (the activity that acts),
-%                            as in the DCR portal
-\newcommand\dcr@srcrelation[7]{%
-  \begingroup\dcr@atsourcetrue\dcr@relation{#1}{#2}{#3}{#4}{#5}{#6}{#7}\endgroup}
+% The relations, each defined once here:
+%   \dcr@defrelation{name}{style}{marker size}{side}{classic source}%
+%     {classic target}{classic symbol}
+% defines \dcr@<name>[options]{from}{to} (\<name> inside dcrgraph) and the
+% inline symbol \dcr<name>[options] (see below).
+%   style        the style of the line; "<style> marker" is its
+%                dcr-solutions marker (coopis23: "<style> coopis marker")
+%   marker size  of that marker (\dcr@csize or \dcr@rsize)
+%   side         where the dcr-solutions marker sits: \dcr@atsourcetrue or
+%                \dcr@atsourcefalse (the target)
+%   classic ...  \dcr@csrc, \dcr@ctgt, \dcr@csym (see Classic notation)
+% Direction: every relation is written \relation{from}{to}. The marker is
+% at the TARGET for condition, milestone and pre-condition (the activity
+% that is blocked), at the SOURCE for all others (the activity that acts),
+% as in the DCR portal.
+\def\dcr@relnames{}   % the names, for the dcrgraph environment
+\newcommand\dcr@defrelation[7]{%
+  \expandafter\def\csname dcr@style@#1\endcsname{#2}%
+  \expandafter\def\csname dcr@#1@draw\endcsname##1##2##3{%
+    \begingroup
+      #4\def\dcr@csrc{#5}\def\dcr@ctgt{#6}\def\dcr@csym{#7}%
+      \dcr@relation{#2}{#2 marker}{0.5#3}{##1}{##2}{##3}%
+    \endgroup}%
+  \expandafter\newcommand\csname dcr@#1\endcsname[3][]{%
+    \csname dcr@#1@draw\endcsname{##1}{##2}{##3}}%
+  \expandafter\NewDocumentCommand\csname dcr#1\endcsname{O{}}%
+    {\dcr@inline{#1}{##1}}%
+  \edef\dcr@relnames{\dcr@relnames#1,}}
 
-% \condition[opts]{from}{to}  : open orange circle at to
-\newcommand\dcr@condition[3][]{%
-  \def\dcr@csrc{}\def\dcr@ctgt{dot}\def\dcr@csym{}%
-  \dcr@relation{dcr/condition}{dcr/condition marker}{}{0.5\dcr@csize}{#1}{#2}{#3}}
+%                 name            style                 marker size   side
+%                 classic: source  target   symbol
+\dcr@defrelation{condition}      {dcr/condition}       {\dcr@csize}{\dcr@atsourcefalse}
+                {}  {dot}    {}
+\dcr@defrelation{response}       {dcr/response}        {\dcr@rsize}{\dcr@atsourcetrue}
+                {dot}{}      {}
+\dcr@defrelation{include}        {dcr/include}         {\dcr@rsize}{\dcr@atsourcetrue}
+                {}  {sym}    {+}
+\dcr@defrelation{exclude}        {dcr/exclude}         {\dcr@rsize}{\dcr@atsourcetrue}
+                {}  {sym}    {\%}
+\dcr@defrelation{milestone}      {dcr/milestone}       {\dcr@csize}{\dcr@atsourcefalse}
+                {}  {diamond}{}
+\dcr@defrelation{update}         {dcr/update}          {\dcr@rsize}{\dcr@atsourcetrue}
+                {}  {sym}    {=}
+\dcr@defrelation{noresponse}     {dcr/noresponse}      {\dcr@rsize}{\dcr@atsourcetrue}
+                {dot}{sym}   {$\times$}
+\dcr@defrelation{precondition}   {dcr/precondition}    {\dcr@csize}{\dcr@atsourcefalse}
+                {}  {diamond}{}
+\dcr@defrelation{spawn}          {dcr/spawn}           {\dcr@rsize}{\dcr@atsourcetrue}
+                {}  {sym}    {\Large$\ast$}
+% logical include: classic an include arrow with "±" after the arrowhead
+% (->±), coopis23 "±" in the circle. The literature has no standard
+% symbol for it; this one is used in recent papers (user's choice). One
+% relation with one guard, in all notations.
+\dcr@defrelation{logicalinclude} {dcr/logical include} {\dcr@rsize}{\dcr@atsourcetrue}
+                {}  {sym}    {\textpm}
 
-% \response[opts]{from}{to}   : blue "!" at from; from makes to pending
-\newcommand\dcr@response[3][]{%
-  \def\dcr@csrc{dot}\def\dcr@ctgt{}\def\dcr@csym{}%
-  \dcr@srcrelation{dcr/response}{dcr/response marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
-
-% \include[opts]{from}{to}    : green "+" at from; from includes to
-\newcommand\dcr@include[3][]{%
-  \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{+}%
-  \dcr@srcrelation{dcr/include}{dcr/include marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
-
-% \exclude[opts]{from}{to}    : red "-" at from; from excludes to
-\newcommand\dcr@exclude[3][]{%
-  \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{\%}%
-  \dcr@srcrelation{dcr/exclude}{dcr/exclude marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
-
-% \milestone[opts]{from}{to}  : purple circled "!" at to; to cannot
-%   execute while from is pending
-\newcommand\dcr@milestone[3][]{%
-  \def\dcr@csrc{}\def\dcr@ctgt{diamond}\def\dcr@csym{}%
-  \dcr@relation{dcr/milestone}{dcr/milestone marker}{}{0.5\dcr@csize}{#1}{#2}{#3}}
-
-% \update[opts]{from}{to}     : grey "=" at from
-\newcommand\dcr@update[3][]{%
-  \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{=}%
-  \dcr@srcrelation{dcr/update}{dcr/update marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
-
-% \precondition[opts]{from}{to} : filled orange dot at to.
 % Classic notation has no pre-condition: it is what it means, a condition
-% plus a milestone (the time, if any, on the condition only).
-\newcommand\dcr@precondition[3][]{%
+% plus a milestone. Time and guard on the condition only; with a route,
+% the two lines run side by side.
+\renewcommand\dcr@precondition[3][]{%
   \ifdcr@classic
-    \dcr@condition[#1]{#2}{#3}%
-    \dcr@milestone[#1,dcr@nodelay]{#2}{#3}%
+    \dcr@condition[#1,dcr@shift=0.5\dcr@pardist]{#2}{#3}%
+    \dcr@milestone[#1,dcr@nodelay,dcr@noguard,dcr@shift=-0.5\dcr@pardist]{#2}{#3}%
   \else
-    \def\dcr@csrc{}\def\dcr@ctgt{diamond}\def\dcr@csym{}%
-    \dcr@relation{dcr/precondition}{dcr/precondition marker}{}{0.5\dcr@csize}{#1}{#2}{#3}%
+    \dcr@precondition@draw{#1}{#2}{#3}%
   \fi}
 
-% \spawn[opts]{from}{to}      : dark blue asterisk at from; from spawns to
-\newcommand\dcr@spawn[3][]{%
-  \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{\Large$\ast$}%
-  \dcr@srcrelation{dcr/spawn}{dcr/spawn marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
-
-% \logicalinclude[opts]{from}{to} : green "+-" at from.
-% Classic: an include arrow with "±" after the arrowhead (->±); coopis23:
-% "±" in the circle. The literature has no standard symbol for it; this
-% one is used in recent papers (user's choice). One relation with one
-% guard, in all notations (before, classic/coopis23 drew an include with
-% g plus an exclude with not(g)).
-\newcommand\dcr@logicalinclude[3][]{%
-  \def\dcr@csrc{}\def\dcr@ctgt{sym}\def\dcr@csym{\textpm}%
-  \dcr@srcrelation{dcr/logical include}{dcr/logical include marker}{}{0.5\dcr@rsize}%
-    {#1}{#2}{#3}}
 % (no longer used by the package; kept for documents that use it)
 \newcommand\dcrnotguard[1]{not(#1)}
-
-% \noresponse[opts]{from}{to} : brown "x" at from; from removes to's pending
-\newcommand\dcr@noresponse[3][]{%
-  \def\dcr@csrc{dot}\def\dcr@ctgt{sym}\def\dcr@csym{$\times$}%
-  \dcr@srcrelation{dcr/noresponse}{dcr/noresponse marker}{}{0.5\dcr@rsize}{#1}{#2}{#3}}
 
 % ------------------------------------------------------------------
 %  Nesting:  \nesting[options]{label}{id}{child1, child2, ...}
@@ -1784,6 +1782,7 @@
           \unexpanded\expandafter{\dcr@tikzopts}] (#4@box)}%
       \fi
       \dcr@do {};
+      \pgftransformreset   % the rest relative to that box, see \dcr@activity
       % 2) the visible box: extra room on top for a role header, and at
       %    the bottom for a subtitle (not with area=, which is exact)
       % a header line: with a role, and always for forms (as in the portal)
@@ -1849,16 +1848,7 @@
       \fi
       % marking, top left, as for events (below the header, if any)
       \ifdcr@withheader\dimen@=\dcr@header\else\dimen@=0pt\fi
-      \ifdcr@pending
-        \node[dcr/pending marker, inner xsep=0pt, anchor=north west]
-          (#4@pending) at ([xshift=7pt,yshift=-\dimen@-1pt]#4.north west) {!};
-        \ifdcr@executed \dcr@tick[2.5pt]{#4@pending.base east}\fi
-      \else\ifdcr@executed
-        \node[dcr/pending marker, inner xsep=0pt, anchor=north west]
-          (#4@pending) at ([xshift=7pt,yshift=-\dimen@-1pt]#4.north west)
-          {\phantom{!}};
-        \dcr@tick[2.5pt]{#4@pending.base east}%
-      \fi\fi
+      \dcr@marking{#4}{\dimen@}%
     \end{pgfonlayer}
   \endgroup
 }
@@ -1922,22 +1912,17 @@
 
 \def\dcr@begintikz#1{\begin{tikzpicture}[#1]}
 \newenvironment{dcrgraph}[1][]{%
+  % the commands, only inside dcrgraph (so \include works as usual in
+  % the rest of the document)
   \let\activity\dcr@activity
-  \let\condition\dcr@condition
-  \let\response\dcr@response
   \let\nesting\dcr@nesting
   \let\subprocess\dcr@subprocess
-  \let\milestone\dcr@milestone
-  \let\update\dcr@update
-  \let\noresponse\dcr@noresponse
-  \let\precondition\dcr@precondition
-  \let\spawn\dcr@spawn
-  \let\logicalinclude\dcr@logicalinclude
   \let\form\dcr@form
   \let\subgraph\dcr@subgraphgroup
+  \@for\dcr@r:=\dcr@relnames\do{\ifx\dcr@r\@empty\else
+    \expandafter\let\csname\dcr@r\expandafter\endcsname
+      \csname dcr@\dcr@r\endcsname\fi}%
   \global\advance\dcr@graph 1
-  \let\include\dcr@include   % only inside dcrgraph; \include works as
-  \let\exclude\dcr@exclude   % usual in the rest of the document
   \pgfsetlayers{dcrnest6,dcrnest5,dcrnest4,dcrnest3,dcrnest2,dcrnest1,main}%
   \dcr@mapopts{#1}%   settings without dcr/, see \dcrset
   % into a box (as lrbox does), scaled at the end: see width= etc.
@@ -2003,15 +1988,8 @@
   deadline/.code={\def\dcr@idelay{#1}%
     \edef\dcr@iopts{\unexpanded\expandafter{\dcr@iopts}deadline={\unexpanded{#1}},}},
   explicit/.code={},   % inline, the values are always written
-  .unknown/.code={%   everything else: options of the relation
-    \let\dcr@key\pgfkeyscurrentname
-    \def\dcr@val{#1}%
-    \ifx\dcr@val\pgfkeysnovalue@text
-      \edef\dcr@iopts{\unexpanded\expandafter{\dcr@iopts}\dcr@key,}%
-    \else
-      \edef\dcr@iopts{\unexpanded\expandafter{\dcr@iopts}%
-        \dcr@key={\unexpanded{#1}},}%
-    \fi},
+  % everything else: options of the relation
+  .unknown/.code={\dcr@passon\dcr@iopts{#1}},
 }
 % #1 relation (condition, response, ...), #2 options.
 % A relation symbol, exactly like \rightarrow: in math \mathrel (TeX does
@@ -2051,7 +2029,12 @@
     \dimen@=\f@size pt\dimen@=0.7\dimen@
     \edef\dcr@ilabelsize{\noexpand\fontsize{\strip@pt\dimen@}{\z@}%
       \noexpand\selectfont}%
-    \global\advance\dcr@graph 1
+    % a number of its own (negative, so it never clashes with a graph):
+    % the graphs' numbers name their totals in the .aux, and must not
+    % depend on how many symbols come before them (\mathpalette draws each
+    % symbol four times, a table of contents adds more in the next run)
+    \global\advance\dcr@isym 1
+    \dcr@graph=-\dcr@isym
     \dcr@inlinesymtrue
     \def\dcr@ilen{1.8em}\def\dcr@iopts{}\def\dcr@ig{}\def\dcr@idelay{}%
     \tikzset{dcr/inline}%
@@ -2069,15 +2052,8 @@
       \def\dcr@tmpb{precondition}\ifx\dcr@tmp\dcr@tmpb\def\dcr@itotal{2}\fi
     \fi
     % colour of the guard: that of the relation; of the time: as in a graph
-    \def\dcr@tmpb{logicalinclude}%
-    \ifx\dcr@tmp\dcr@tmpb
-      \def\dcr@istyle{dcr/logical include}%
-    \else
-      \def\dcr@istyle{dcr/#2}%
-    \fi
-    \def\dcr@tmpb{response}%
-    \ifx\dcr@tmp\dcr@tmpb\def\dcr@itstyle{dcr/response delay label}%
-    \else\def\dcr@itstyle{}\fi
+    \edef\dcr@istyle{\csname dcr@style@#2\endcsname}%
+    \expandafter\dcr@thisdelaylabel\expandafter{\dcr@istyle}%
     % the length: at least \dcr@ilen, else the widest value and room for
     % the markers at both ends (so the values are over/under the line)
     \dimen@=0pt
@@ -2116,7 +2092,7 @@
           at (0.5*\dcr@iL,\dcr@ioff) {\dcrguardformat{\dcr@ig}};
       \fi
       \ifx\dcr@idelay\@empty\else
-        \node[dcr/inline time, \dcr@itstyle, anchor=north]
+        \node[dcr/inline time, dcr/this delay label, anchor=north]
           at (0.5*\dcr@iL,-\dcr@ioff) {\dcr@idelay};
       \fi
       % the size of the symbol: exactly as wide as the line (no room for
@@ -2127,20 +2103,12 @@
       \dcr@do
     \end{tikzpicture}%
   \endgroup}}
-\NewDocumentCommand\dcrcondition{O{}}{\dcr@inline{condition}{#1}}
-\NewDocumentCommand\dcrresponse{O{}}{\dcr@inline{response}{#1}}
-\NewDocumentCommand\dcrinclude{O{}}{\dcr@inline{include}{#1}}
-\NewDocumentCommand\dcrexclude{O{}}{\dcr@inline{exclude}{#1}}
-\NewDocumentCommand\dcrmilestone{O{}}{\dcr@inline{milestone}{#1}}
-\NewDocumentCommand\dcrupdate{O{}}{\dcr@inline{update}{#1}}
-\NewDocumentCommand\dcrnoresponse{O{}}{\dcr@inline{noresponse}{#1}}
-\NewDocumentCommand\dcrprecondition{O{}}{\dcr@inline{precondition}{#1}}
-\NewDocumentCommand\dcrspawn{O{}}{\dcr@inline{spawn}{#1}}
-\NewDocumentCommand\dcrlogicalinclude{O{}}{\dcr@inline{logicalinclude}{#1}}
+% (the commands \dcrcondition etc. are defined with the relations, see
+% \dcr@defrelation)
 
 % ------------------------------------------------------------------
 %  \includedcrgraph[options]{file}  -- draw a graph from a file, converted
-%  by dcrgraphs.lua into dcrgraph commands. Options:
+%  into dcrgraph commands by the Lua code at the end of this file. Options:
 %    format=auto         input format: recognised from the file (DCR Solutions XML
 %                        or DCR-js XML); dcrsolutions, dcrjs accepted
 %    waypoints           draw relations along the routes stored in the file
@@ -2399,6 +2367,9 @@ local function merge_linked(rels)
             r.parts = { first, q }
             r.kind = merged
             r.delay = r.delay or q.delay
+            -- (a logical include keeps the guard of its include: the
+            -- exclude half has the negation)
+            if merged == "precondition" then r.guard = r.guard or q.guard end
             drop[j] = true
             break
           end
@@ -2767,28 +2738,65 @@ end
 --    lay.node[id]     activities: {x, y (centre), w, h}
 --                     nestings:   {x1, y1, x2, y2} (area corners)
 --    lay.via[r]       relation r (index): list of {x, y}, or nil
+--    lay.port, lay.selfpos, lay.radj, lay.nextra: see below
 -- ------------------------------------------------------------------
-local function layout(graph, opts)
-  local ppc = graph.px_per_cm
-  local s = opts.scale / ppc                -- px -> cm (positions)
-  local lay = { ids = {}, node = {}, via = {} }
 
-  -- node ids: letters, digits, _ only; kept unique
-  local used = {}
+-- Sizes of the package in cm: the end markers, the parallel distance and
+-- the gap between self-relation markers. Under LuaLaTeX the values in
+-- force (\dcrset{marker size=..., parallel distance=...}); on the command
+-- line and in the tests the defaults.
+local PT = 2.54 / 72.27                    -- 1pt in cm
+local function package_sizes()
+  local z = { marker = 10.3 * PT, pardist = 13.5 * PT, selfgap = 2 * PT,
+              border = 1.5 * PT }
+  if in_tex then
+    for key, reg in pairs({ marker = "dcr@rsize", pardist = "dcr@pardist",
+                            border = "dcr@border" }) do
+      local ok, sp = pcall(tex.getglue, reg)
+      if ok and type(sp) == "number" and sp > 0 then z[key] = sp / 65536 * PT end
+    end
+  end
+  return z
+end
+
+-- The relations named by t ({from, kind, to, text}, see parse_targets).
+-- Warns (as `what') if there is none, or several and no type was given
+-- (all of them are `verb').
+local function find_relations(graph, t, what, verb)
+  local found = {}
+  for i, r in ipairs(graph.relations) do
+    if r.from == t.from and r.to == t.to and (not t.kind or t.kind == r.kind) then
+      found[#found + 1] = i
+    end
+  end
+  if #found == 0 then
+    warn(what .. ": no relation `" .. t.text .. "' in the file")
+  elseif #found > 1 and not t.kind then
+    warn(what .. ": `" .. t.text .. "' matches " .. #found ..
+      " relations; all are " .. verb .. " (add the relation type to pick one)")
+  end
+  return found
+end
+
+-- node ids: letters, digits, _ only; kept unique
+local function node_ids(graph)
+  local ids, used = {}, {}
   for _, n in ipairs(graph.nodes) do
     local base = n.id:gsub("[^%w_]", "_")
     local id, k = base, 1
     while used[id] do k = k + 1; id = base .. "_" .. k end
     used[id] = true
-    lay.ids[n.id] = id
+    ids[n.id] = id
   end
+  return ids
+end
 
-  -- \adjustactivity: moves (shift, xshift, yshift) in cm; moving a
-  -- collection moves everything inside it. lay.nextra[id] = the other
-  -- options, passed to the node.
-  local byid, shift = {}, {}
+-- \adjustactivity: the moves (shift, xshift, yshift) in cm per node --
+-- moving a collection moves everything inside it -- and the other
+-- options per node (passed to the node)
+local function node_adjustments(graph, opts)
+  local byid, shift, extra = {}, {}, {}
   for _, n in ipairs(graph.nodes) do byid[n.id] = n end
-  lay.nextra = {}
   local function move(id, dx, dy)
     local sh = shift[id] or { 0, 0 }
     shift[id] = { sh[1] + dx, sh[2] + dy }
@@ -2800,18 +2808,25 @@ local function layout(graph, opts)
     else
       if a.dx ~= 0 or a.dy ~= 0 then move(a.id, a.dx, a.dy) end
       for _, e in ipairs(a.extra) do
-        lay.nextra[a.id] = lay.nextra[a.id] or {}
-        table.insert(lay.nextra[a.id], e)
+        extra[a.id] = extra[a.id] or {}
+        table.insert(extra[a.id], e)
       end
     end
   end
+  return shift, extra
+end
 
-  -- lay.nom[id] = {left, top, right, bottom}: the nominal box (at the
-  -- location, full height incl. a header strip that may not be drawn);
-  -- collections are computed from their children's nominal boxes
+-- The boxes: lay.node[id] = {x, y, w, h} (activities: centre, size) or
+-- {x1, y1, x2, y2} (collections: corners). Positions are scaled, sizes
+-- are not (text does not scale either). lay.nom[id] = {left, top, right,
+-- bottom}: the nominal box (at the location, full height incl. a header
+-- strip that may not be drawn); collections without a size are the box
+-- around their children's nominal boxes (children come first).
+local function place_nodes(graph, opts, lay, shift)
+  local ppc = graph.px_per_cm
+  local s = opts.scale / ppc                -- px -> cm (positions)
   lay.nom = {}
   for _, n in ipairs(graph.nodes) do
-    -- centre scaled, size kept (text does not scale either); plus a move
     local sh = shift[n.id] or { 0, 0 }
     local cx, cy = (n.x + n.w / 2) * s + sh[1], -(n.y + n.h / 2) * s + sh[2]
     local w, h = n.w / ppc, n.h / ppc
@@ -2822,7 +2837,6 @@ local function layout(graph, opts)
       lay.node[n.id] = { x = cx, y = cy, w = w, h = h }
       lay.nom[n.id] = nominal
     elseif n.autosize and #n.children > 0 then
-      -- the box around the children (already laid out: they come first)
       local x1, y1, x2, y2 = math.huge, -math.huge, -math.huge, math.huge
       for _, c in ipairs(n.children) do
         local l, t, r, b = table.unpack(lay.nom[c])
@@ -2841,7 +2855,7 @@ local function layout(graph, opts)
       lay.nom[n.id] = nominal
     end
   end
-
+  -- the routes from the file (used with the waypoints option)
   for i, r in ipairs(graph.relations) do
     if r.from ~= r.to and #r.waypoints > 0 then
       local p = {}
@@ -2849,75 +2863,81 @@ local function layout(graph, opts)
       lay.via[i] = p
     end
   end
+end
 
-  -- \adjustrelation: lay.radj[i] = the adjustment of relation i
-  -- ({from = anchor, to = anchor, extra = {options}})
-  lay.radj = {}
+-- \adjustrelation: relation index -> its adjustment
+-- ({from = anchor, to = anchor, extra = {options}})
+local function relation_adjustments(graph, opts)
+  local radj = {}
   for _, a in ipairs(opts.adjust.relations) do
-    local t, found = a.target, 0
-    for i, r in ipairs(graph.relations) do
-      if r.from == t.from and r.to == t.to and (not t.kind or t.kind == r.kind) then
-        lay.radj[i] = a
-        found = found + 1
-      end
-    end
-    if found == 0 then
-      warn("\\adjustrelation: no relation `" .. t.text .. "' in the file")
-    elseif found > 1 and not t.kind then
-      warn("\\adjustrelation: `" .. t.text .. "' matches " .. found ..
-        " relations; all are adjusted (add the relation type to pick one)")
+    for _, i in ipairs(find_relations(graph, a.target, "\\adjustrelation", "adjusted")) do
+      radj[i] = a
     end
   end
+  return radj
+end
 
-  -- Ports: where each straight relation meets its two boxes. Every line
-  -- gets its own attachment point (port) on each end, independently:
-  -- per box and side, the lines attached there are sorted along the side
-  -- (by where they would leave it, so that they do not cross; parallel
-  -- relations in mirrored order at their two ends, so that they stay
-  -- parallel) and placed at even distances (the parallel distance),
-  -- centred on where they would leave; groups that come too close are
-  -- merged, a group longer than the side is squeezed. Markers sit at the
-  -- ports, so no two of them overlap on a box. The line runs straight from
-  -- port to port: emitted as via={(port 1),(port 2)}, two points on the
-  -- box outlines, which the package uses as the exact start and end (not
-  -- as anchors <id>.<angle>: TikZ rounds those angles to whole degrees,
-  -- differently at the two ends, and parallel lines came out tilted).
-  -- Not for: self-relations, relations along a route (waypoints), adjusted
-  -- relations (\adjustrelation), relations between a box and a box inside
-  -- it. lay.port[i] = {{x, y} at the source, {x, y} at the target} in cm;
-  -- lay.ports[node id] = list of {side, t} (t along the side, see below).
+-- centre and half sizes of a box
+local function box(lay, id)
+  local g = lay.node[id]
+  if g.w then return g.x, g.y, g.w / 2, g.h / 2 end
+  return (g.x1 + g.x2) / 2, (g.y1 + g.y2) / 2, (g.x2 - g.x1) / 2, (g.y1 - g.y2) / 2
+end
+
+-- a side's coordinate t: from the middle of the side, counterclockwise
+-- around the box (right side: up, top: to the left, left: down, bottom:
+-- to the right)
+local function to_t(side, cx, cy, x, y)
+  if side == "right" then return y - cy
+  elseif side == "top" then return cx - x
+  elseif side == "left" then return cy - y
+  else return x - cx end
+end
+local function from_t(side, cx, cy, hw, hh, t)
+  if side == "right" then return cx + hw, cy + t
+  elseif side == "top" then return cx - t, cy + hh
+  elseif side == "left" then return cx - hw, cy - t
+  else return cx + t, cy - hh end
+end
+
+-- how steeply a line in direction (dx, dy) leaves a side: the sine of the
+-- angle between them (1 = at a right angle)
+local function steepness(side, dx, dy)
+  local l = math.sqrt(dx * dx + dy * dy)
+  if l < 1e-9 then return 1 end
+  return math.abs((side == "right" or side == "left") and dx or dy) / l
+end
+
+-- Ports: where each straight relation meets its two boxes. Every line
+-- gets its own attachment point (port) on each end, independently: per
+-- box and side, the lines attached there are sorted along the side (by
+-- where they would leave it, so that they do not cross; parallel
+-- relations in mirrored order at their two ends, so that they stay
+-- parallel) and placed at even distances (the parallel distance across
+-- the lines), centred on where they would leave; groups that come too
+-- close are merged, a group longer than the side is squeezed. Markers sit
+-- at the ports (on slanted lines a little along them), so no
+-- two of them overlap on a box. The line runs straight from port to port:
+-- emitted as via={(port 1),(port 2)}, two points on the box outlines,
+-- which the package uses as the exact start and end (not as anchors
+-- <id>.<angle>: TikZ rounds those angles to whole degrees, differently at
+-- the two ends, and parallel lines came out tilted).
+-- Not for: self-relations, relations along a route (waypoints), adjusted
+-- relations (\adjustrelation), relations between a box and a box inside
+-- it (these are spread by the package, see \dcr@parallel).
+-- lay.port[i] = {{x, y} at the source, {x, y} at the target} in cm;
+-- lay.ports[node id] = list of {side, t, i, e} (t along the side).
+local function assign_ports(graph, opts, lay, z)
   lay.port, lay.ports = {}, {}
-  local PD = 0.4745             -- the parallel distance, 13.5pt, in cm
-  local MARGIN = 0.3            -- from the corners (half a marker + a little)
-  local function box(id)        -- centre and half sizes
-    local g = lay.node[id]
-    if g.w then return g.x, g.y, g.w / 2, g.h / 2 end
-    return (g.x1 + g.x2) / 2, (g.y1 + g.y2) / 2, (g.x2 - g.x1) / 2, (g.y1 - g.y2) / 2
-  end
-  local function inside(a, b)   -- box a inside box b (or the same)
-    local ax, ay, aw, ah = box(a)
-    local bx, by, bw, bh = box(b)
+  local PD = z.pardist
+  local MARGIN = z.marker / 2 + 0.12    -- from the corners: half a marker + a little
+  local SELFSTEP = z.marker + z.selfgap -- self markers, see place_self_markers
+  local function inside(a, b)           -- box a inside box b (or the same)
+    local ax, ay, aw, ah = box(lay, a)
+    local bx, by, bw, bh = box(lay, b)
     return ax - aw >= bx - bw - 1e-6 and ax + aw <= bx + bw + 1e-6
        and ay - ah >= by - bh - 1e-6 and ay + ah <= by + bh + 1e-6
   end
-  -- a side's coordinate t: from the middle of the side, counterclockwise
-  -- around the box (right side: up, top: to the left, left: down,
-  -- bottom: to the right); half: half the length of the side
-  local function to_t(side, cx, cy, x, y)
-    if side == "right" then return y - cy
-    elseif side == "top" then return cx - x
-    elseif side == "left" then return cy - y
-    else return x - cx end
-  end
-  local function from_t(side, cx, cy, hw, hh, t)
-    if side == "right" then return cx + hw, cy + t
-    elseif side == "top" then return cx - t, cy + hh
-    elseif side == "left" then return cx - hw, cy - t
-    else return cx + t, cy - hh end
-  end
-  -- the markers of self-relations sit on the top edge from the left
-  -- corner (see below): that part of the top edge is kept free of ports
-  local SELFSTEP = 0.3634 + 0.0703   -- marker + 2pt, as below
   local nself = {}
   for _, r in ipairs(graph.relations) do
     if r.from == r.to then nself[r.from] = (nself[r.from] or 0) + 1 end
@@ -2930,8 +2950,8 @@ local function layout(graph, opts)
       lay.port[i] = {}
       for e, at in ipairs({ r.from, r.to }) do
         local other = (e == 1) and r.to or r.from
-        local cx, cy, hw, hh = box(at)
-        local ox, oy = box(other)
+        local cx, cy, hw, hh = box(lay, at)
+        local ox, oy = box(lay, other)
         local dx, dy = ox - cx, oy - cy
         -- where the line between the centres leaves the box
         local tx = dx ~= 0 and hw / math.abs(dx) or math.huge
@@ -2945,8 +2965,9 @@ local function layout(graph, opts)
         -- them, i.e. mirrored around the boxes: the index counts up at the
         -- end with the smaller id, down at the other
         local tie = ((at < other) and 1 or -1) * i
-        table.insert(attach[key], { i = i, e = e,
-          t = to_t(side, cx, cy, cx + k * dx, cy + k * dy), tie = tie })
+        table.insert(attach[key], { i = i, e = e, side = side,
+          t = to_t(side, cx, cy, cx + k * dx, cy + k * dy), tie = tie,
+          sin = steepness(side, dx, dy) })
       end
     end
   end
@@ -2954,35 +2975,39 @@ local function layout(graph, opts)
   for key in pairs(attach) do keys[#keys + 1] = key end
   table.sort(keys)              -- (deterministic output)
   for _, key in ipairs(keys) do
-    local list = attach[key]
-    local side, id = list.side, list.id
-    local cx, cy, hw, hh = box(id)
-    local half = (side == "right" or side == "left") and hh or hw
-    local lo, hi = -half + MARGIN, half - MARGIN
-    -- top edge: t runs from right to left, the self markers take the left end
-    if side == "top" and nself[id] then
-      -- (the ports' clearance from the self markers, see below: half a
-      -- marker for the line, a step for its marker up to half a marker
-      -- further along a slanted line)
-      local h2 = half - nself[id] * SELFSTEP - 0.3634 / 2 - 0.05
-      if h2 > lo then hi = math.min(hi, h2) end   -- (no room: ignore them)
-    end
-    if lo > hi then lo, hi = 0, 0 end
-    table.sort(list, function(p, q)
+    table.sort(attach[key], function(p, q)
       if math.abs(p.t - q.t) > 1e-6 then return p.t < q.t end
       return p.tie < q.tie
     end)
-    -- groups of consecutive attachments: {first, last, centre, spacing}
+  end
+  -- the ports of one side
+  local function place_side(list)
+    local side, id = list.side, list.id
+    local cx, cy, hw, hh = box(lay, id)
+    local half = (side == "right" or side == "left") and hh or hw
+    local lo, hi = -half + MARGIN, half - MARGIN
+    -- top edge: t runs from right to left; the self-relation markers take
+    -- the left end (and keep their clearance from the ports, see
+    -- place_self_markers)
+    if side == "top" and nself[id] then
+      local h2 = half - nself[id] * SELFSTEP - z.marker / 2 - 0.05
+      if h2 > lo then hi = math.min(hi, h2) end   -- (no room: ignore them)
+    end
+    if lo > hi then lo, hi = 0, 0 end
+    -- groups of consecutive attachments: {first, last, centre, spacing}.
+    -- The parallel distance is measured across the lines, as for parallel
+    -- relations in the package: along the side, lines that meet it at an
+    -- angle need PD / sin(angle) (the angle at least about 17 degrees)
     local groups = {}
     for j = 1, #list do groups[j] = { a = j, b = j } end
     local function place(g)     -- centre and spacing of a group, on the side
-      local n, sum = g.b - g.a + 1, 0
-      for j = g.a, g.b do sum = sum + list[j].t end
-      local sp = PD
-      if n > 1 and (n - 1) * PD > hi - lo then sp = (hi - lo) / (n - 1) end
+      local n, sum, s = g.b - g.a + 1, 0, 1
+      for j = g.a, g.b do sum = sum + list[j].t; s = math.min(s, list[j].sin) end
+      g.need = PD / math.max(s, 0.3)
+      local sp = g.need
+      if n > 1 and (n - 1) * sp > hi - lo then sp = (hi - lo) / (n - 1) end
       local len = (n - 1) * sp
-      local c = sum / n
-      c = math.max(lo + len / 2, math.min(hi - len / 2, c))
+      local c = math.max(lo + len / 2, math.min(hi - len / 2, sum / n))
       g.c, g.sp, g.len = c, sp, len
     end
     for _, g in ipairs(groups) do place(g) end
@@ -2992,7 +3017,7 @@ local function layout(graph, opts)
       for q = 1, #groups - 1 do
         local g, h = groups[q], groups[q + 1]
         -- the gap between the last port of g and the first of h
-        if (h.c - h.len / 2) - (g.c + g.len / 2) < math.min(g.sp, h.sp) - 1e-9 then
+        if (h.c - h.len / 2) - (g.c + g.len / 2) < math.max(g.need, h.need) - 1e-9 then
           groups[q] = { a = g.a, b = h.b }
           place(groups[q])
           table.remove(groups, q + 1)
@@ -3001,7 +3026,6 @@ local function layout(graph, opts)
         end
       end
     end
-    lay.ports[id] = lay.ports[id] or {}
     for _, g in ipairs(groups) do
       for j = g.a, g.b do
         local t = g.c - g.len / 2 + (j - g.a) * g.sp
@@ -3012,72 +3036,134 @@ local function layout(graph, opts)
       end
     end
   end
+  -- (the angles are those of the lines between the box centres: those
+  -- between the ports would feed back -- spreading slanted lines along a
+  -- side makes them more slanted)
+  for _, key in ipairs(keys) do
+    lay.ports[attach[key].id] = lay.ports[attach[key].id] or {}
+    place_side(attach[key])
+  end
+end
 
-  -- Self-relations: their markers are lined up on the top edge of the box
-  -- from the left corner, in the portal's order, skipping the places where
-  -- other relations meet that edge (their ports, see above).
-  -- lay.selfpos[i] = centre of the marker from the box's left edge, in cm.
+-- Self-relations: their markers are lined up on the top edge of the box
+-- from the left corner, in the portal's order, skipping the places where
+-- other relations meet that edge (their ports). If they do not fit on
+-- the edge that way, they may touch the markers of those lines (no gap);
+-- if that does not fit either, they run past the right corner (with a
+-- warning): never onto a line, where a marker would read as the marker of
+-- that line. lay.selfpos[i] = centre of the marker from the box's
+-- left edge, in cm.
+local SELF_ORDER = { include = 1, exclude = 2, response = 3, noresponse = 4,
+  update = 5, spawn = 6, logicalinclude = 7, condition = 8,
+  precondition = 9, milestone = 10 }
+-- relations with their marker at the target (dcr-solutions notation)
+local MARKER_AT_TARGET = { condition = true, milestone = true, precondition = true }
+-- does relation kind have a marker at its end e (1 source, 2 target)?
+-- coopis23: the circle at the target (the triangle at the source sits on
+-- the port, inside the line's clearance); classic draws self-relations as
+-- loops at the corners, the markers on the top edge do not matter there
+local function marker_at(kind, e, notation)
+  if notation == "coopis23" then return e == 2 end
+  if notation == "classic" then return true end
+  return (e == 2) == (MARKER_AT_TARGET[kind] == true)
+end
+
+local function place_self_markers(graph, opts, lay, z)
   lay.selfpos = {}
-  do
-    local RS = 0.3634             -- marker size (10.3pt)
-    local STEP = RS + 0.0703      -- marker + 2pt
-    local occupied = {}           -- node id -> list of x (from the left edge)
-    -- a line on the top edge occupies its port (a self marker must keep
-    -- half a marker from it) and its marker, which on a slanted line sits a
-    -- little further along the line (a self marker must keep a full step
-    -- from it): occupied[id] = list of {x, clearance}
-    for id, list in pairs(lay.ports) do
-      local _, _, hw = box(id)
-      for _, p in ipairs(list) do
-        if p.side == "top" then
-          occupied[id] = occupied[id] or {}
-          local x = hw - p.t
-          local a, b = lay.port[p.i][p.e], lay.port[p.i][3 - p.e]
-          local dx, dy = b[1] - a[1], b[2] - a[2]
-          local run = 0
-          if dy > 1e-6 then run = math.max(-RS, math.min(RS, RS / 2 * dx / dy)) end
-          table.insert(occupied[id], { x, RS / 2 + 0.05 })
-          table.insert(occupied[id], { x + run, STEP })
+  local RS = z.marker
+  local STEP = RS + z.selfgap
+  -- a line on the top edge occupies its port (a self marker keeps half a
+  -- marker from it); the marker of a relation at this end -- where the
+  -- package puts it (\dcr@computeend): moved along the line until it
+  -- clears the side, h / sin, at most 4h -- occupies its place if it
+  -- reaches the row of the self markers (also from a side near the top
+  -- corner); a self marker keeps a full step from it.
+  -- occupied[id] = list of {x from the left edge, clearance, marker = true|nil}
+  local occupied = {}
+  local h = RS / 2 + z.border / 2
+  for id, list in pairs(lay.ports) do
+    local cx, cy, hw, hh = box(lay, id)
+    local left, top = cx - hw, cy + hh
+    occupied[id] = {}
+    for _, p in ipairs(list) do
+      local a, b = lay.port[p.i][p.e], lay.port[p.i][3 - p.e]
+      if p.side == "top" then table.insert(occupied[id], { a[1] - left, RS / 2 + 0.05 }) end
+      if marker_at(graph.relations[p.i].kind, p.e, opts.notation) then
+        local dx, dy = b[1] - a[1], b[2] - a[2]
+        local l = math.sqrt(dx * dx + dy * dy)
+        local along = math.min(h / math.max(steepness(p.side, dx, dy), 0.2), 4 * h)
+        local mx, my = a[1] + along * dx / l, a[2] + along * dy / l
+        if my > top - h then
+          table.insert(occupied[id], { mx - left, STEP, marker = true })
         end
       end
     end
-    -- the self-relations of each box, in the portal's order
-    local order = { include = 1, exclude = 2, response = 3, noresponse = 4,
-      update = 5, spawn = 6, logicalinclude = 7, condition = 8,
-      precondition = 9, milestone = 10 }
-    local selfs = {}
-    for i, r in ipairs(graph.relations) do
-      if r.from == r.to then
-        selfs[r.from] = selfs[r.from] or {}
-        table.insert(selfs[r.from], i)
-      end
+  end
+  local selfs = {}
+  for i, r in ipairs(graph.relations) do
+    if r.from == r.to then
+      selfs[r.from] = selfs[r.from] or {}
+      table.insert(selfs[r.from], i)
     end
-    for id, list in pairs(selfs) do
-      table.sort(list, function(a, b)
-        local ka, kb = order[graph.relations[a].kind] or 99, order[graph.relations[b].kind] or 99
-        if ka ~= kb then return ka < kb end
-        return a < b
-      end)
-      -- left to right; a marker of another relation in the way: continue
-      -- right next to it
-      local occ = occupied[id] or {}
-      table.sort(occ, function(p, q) return p[1] < q[1] end)
-      local x = RS / 2
-      for _, i in ipairs(list) do
+  end
+  local ids = {}
+  for id in pairs(selfs) do ids[#ids + 1] = id end
+  table.sort(ids)               -- (deterministic warnings)
+  for _, id in ipairs(ids) do
+    local list = selfs[id]
+    table.sort(list, function(a, b)
+      local ka = SELF_ORDER[graph.relations[a].kind] or 99
+      local kb = SELF_ORDER[graph.relations[b].kind] or 99
+      if ka ~= kb then return ka < kb end
+      return a < b
+    end)
+    local occ = occupied[id] or {}
+    table.sort(occ, function(p, q) return p[1] < q[1] end)
+    local _, _, hw = box(lay, id)
+    local last = 2 * hw - RS / 2  -- the rightmost centre on the edge
+    -- left to right; something in the way (keep(o): its clearance, or nil
+    -- to ignore it): continue right next to it
+    local function line_up(keep)
+      local pos, x = {}, RS / 2
+      for k = 1, #list do
         local moved = true
         while moved do
           moved = false
           for _, o in ipairs(occ) do
+            local c = keep(o)
             -- (tolerance: (o + c) - o can come out a hair below c, which
             -- would loop forever)
-            if math.abs(x - o[1]) < o[2] - 1e-9 then x = o[1] + o[2]; moved = true end
+            if c and math.abs(x - o[1]) < c - 1e-9 then x = o[1] + c; moved = true end
           end
         end
-        lay.selfpos[i] = x
+        pos[k] = x
         x = x + STEP
       end
+      return pos, pos[#pos] <= last + 1e-9
     end
+    local pos, fits = line_up(function(o) return o[2] end)
+    if not fits then   -- touching the markers of the lines, no gap
+      pos, fits = line_up(function(o) return o.marker and RS or o[2] end)
+    end
+    if not fits then
+      warn("the top edge of `" .. id .. "' is too short for its " .. #list ..
+        " self-relation markers and the lines there; the markers run past"
+        .. " its right corner")
+    end
+    for k, i in ipairs(list) do lay.selfpos[i] = pos[k] end
   end
+end
+
+-- Layout: the steps above, in this order
+local function layout(graph, opts)
+  local z = package_sizes()
+  local lay = { ids = node_ids(graph), node = {}, via = {} }
+  local shift
+  shift, lay.nextra = node_adjustments(graph, opts)
+  place_nodes(graph, opts, lay, shift)
+  lay.radj = relation_adjustments(graph, opts)
+  assign_ports(graph, opts, lay, z)
+  place_self_markers(graph, opts, lay, z)
   return lay
 end
 
@@ -3091,19 +3177,7 @@ function M.explicit_parts(graph, opts)
   for _, key in ipairs({ "guards", "delays", "deadlines" }) do
     local part = part_of[key]
     for _, t in ipairs(opts.targets[key] or {}) do
-      local matches = {}
-      for i, r in ipairs(graph.relations) do
-        if r.from == t.from and r.to == t.to and (not t.kind or t.kind == r.kind) then
-          matches[#matches + 1] = i
-        end
-      end
-      if #matches == 0 then
-        warn(key .. ": no relation `" .. t.text .. "' in the file")
-      elseif #matches > 1 and not t.kind then
-        warn(key .. ": `" .. t.text .. "' matches " .. #matches ..
-          " relations; all are used (add the relation type to pick one)")
-      end
-      for _, i in ipairs(matches) do
+      for _, i in ipairs(find_relations(graph, t, key, "used")) do
         local r = graph.relations[i]
         local has
         if part == "guard" then has = r.guard ~= nil
@@ -3281,64 +3355,8 @@ local function parse_targets(key, v)
   return list
 end
 
--- "a, b=c, d={e,f}" -> table; top-level commas only
-local function parse_options(str)
-  local opts = { format = "auto", scale = 1, marking = true, waypoints = false,
-                 targets = {}, size = {} }
-  local parts, depth, cur = {}, 0, ""
-  for c in (str or ""):gmatch(".") do
-    if c == "{" then depth = depth + 1 elseif c == "}" then depth = depth - 1 end
-    if c == "," and depth == 0 then parts[#parts + 1] = cur; cur = ""
-    else cur = cur .. c end
-  end
-  parts[#parts + 1] = cur
-  for _, p in ipairs(parts) do
-    p = trim(p)
-    if p ~= "" then
-      local k, v = p:match("^([^=]-)%s*=%s*(.*)$")
-      if not k then k = p end
-      k = trim(k)
-      if v then v = trim(v):gsub("^{(.*)}$", "%1") end
-      if k == "format" then opts.format = v
-      elseif k == "notation" then
-        if not NOTATIONS[v] then
-          fail("notation=" .. tostring(v) .. ": use dcr-solutions, classic or coopis23")
-        end
-        opts.notation = v
-      elseif k == "scale" then opts.scale = tonumber(v) or fail("scale=" .. tostring(v) .. " is not a number")
-      elseif k == "waypoints" then opts.waypoints = truthy(v)
-      elseif k == "marking" then opts.marking = truthy(v)
-      elseif k == "export" then opts.export = v
-      elseif k == "guards" or k == "delays" or k == "deadlines" then
-        -- a mode for the whole graph, or a list of relations whose value
-        -- is shown as text: guards={A4 response A6, A6 A7}
-        local modes = (k == "guards") and { shield = 1, explicit = 1, both = 1, none = 1 }
-                                       or { marker = 1, explicit = 1, none = 1 }
-        if modes[v] then
-          opts[k] = v
-        else
-          opts.targets[k] = parse_targets(k, v)
-        end
-      elseif k == "explicit" then
-        -- all values as text
-        opts.explicit_all = true
-      elseif k == "width" or k == "height" or k == "max width" or k == "max height" then
-        -- the size of the whole graph: passed on to the environment
-        if not v or v == "" then fail(k .. "= needs a length") end
-        opts.size[#opts.size + 1] = { k, v }
-      else warn("unknown option `" .. k .. "' ignored") end
-    end
-  end
-  return opts
-end
-
--- ------------------------------------------------------------------
---  Adjustments: \adjustactivity{id}{options}, \adjustrelation{relation}
---  {options} in a dcrgraphfile environment, given as a list of
---  {kind = "activity"|"relation", target = ..., opts = ...}. Parsed here;
---  applied in the layout step (moves) and the emitter (everything else).
--- ------------------------------------------------------------------
--- "a, b={c,d}" -> {"a", "b={c,d}"}: top-level commas only
+-- "a, b={c,d}" -> {"a", "b={c,d}"}: top-level commas only, trimmed,
+-- empty items left out
 local function split_top(str)
   local parts, depth, cur = {}, 0, ""
   for c in (str or ""):gmatch(".") do
@@ -3352,6 +3370,57 @@ local function split_top(str)
   return result
 end
 
+-- "key = value" -> "key", "value" (trimmed); "key" -> "key", nil
+local function keyval(p)
+  local k, v = p:match("^([^=]-)%s*=%s*(.*)$")
+  return trim(k or p), v and trim(v)
+end
+
+-- "a, b=c, d={e,f}" -> table
+local function parse_options(str)
+  local opts = { format = "auto", scale = 1, marking = true, waypoints = false,
+                 targets = {}, size = {} }
+  for _, p in ipairs(split_top(str)) do
+    local k, v = keyval(p)
+    if v then v = v:gsub("^{(.*)}$", "%1") end
+    if k == "format" then opts.format = v
+    elseif k == "notation" then
+      if not NOTATIONS[v] then
+        fail("notation=" .. tostring(v) .. ": use dcr-solutions, classic or coopis23")
+      end
+      opts.notation = v
+    elseif k == "scale" then opts.scale = tonumber(v) or fail("scale=" .. tostring(v) .. " is not a number")
+    elseif k == "waypoints" then opts.waypoints = truthy(v)
+    elseif k == "marking" then opts.marking = truthy(v)
+    elseif k == "export" then opts.export = v
+    elseif k == "guards" or k == "delays" or k == "deadlines" then
+      -- a mode for the whole graph, or a list of relations whose value
+      -- is shown as text: guards={A4 response A6, A6 A7}
+      local modes = (k == "guards") and { shield = 1, explicit = 1, both = 1, none = 1 }
+                                     or { marker = 1, explicit = 1, none = 1 }
+      if modes[v] then
+        opts[k] = v
+      else
+        opts.targets[k] = parse_targets(k, v)
+      end
+    elseif k == "explicit" then
+      -- all values as text
+      opts.explicit_all = true
+    elseif k == "width" or k == "height" or k == "max width" or k == "max height" then
+      -- the size of the whole graph: passed on to the environment
+      if not v or v == "" then fail(k .. "= needs a length") end
+      opts.size[#opts.size + 1] = { k, v }
+    else warn("unknown option `" .. k .. "' ignored") end
+  end
+  return opts
+end
+
+-- ------------------------------------------------------------------
+--  Adjustments: \adjustactivity{id}{options}, \adjustrelation{relation}
+--  {options} in a dcrgraphfile environment, given as a list of
+--  {kind = "activity"|"relation", target = ..., opts = ...}. Parsed here;
+--  applied in the layout step (moves) and the emitter (everything else).
+-- ------------------------------------------------------------------
 -- a length in cm: "1", "1cm", "5mm", "10pt", "0.5in"
 local function length_cm(s, what)
   local n, unit = trim(s or ""):gsub("^{(.*)}$", "%1"):match("^([%-%+]?[%d%.]+)%s*(%a*)$")
@@ -3370,8 +3439,7 @@ local function parse_adjustments(raw)
     if a.kind == "activity" then
       local e = { id = trim(a.target), dx = 0, dy = 0, extra = {}, text = a.opts }
       for _, p in ipairs(split_top(a.opts)) do
-        local k, v = p:match("^([^=]-)%s*=%s*(.*)$")
-        k = trim(k or p)
+        local k, v = keyval(p)
         if k == "shift" then
           local x, y = (v or ""):gsub("^{(.*)}$", "%1"):match("^%(%s*(.-)%s*,%s*(.-)%s*%)$")
           if not x then fail(where .. ": shift=" .. tostring(v) .. " is not of the form {(x,y)}") end
@@ -3386,10 +3454,9 @@ local function parse_adjustments(raw)
       if #t ~= 1 then fail(where .. ": name exactly one relation") end
       local e = { target = t[1], extra = {}, text = a.opts }
       for _, p in ipairs(split_top(a.opts)) do
-        local k, v = p:match("^([^=]-)%s*=%s*(.*)$")
-        k = trim(k or p)
+        local k, v = keyval(p)
         if k == "from" or k == "to" then
-          e[k] = trim(v or ""):gsub("^{(.*)}$", "%1")   -- an anchor: south, 30, ...
+          e[k] = (v or ""):gsub("^{(.*)}$", "%1")   -- an anchor: south, 30, ...
         else e.extra[#e.extra + 1] = p end
       end
       adj.relations[#adj.relations + 1] = e
@@ -3437,8 +3504,11 @@ function M.read(file, optstring, adjustments)
     local rels = {}
     for _, r in ipairs(graph.relations) do
       if r.parts and r.kind == "precondition" then
+        -- time and guard on the condition only (also if the file has the
+        -- guard on the milestone half)
         for _, p in ipairs(r.parts) do
-          if p.kind == "milestone" then p.delay = nil end
+          if p.kind == "milestone" then p.delay, p.guard = nil, nil
+          else p.guard = r.guard end
           rels[#rels + 1] = p
         end
       else
@@ -3540,7 +3610,9 @@ function M.describe_layout(graph, opts)
   local parts = M.explicit_parts(graph, opts)
   local all = opts.explicit_all
   -- as text: with explicit (both), and in classic notation by default
-  -- (it has no shields or clocks), unless the mode is none
+  -- (it has no shields or clocks), unless the mode is none.
+  -- (This repeats the rules of \dcr@relation in the TeX part, for the
+  -- tests only; change both together.)
   local classic = literature_notation(opts.notation)
   local function as_text(mode)
     if all or mode == "explicit" or mode == "both" then return true end

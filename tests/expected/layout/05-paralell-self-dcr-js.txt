@@ -13,36 +13,38 @@ milestone A1 -> A4 via=(8,-7.9)(9.3,-10.4)
 milestone A2 -> A3 via=(13,-7.9)(14.3,-10.4)
 noresponse A3 -> A2 via=(14.3,-10.4)(15.6,-7.9)
 port condition A1 (10.6,-8.849) -> A2 (13,-8.849)
-port condition A1 (8.825,-9.4) -> A4 (9.966,-10.4)
+port condition A1 (8.826,-9.4) -> A4 (9.96,-10.4)
 port exclude A2 (13,-7.426) -> A1 (10.6,-7.426)
 port exclude A3 (13,-11.9) -> A4 (10.6,-11.9)
 port include A2 (13,-7.9) -> A1 (10.6,-7.9)
-port include A4 (10.6,-11.425) -> A3 (13,-11.425)
+port include A4 (10.6,-11.426) -> A3 (13,-11.426)
 port milestone A1 (10.6,-6.951) -> A2 (13,-6.951)
-port milestone A1 (9.775,-9.4) -> A4 (10.3,-10.4)
+port milestone A1 (9.774,-9.4) -> A4 (10.299,-10.4)
 port milestone A2 (14.537,-9.4) -> A3 (14.537,-10.4)
 port noresponse A3 (14.063,-10.4) -> A2 (14.063,-9.4)
-port response A1 (10.6,-8.375) -> A2 (13,-8.375)
-port response A1 (9.3,-9.4) -> A4 (10.133,-10.4)
-port update A3 (13,-12.375) -> A4 (10.6,-12.375)
+port response A1 (10.6,-8.374) -> A2 (13,-8.374)
+port response A1 (9.3,-9.4) -> A4 (10.13,-10.4)
+port update A3 (13,-12.374) -> A4 (10.6,-12.374)
 response A1 -> A2 via=(10.6,-7.9)(14.3,-9.4)
 response A1 -> A4 via=(8,-7.9)(9.3,-10.4)
-self condition A1 at 1.049
-self condition A2 at 1.483
-self exclude A1 at 0.182
-self exclude A2 at 0.615
-self exclude A3 at 0.615
-self exclude A4 at 0.615
-self include A2 at 0.182
-self include A3 at 0.182
-self include A4 at 0.182
-self milestone A1 at 1.483
-self milestone A2 at 1.916
-self milestone A3 at 2.838
-self milestone A4 at 2.638
-self noresponse A3 at 2.405
-self response A1 at 0.615
-self response A2 at 1.049
-self response A3 at 1.971
-self response A4 at 1.049
+self condition A1 at 1.046
+self condition A2 at 1.478
+self exclude A1 at 0.181
+self exclude A2 at 0.613
+self exclude A3 at 0.613
+self exclude A4 at 0.613
+self include A2 at 0.181
+self include A3 at 0.181
+self include A4 at 0.181
+self milestone A1 at 1.478
+self milestone A2 at 1.91
+self milestone A3 at 2.764
+self milestone A4 at 2.552
+self noresponse A3 at 2.332
+self response A1 at 0.613
+self response A2 at 1.046
+self response A3 at 1.899
+self response A4 at 1.046
 update A3 -> A4 via=(14.3,-10.4)(10.6,-11.9)
+warning: the top edge of `A3' is too short for its 5 self-relation markers and the lines there; the markers run past its right corner
+warning: the top edge of `A4' is too short for its 4 self-relation markers and the lines there; the markers run past its right corner

@@ -155,8 +155,8 @@ when the style has \key{align=center}
 (\key{guard label/.append style=\{align=center\}}); a line that starts with
 ``\texttt{[}'' needs \cs{\textbackslash\{\}}.
 A relation from an event to itself shows its values too: next to its loop,
-away from the event (classic, coopis23), or above its marker
-(dcr-solutions). A loop goes round the corner given with
+away from the event (classic), or above its marker (dcr-solutions,
+coopis23). A loop goes round the corner given with
 \key{corner=}, otherwise round the next free corner. The text size is the
 style \key{guard label} (guards) and \key{delay label} (times):
 \example{self-values}
@@ -181,8 +181,9 @@ the same in all of them):
 \end{itemize}
 \example{notation}
 The classic and coopis23 notations have no symbol for the pre-condition;
-it is drawn as what it means: a condition plus a milestone (a time on the
-condition only). The logical include has no standard symbol in the
+it is drawn as what it means: a condition plus a milestone (its time and
+guard are written at the condition only; along a route, \key{via=}, the two
+lines run side by side). The logical include has no standard symbol in the
 literature either; it is drawn as in recent papers, an include arrow with
 ``$\pm$'' instead of ``+'' (coopis23: ``$\pm$'' in the circle), with its one
 guard. Update, no-response, spawn and logical include are not part of the
@@ -203,6 +204,9 @@ relations: \cs{colorlet\{dcr condition\}\{\dots\}} and so on
 widths and the font are settings of the graph or the document
 (Section~\ref{sec:settings}); boxes have any size.
 \example{sizes}
+An import spaces its lines and markers with the sizes in force: set
+\key{marker size=} and \key{parallel distance=} with \cs{dcrset} before
+\cs{includedcrgraph}.
 
 \paragraph{Fitting the page.} A graph that is too wide for the page is
 scaled down as a whole with \key{max width=\cs{linewidth}}: for one graph
@@ -211,7 +215,9 @@ scaled down as a whole with \key{max width=\cs{linewidth}}: for one graph
 document (\cs{dcrset\{max width=\cs{linewidth}\}}). Graphs that fit stay as
 they are. \key{width=} and \key{height=} set the exact size;
 \key{max height=} limits the height. Text and markers are scaled with the
-graph; to spread out only the positions of an import, use \key{scale=}.
+graph. To spread out only the positions, use \key{scale=}: on a graph
+(Ti\emph{k}Z's key: coordinates and routes are scaled, boxes, markers and
+text keep their size) or on an import.
 
 \subsection{Symbols in running text}
 For papers, every relation has a command for running text and formulas,
@@ -406,9 +412,10 @@ Option & Meaning\\
 \key{via=\{(x1,y1),(x2,y2)\}} & route the line through these points\\
 \key{selfpos=}\meta{length} & for a relation from an event to itself: where its
   marker sits on the top edge (its centre, from the left edge); without it,
-  the markers are lined up from the left corner (\cs{includedcrgraph} sets
-  it, keeping clear of other relations)\\
-\key{corner=}\meta{corner} & classic, coopis23: for a relation from an event
+  the markers are lined up from the left corner, leaving out the places
+  taken with \key{selfpos=} (\cs{includedcrgraph} sets it, keeping clear of
+  other relations)\\
+\key{corner=}\meta{corner} & classic: for a relation from an event
   to itself, the corner of its loop (\key{north east}, \key{north west},
   \key{south east}, \key{south west}); without it, the next corner no other
   loop of the event uses\\
@@ -421,10 +428,11 @@ anything else & Ti\emph{k}Z: \key{bend left=20}, \key{out=90}, \dots\\
 \end{tabularx}
 
 \medskip\noindent
-A relation from an event to itself is drawn as a marker above the event
-(dcr-solutions) or a loop round a corner (classic, coopis23); its guard
-and time, if shown as text, are written above the marker or next to the
-loop. Several relations between the same two events
+A relation from an event to itself is drawn as a marker on the top edge
+of the event (dcr-solutions; coopis23: the circle with the symbol; the
+key \key{selfpos=} works in both) or a loop round a corner (classic); its
+guard and time, if shown as text, are written above the marker or next to
+the loop. Several relations between the same two events
 are spread out automatically, unless they have Ti\emph{k}Z options.
 
 \subsection{Settings}\label{sec:settings}
@@ -628,7 +636,9 @@ spawn; their guards and times; the routes of lines (only with the option
 
 \paragraph{Not reproduced.} The portal's routing of lines (it draws some
 lines at right angles, the package draws straight lines and spreads out
-lines that would overlap); the order of parallel lines between two events;
+lines that would overlap; if the top edge of an event is too short for its
+self-relation markers and the lines that meet it there, the markers run
+past its right corner, with a warning); the order of parallel lines between two events;
 the value assigned by an update relation; data types, expressions and
 everything that only concerns the execution of the graph.
 

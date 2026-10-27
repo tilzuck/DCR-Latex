@@ -16,7 +16,7 @@ XML** → **3. Reference** (every command, key and colour, complete).
 - [ ] Notation of one graph: `\begin{dcrgraph}[notation=classic]` (settings need no `dcr/` prefix; it still works)
 - [ ] Notation of the rest of the document: `\dcrset{notation=…}`
 - [ ] The same graph in all three notations (side by side)
-- [ ] classic / coopis23: a pre-condition is drawn as condition + milestone
+- [ ] classic / coopis23: a pre-condition is drawn as condition + milestone (time and guard at the condition only; with `via=` the two lines run side by side)
 - [ ] classic / coopis23: a logical include is one relation with "±" at the target (classic →±, coopis23 ± in the circle), one guard
 - [ ] coopis23: update, no-response and spawn get their dcr-solutions symbol in the circle
 - [ ] classic / coopis23: no shields or clocks, values always as text
@@ -92,10 +92,10 @@ Commands, all `\relation[options]{from}{to}`:
 - [ ] Relations to and from collections (nesting, subprocess)
 
 ### Self-relations
-- [ ] `\exclude{a}{a}` etc.: dcr-solutions marker on the top edge; several side by side
-- [ ] `selfpos=` (dcr-solutions: position of the marker on the top edge)
-- [ ] classic / coopis23: a loop at a corner, corners in turn
-- [ ] `corner=north west|north east|south east|south west` (classic / coopis23); without it the next free corner
+- [ ] `\exclude{a}{a}` etc.: dcr-solutions marker on the top edge (coopis23: the circle with the symbol); several side by side
+- [ ] `selfpos=` (dcr-solutions and coopis23: position of the marker on the top edge; markers without it leave that place free)
+- [ ] classic: a loop at a corner, the next free corner
+- [ ] `corner=north west|north east|south east|south west` (classic only); without it the next free corner
 - [x] Guard and time of a self-relation as text (next to the loop / above the marker) – examples/self-values.tex
 - [x] Text size of guards and times: styles `guard label`, `delay label` (`guard label/.append style={font=...}`) – examples/self-values.tex
 
@@ -149,6 +149,8 @@ All `\command[options]{label}{id}{child1, child2, …}`, written after their chi
 - [ ] `data size=`, `dmn size=`, `tick size=`, `guard size=`
 - [ ] `parallel distance=`
 - [ ] Size of the whole graph: `max width=\linewidth` (only shrinks), `max height=`, `width=`, `height=` – per graph, per import, or document-wide with `\dcrset`; scales text too
+- [ ] TikZ `scale=` on a graph: only the positions (and routes) scale; boxes, markers, text keep their size
+- [ ] `marker size=`, `parallel distance=` set with `\dcrset` before an import: the import spaces its lines and markers with them
 - [ ] Overriding a style with `\tikzset{dcr/… /.append style=…}`
 
 ### Colours (`\colorlet{…}{…}`)
@@ -165,7 +167,7 @@ All `\command[options]{label}{id}{child1, child2, …}`, written after their chi
 - [ ] `notation=`, `scale=`, `marking=false`, `waypoints` (routes from the file)
 - [ ] `guards=`, `delays=`, `deadlines=`, `explicit` for the whole graph
 - [ ] `guards={A4 response A6, A6 A7}` etc.: values of single relations as text ("source type target" or "source target"; `value` = update)
-- [ ] Warnings: unknown relation names, relation without such a value, unsupported elements
+- [ ] Warnings: unknown relation names, relation without such a value, unsupported elements, a top edge too short for its self-relation markers
 - [ ] `export=file.tex`: write the generated code (to take it over and edit by hand)
 - [ ] `\begin{dcrgraphfile}[options]{file}` … `\end{dcrgraphfile}`
 - [ ] `\adjustactivity{id}{shift={(x,y)}, xshift=, yshift=, other activity options}`
