@@ -29,12 +29,12 @@ You can quickly see if it works by copying the following code:
 ```
 <img width="273" height="133" alt="image" src="https://github.com/user-attachments/assets/2dcfe85b-80c0-4ed3-8891-7e06a7526f51" />
 
-Import test (LuaLaTeX), with any file from [`xml/`](xml/):
+Import test (LuaLaTeX), with any file from [`xml/`](xml/), in all three notations:
 
-```latex
-\includedcrgraph{xml/DCR-JS Graph.xml}
-```
-<img width="300" alt="image" src="https://github.com/user-attachments/assets/179b26bc-ab06-49c9-a8b1-ed0e91dddcba" />
+| `notation=dcr-solutions` (default) | `notation=classic` | `notation=coopis23` |
+|---|---|---|
+| `\includedcrgraph{xml/DCR-JS Graph.xml}` | `\includedcrgraph[notation=classic]{xml/DCR-JS Graph.xml}` | `\includedcrgraph[notation=coopis23]{xml/DCR-JS Graph.xml}` |
+| ![dcr-solutions notation](images/import-dcr-solutions.png) | ![classic notation](images/import-classic.png) | ![coopis23 notation](images/import-coopis23.png) |
 
 ## Features
 
