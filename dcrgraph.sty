@@ -643,6 +643,31 @@
 % "node.anchor" -> "node"
 \def\dcr@split#1.#2\@nil{\def\dcr@node{#1}}
 
+% Part of \dcr@computeend (see the invariant note there): if the "back
+% along the edge" direction (\dcr@ux,\dcr@uy) disagrees in sign with the
+% box's own outward normal on the side that was hit, replace it with
+% that normal, so the marker is always pushed outward. Sets
+% \ifdcr@endfixed so callers that drew the line up to the box border and
+% relied on shortening to reach the marker (which assumes the marker
+% sits within that drawn length) know to reach the corrected marker
+% position explicitly instead.
+\newif\ifdcr@endfixed
+\newcommand\dcr@computeendfix{%
+  \dcr@endfixedfalse
+  \ifdim\dcr@sx pt>\dcr@sy pt
+    \ifdim\dcr@bx>\dcr@cx
+      \ifdim\dcr@ux pt<0pt \def\dcr@ux{1}\def\dcr@uy{0}\dcr@endfixedtrue\fi
+    \else
+      \ifdim\dcr@ux pt>0pt \def\dcr@ux{-1}\def\dcr@uy{0}\dcr@endfixedtrue\fi
+    \fi
+  \else
+    \ifdim\dcr@by>\dcr@cy
+      \ifdim\dcr@uy pt<0pt \def\dcr@uy{1}\def\dcr@ux{0}\dcr@endfixedtrue\fi
+    \else
+      \ifdim\dcr@uy pt>0pt \def\dcr@uy{-1}\def\dcr@ux{0}\dcr@endfixedtrue\fi
+    \fi
+  \fi}
+
 % #1 = target (node or node.anchor), #2 = half size of the marker
 % result: \dcr@t (distance marker centre -> border point along the edge)
 %         \dcr@px, \dcr@py (marker centre)
@@ -662,6 +687,14 @@
   % point horizontally and vertically (1 = on that side)
   \pgfmathsetmacro\dcr@sx{abs(\dcr@bx-\dcr@cx)/max(\dcr@nx-\dcr@cx,0.01)}%
   \pgfmathsetmacro\dcr@sy{abs(\dcr@by-\dcr@cy)/max(\dcr@ny-\dcr@cy,0.01)}%
+  % Invariant (dcr-solutions, coopis23): the marker must end up outside
+  % the target box. Normally the edge already arrives from outside, so
+  % "back along the edge" already points outward. But if the relation's
+  % other end lies inside this box (e.g. a child relates to the nesting
+  % that contains it), the edge arrives from the wrong side and that
+  % direction would push the marker further in instead of out. Classic
+  % keeps its old behaviour (coopis23 counts as non-classic here).
+  \ifdcr@classic\ifdcr@coopis\dcr@computeendfix\fi\else\dcr@computeendfix\fi
   % component of the edge direction perpendicular to that side
   \pgfmathsetmacro\dcr@perp{\dcr@sx>\dcr@sy ? abs(\dcr@ux) : abs(\dcr@uy)}%
   % distance needed so the marker clears the side (+ half box line + gap);
@@ -1052,12 +1085,26 @@
       \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@s}{center}}%
       \pgfcoordinate{dcr@a}{\pgfpointanchor{dcr@s2}{center}}%
       \dcr@computeend{#5}{#3}%
-      \draw[#1,#4,shorten <=\dcr@t] \dcr@line;
+      % Once the invariant above had to correct the push direction, the
+      % marker sits past the drawn line's raw end, so reach it
+      % explicitly instead of shortening from a point that's no longer
+      % beyond the marker (the normal, uncorrected case is unchanged).
+      \ifdcr@endfixed
+        \coordinate (dcr@pfix) at (\dcr@px pt,\dcr@py pt);
+        \draw[#1,#4] (dcr@pfix) -- \dcr@line;
+      \else
+        \draw[#1,#4,shorten <=\dcr@t] \dcr@line;
+      \fi
     \else
       \pgfcoordinate{dcr@b}{\pgfpointanchor{dcr@e}{center}}%
       \pgfcoordinate{dcr@a}{\pgfpointanchor{dcr@e2}{center}}%
       \dcr@computeend{#6}{#3}%
-      \draw[#1,#4,shorten >=\dcr@t] \dcr@line;
+      \ifdcr@endfixed
+        \coordinate (dcr@pfix) at (\dcr@px pt,\dcr@py pt);
+        \draw[#1,#4] \dcr@line -- (dcr@pfix);
+      \else
+        \draw[#1,#4,shorten >=\dcr@t] \dcr@line;
+      \fi
     \fi
     \node[#2] at (\dcr@px pt,\dcr@py pt) {};
     \dcr@decorate{#1}{#3}%
@@ -1734,7 +1781,19 @@
     % ---- the line, then the markers on top ----
     \ifdcr@routed   % routes leave the box straight; start in the triangle
       \coordinate (dcr@p0) at (dcr@tb);
-      \draw[#1, dcr/coopis line, #2, shorten >=\dcr@tend] \dcr@ppath;
+      % Usually dcr@we (the route's raw endpoint) is already at the real
+      % border and "shorten >=\dcr@tend" pulls the line back from there
+      % to the marker's near edge. When the invariant above had to
+      % correct the push direction, the marker moved outward past
+      % dcr@we instead, so extend the path to the marker's own centre
+      % and shorten only by its half-size (the normal, uncorrected
+      % case is unchanged).
+      \ifdcr@endfixed
+        \coordinate (dcr@pfix) at (\dcr@px pt,\dcr@py pt);
+        \draw[#1, dcr/coopis line, #2, shorten >=\dcr@tchalf] \dcr@ppath -- (dcr@pfix);
+      \else
+        \draw[#1, dcr/coopis line, #2, shorten >=\dcr@tend] \dcr@ppath;
+      \fi
     \else\ifdim\dcr@tbend>0pt
       \ifdcr@auto
         \draw[#1, dcr/coopis line, rounded corners=\dcr@ta pt, shorten >=\dcr@tend]
@@ -1752,10 +1811,19 @@
           (dcr@tb) -- (dcr@tt) to[relative=false, out=\dcr@oang, in=\dcr@iang] (dcr@e);
       \fi\fi
     \else
-      \ifdcr@auto
-        \draw[#1, dcr/coopis line, shorten >=\dcr@tend] (dcr@tb) -- (dcr@e);
+      \ifdcr@endfixed
+        \coordinate (dcr@pfix) at (\dcr@px pt,\dcr@py pt);
+        \ifdcr@auto
+          \draw[#1, dcr/coopis line, shorten >=\dcr@tchalf] (dcr@tb) -- (dcr@e) -- (dcr@pfix);
+        \else
+          \draw[#1, dcr/coopis line, #2, shorten >=\dcr@tchalf] (dcr@tb) to (#4) -- (dcr@pfix);
+        \fi
       \else
-        \draw[#1, dcr/coopis line, #2, shorten >=\dcr@tend] (dcr@tb) to (#4);
+        \ifdcr@auto
+          \draw[#1, dcr/coopis line, shorten >=\dcr@tend] (dcr@tb) -- (dcr@e);
+        \else
+          \draw[#1, dcr/coopis line, #2, shorten >=\dcr@tend] (dcr@tb) to (#4);
+        \fi
       \fi
     \fi\fi
     \dcr@ttriangle{#1}{\dcr@spx}{\dcr@spy}{\dcr@sux}{\dcr@suy}%

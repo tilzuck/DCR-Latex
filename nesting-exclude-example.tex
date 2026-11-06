@@ -1,0 +1,17 @@
+% A nesting "n" with three activities A, B, C; C excludes the whole
+% nesting n (coopis23 notation: triangle at the source C, circle with the
+% exclude symbol flush above n, directly over C). via= routes the line
+% out through n's top edge, straight above C.
+\documentclass[border=10pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage[scaled=0.92]{helvet}
+\usepackage{dcrgraph}
+\begin{document}
+\begin{dcrgraph}[notation=coopis23]
+  \activity{A}{a}
+  \activity[right=1cm of a]{B}{b}
+  \activity[right=1cm of b]{C}{c}
+  \nesting{}{n}{a, b, c}
+  \exclude[via={(c.north), (n.north -| c.north)}]{c}{n}
+\end{dcrgraph}
+\end{document}
