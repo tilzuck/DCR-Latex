@@ -88,6 +88,9 @@
 \newlength\dcr@rx
 \newlength\dcr@lw  \setlength\dcr@lw{2.3cm}    % label width (set per box)
 \newsavebox\dcr@lbox                            % for measuring a label
+\newlength\dcr@lroom                            % height left for the label
+\newif\ifdcr@grow                               % key grow, see dcr/fit label
+\newif\ifdcr@growbox                            % this box has to grow
 \newlength\dcr@dmnsize \setlength\dcr@dmnsize{8pt}  % DMN table icon width
 \newlength\dcr@rwidth  \setlength\dcr@rwidth{1.3pt}   % relation line width
 
@@ -125,24 +128,34 @@
   dcr/label/.style={font=\dcr@font\small, text width=\dcr@lw, align=flush center,
     execute at begin node={\hyphenpenalty=10000\exhyphenpenalty=10000}},
   % Applied last to an activity's box: the label's width follows the box
-  % width, and the box grows taller (evenly, it is centred) if the label
-  % needs more room than the box offers -- long labels never run out.
+  % width. A label too long for the box is cut with "..." (\dcr@fitlabel,
+  % result \dcr@labelfitted); with grow the box grows taller instead
+  % (evenly, it is centred), as for labels that cannot be cut.
+  dcr/grow/.is if=dcr@grow,
   dcr/fit label/.code={%
     \pgfmathsetlength\dimen@ii{\pgfkeysvalueof{/pgf/minimum width}}%
     \global\dcr@lw=\dimen@ii
     \global\advance\dcr@lw by -0.3cm
-    % (measured outside the picture: in it, fonts are \nullfont)
-    \pgfinterruptpicture
-      \global\setbox\dcr@lbox\hbox{\parbox{\dcr@lw}{\centering\dcr@font\small
-        \hyphenpenalty=10000\exhyphenpenalty=10000 \dcr@labeltext}}%
-    \endpgfinterruptpicture
-    \dimen@=\ht\dcr@lbox \advance\dimen@ by \dp\dcr@lbox
+    % what is left of the box for the label
+    \dimen@=0pt
     \ifx\dcr@subtitle\@empty\else\advance\dimen@ by 13pt\fi
     \ifx\dcr@receiver\@empty\else\advance\dimen@ by \dcr@header\fi
-    \advance\dimen@ by \dcr@header \advance\dimen@ by 0.7cm  % + margins, inner sep
-    \pgfmathsetlength\dimen@ii{\pgfkeysvalueof{/pgf/minimum height}}%
-    \ifdim\dimen@>\dimen@ii
-      \pgfkeyssetevalue{/pgf/minimum height}{\the\dimen@}%
+    \advance\dimen@ by \dcr@header
+    \pgfmathsetlength\dcr@lroom{\pgfkeysvalueof{/pgf/minimum height}}%
+    \advance\dcr@lroom by -\dimen@
+    \advance\dcr@lroom by -0.3cm   % margins: the node's inner sep and a little
+    % (measured outside the picture: in it, fonts are \nullfont)
+    \pgfinterruptpicture
+      \dcr@fitlabel
+      \global\setbox\dcr@lbox\hbox{\dcr@labelpar{\dcr@labelfitted}}%
+    \endpgfinterruptpicture
+    \ifdcr@growbox
+      \advance\dimen@ by \ht\dcr@lbox \advance\dimen@ by \dp\dcr@lbox
+      \advance\dimen@ by 0.7cm  % + margins, inner sep
+      \pgfmathsetlength\dimen@ii{\pgfkeysvalueof{/pgf/minimum height}}%
+      \ifdim\dimen@>\dimen@ii
+        \pgfkeyssetevalue{/pgf/minimum height}{\the\dimen@}%
+      \fi
     \fi},
   dcr/excluded/.style={dashed},
   % nestings
@@ -278,6 +291,114 @@
     \keyval_parse:NNn \__dcr_opt_key:n \__dcr_opt_kv:nn {#1}
     \cs_set_eq:NN \dcr@opts \l__dcr_opts_tl
   }
+
+% Fitting a label into its box, from \dcr@labeltext, with the width \dcr@lw
+% and the height \dcr@lroom. Result: \dcr@labelfitted, and \ifdcr@growbox if
+% the box has to grow to it.
+%  - A word wider than the box is cut with "..." (always).
+%  - A label higher than the room is cut after the last word that fits,
+%    with "..."; with the key grow, the box grows instead.
+%  - Labels with math or \\ are left as they are and the box grows: they
+%    cannot be taken apart at their spaces.
+% The label is split at its spaces (groups stay whole) and measured like the
+% node sets it, see \dcr@labelpar.
+\newcommand\dcr@dots{...}
+\newcommand\dcr@labelpar[1]{\parbox{\dcr@lw}{\centering\dcr@font\small
+  \hyphenpenalty=10000\exhyphenpenalty=10000 #1}}
+\seq_new:N \l__dcr_words_seq
+\seq_new:N \l__dcr_cut_seq
+\tl_new:N \l__dcr_word_tl
+\tl_new:N \l__dcr_text_tl
+\tl_new:N \l__dcr_try_tl
+\box_new:N \l__dcr_fit_box
+\tl_new:N \dcr@labelfitted
+\cs_new_protected:Npn \__dcr_word_box:n #1
+  { \hbox_set:Nn \l__dcr_fit_box { \dcr@font \small #1 } }
+% the word #1, cut if wider than the box, into \l__dcr_word_tl
+\cs_new_protected:Npn \__dcr_cut_word:n #1
+  {
+    \__dcr_word_box:n {#1}
+    \dim_compare:nNnTF { \box_wd:N \l__dcr_fit_box } > { \dcr@lw }
+      {
+        \tl_clear:N \l__dcr_word_tl
+        \text_map_inline:nn {#1}
+          {
+            \__dcr_word_box:n { \l__dcr_word_tl ##1 \dcr@dots }
+            \dim_compare:nNnT { \box_wd:N \l__dcr_fit_box } > { \dcr@lw }
+              { \text_map_break: }
+            \tl_put_right:Nn \l__dcr_word_tl {##1}
+          }
+        % (nothing fits, e.g. one wide box: leave it)
+        \tl_if_empty:NTF \l__dcr_word_tl
+          { \tl_set:Nn \l__dcr_word_tl {#1} }
+          { \tl_put_right:Nn \l__dcr_word_tl { \dcr@dots } }
+      }
+      { \tl_set:Nn \l__dcr_word_tl {#1} }
+  }
+% true if the text #1 fits the room
+\prg_new_protected_conditional:Npnn \__dcr_fits:n #1 { TF , F }
+  {
+    \hbox_set:Nn \l__dcr_fit_box { \dcr@labelpar {#1} }
+    \dim_compare:nNnTF
+      { \box_ht:N \l__dcr_fit_box + \box_dp:N \l__dcr_fit_box } > { \dcr@lroom }
+      { \prg_return_false: } { \prg_return_true: }
+  }
+\cs_new_protected:Npn \__dcr_fit_words:
+  {
+    % (\text_expand:n: a label may be given as a macro)
+    \tl_set:Nx \l__dcr_text_tl { \text_expand:n { \dcr@labeltext } }
+    \seq_set_split:NnV \l__dcr_words_seq { ~ } \l__dcr_text_tl
+    \seq_remove_all:Nn \l__dcr_words_seq { }
+    \seq_clear:N \l__dcr_cut_seq
+    \seq_map_inline:Nn \l__dcr_words_seq
+      {
+        \__dcr_cut_word:n {##1}
+        \seq_put_right:NV \l__dcr_cut_seq \l__dcr_word_tl
+      }
+    \tl_set:Nx \l__dcr_text_tl { \seq_use:Nn \l__dcr_cut_seq { ~ } }
+    \ifdcr@grow
+      \global\dcr@growboxtrue
+    \else
+      \__dcr_fits:VF \l__dcr_text_tl { \__dcr_cut_text: }
+    \fi
+  }
+% the words that fit, with "...", into \l__dcr_text_tl
+\cs_new_protected:Npn \__dcr_cut_text:
+  {
+    \tl_clear:N \l__dcr_text_tl
+    \seq_map_inline:Nn \l__dcr_cut_seq
+      {
+        \tl_set:Nx \l__dcr_try_tl
+          {
+            \exp_not:V \l__dcr_text_tl
+            \tl_if_empty:NF \l__dcr_text_tl { ~ }
+            \exp_not:n {##1}
+          }
+        \__dcr_fits:xF { \exp_not:V \l__dcr_try_tl \exp_not:N \dcr@dots }
+          { \seq_map_break: }
+        \tl_set_eq:NN \l__dcr_text_tl \l__dcr_try_tl
+      }
+    \tl_if_empty:NT \l__dcr_text_tl   % not even one word: that one
+      { \tl_set:Nx \l__dcr_text_tl { \seq_item:Nn \l__dcr_cut_seq { 1 } } }
+    % (a cut word already ends with the dots)
+    \tl_set:Nx \l__dcr_try_tl { \tl_item:Nn \l__dcr_text_tl { -1 } }
+    \tl_if_eq:NnF \l__dcr_try_tl { \dcr@dots }
+      { \tl_put_right:Nn \l__dcr_text_tl { \dcr@dots } }
+  }
+\cs_generate_variant:Nn \__dcr_fits:nF { V , x }
+\cs_new_protected:Npn \dcr@fitlabel
+  {
+    \global\dcr@growboxfalse
+    \tl_set_eq:NN \l__dcr_text_tl \dcr@labeltext
+    \tl_if_in:NnTF \dcr@labeltext { $ }
+      { \global\dcr@growboxtrue }
+      {
+        \tl_if_in:NnTF \dcr@labeltext { \\ }
+          { \global\dcr@growboxtrue }
+          { \__dcr_fit_words: }
+      }
+    \tl_gset_eq:NN \dcr@labelfitted \l__dcr_text_tl
+  }
 \ExplSyntaxOff
 \newcommand\dcrset[1]{\dcr@mapopts{#1}\expandafter\tikzset\expandafter{\dcr@opts}}
 
@@ -364,6 +485,7 @@
   role/.store in=\dcr@role,
   receiver/.store in=\dcr@receiver,   % choreographies: band at the bottom
   subtitle/.store in=\dcr@subtitle,
+  grow/.is if=dcr@grow,               % long label: box grows, is not cut
   bgcolor/.store in=\dcr@bg,          % background colour, any xcolor colour
   bordercolor/.store in=\dcr@bc,      % outline and header line
   textcolor/.store in=\dcr@tc,        % label and role
@@ -445,10 +567,10 @@
     \ifx\dcr@receiver\@empty\else\edef\dcr@ly{\dcr@ly+0.5\noexpand\dcr@header}\fi
     % label, centred in the body between the header and the receiver band
     \ifx\dcr@subtitle\@empty
-      \node[dcr/label, text=\dcr@tc] at ([yshift=\dcr@ly]#3.center) {#2};
+      \node[dcr/label, text=\dcr@tc] at ([yshift=\dcr@ly]#3.center) {\dcr@labelfitted};
     \else  % label, and below it a grey subtitle cut off with "..."
       \node[dcr/label, text=\dcr@tc] at ([yshift=\dcr@ly]#3.center)
-        {#2\\[3pt]{\dcr@font\dcr@subfont\color{dcr subtitle}%
+        {\dcr@labelfitted\\[3pt]{\dcr@font\dcr@subfont\color{dcr subtitle}%
           \truncate{\dimexpr\dcr@lw-0.1cm\relax}{\dcr@subtitle}}};
     \fi
     \dcr@marking{#3}{\dcr@header}%
@@ -3217,6 +3339,7 @@ local function emit(graph, opts, lay)
   local env = {}
   if opts.notation then env[#env + 1] = "notation=" .. opts.notation end
   if opts.explicit_all then env[#env + 1] = "explicit" end
+  if opts.grow then env[#env + 1] = "grow" end
   for _, k in ipairs({ "guards", "delays", "deadlines" }) do
     if opts[k] then env[#env + 1] = k .. "=" .. opts[k] end
   end
@@ -3406,6 +3529,9 @@ local function parse_options(str)
     elseif k == "explicit" then
       -- all values as text
       opts.explicit_all = true
+    elseif k == "grow" then
+      -- long labels: the boxes grow, labels are not cut
+      opts.grow = truthy(v)
     elseif k == "width" or k == "height" or k == "max width" or k == "max height" then
       -- the size of the whole graph: passed on to the environment
       if not v or v == "" then fail(k .. "= needs a length") end
@@ -3604,6 +3730,9 @@ function M.describe_layout(graph, opts)
   end
   for _, sz in ipairs(opts.size) do
     lines[#lines + 1] = "size " .. sz[1] .. "=" .. sz[2]
+  end
+  if opts.grow then
+    lines[#lines + 1] = "grow"
   end
   -- which values are written as text (options guards=, delays=,
   -- deadlines=, explicit; for the whole graph or single relations)

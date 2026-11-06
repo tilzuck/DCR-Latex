@@ -26,7 +26,8 @@ XML** → **3. Reference** (every command, key and colour, complete).
 - [ ] `\activity[options]{label}{id}`
 - [ ] Placing with TikZ: `right=2cm of a`, `below=…`, `at={(x,y)}`
 - [ ] Size: `minimum width=`, `minimum height=` (default 2.6 cm × 2.8 cm)
-- [ ] Long labels: the box grows taller automatically, label wraps
+- [ ] Long labels: wrapped, cut with "..." if they do not fit; words wider than the box are cut too
+- [ ] `grow` (event), `\dcrset{grow}`, `\includedcrgraph[grow]`, `\adjustactivity{id}{grow}`: the box grows taller instead, `grow=false` against the setting; labels with math or `\\` always grow
 - [ ] `role=…`, several roles `role={A, B}`
 - [ ] `receiver=…` (choreographies): grey band at the bottom, box one header taller; several `receiver={A,B}`
 - [ ] `subtitle=…`: grey italic text below the label, cut off with "…"

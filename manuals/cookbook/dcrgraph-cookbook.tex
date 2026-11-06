@@ -67,8 +67,9 @@ The onboarding process from the DCR documentation,
 \subsection{Step 1: one event}
 Everything of a graph goes into a \texttt{dcrgraph} environment. An event is
 \cs{activity\{}\textit{label}\texttt{\}\{}\textit{id}\texttt{\}}; the id is the
-name you refer to it by. A long label is wrapped, and the box grows if
-needed.
+name you refer to it by. A long label is wrapped; one that does not fit is
+cut with ``...'', unless the event has the option \key{grow}: then the box
+grows.
 \example{onboarding-1}
 
 \subsection{Step 2: all events, placed next to each other}

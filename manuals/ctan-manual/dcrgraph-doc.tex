@@ -334,6 +334,8 @@ Key & Meaning\\
 \key{receiver=}\meta{text} & choreographies: receiver in a grey band at the
   bottom (the box is one header taller); several: \key{receiver=\{A, B\}}\\
 \key{subtitle=}\meta{text} & grey italic text below the label, cut off with \dots\\
+\key{grow} & long label: the box grows taller, the label is not cut
+  (\key{grow=false}: cut it, against the setting \key{grow})\\
 \key{pending} & blue ``!'' top left\\
 \key{executed} & green tick top left\\
 \key{excluded}, \key{included} & dashed outline / normal (default)\\
@@ -350,9 +352,11 @@ anything else & passed to the Ti\emph{k}Z node: \key{at=\{(x,y)\}},
 \bottomrule
 \end{tabularx}
 
-The label is wrapped to the width of the box; a box grows taller (evenly
-around its centre) when its label needs more room than it has, so long labels
-never run out of the box.
+The label is wrapped to the width of the box. A box keeps its size: a label
+that does not fit is cut after the last word that fits, with ``\dots''; a word
+wider than the box is cut the same way. With \key{grow} the box grows taller
+instead (evenly around its centre) and shows the whole label. Labels with math
+or \cs{\textbackslash} are not cut, the box grows for them.
 
 \subsection{Collections}
 Written after their events; \meta{children} is a list of ids.
@@ -451,6 +455,7 @@ Setting & Meaning (default)\\
 \key{delays=marker|explicit|none} & times of conditions etc.\\
 \key{deadlines=marker|explicit|none} & times of responses\\
 \key{explicit} & all three explicit\\
+\key{grow} & the key \key{grow} for all events (default: long labels are cut)\\
 \multicolumn{2}{@{}p{\linewidth}@{}}{\small Defaults: dcr-solutions shows only
   the markers (shield, clock); classic and coopis23 have no shields or
   clocks and show the values as text. \key{explicit} adds the text (dcr-solutions),
@@ -525,6 +530,8 @@ Option & Meaning\\
   (ids from the file; \key{value} = \cs{update})\\
 \key{explicit} & all values as text\\
 \key{marking=false} & without executed / pending / excluded\\
+\key{grow} & long labels: the boxes grow, labels are not cut (one event:
+  \cs{adjustactivity}\marg{id}\texttt{\{grow\}})\\
 \key{scale=}\meta{factor} & scale the positions (not the boxes)\\
 \key{width=}, \key{height=}, & size of the whole graph, as for the
   environment (Section~\ref{sec:settings})\\

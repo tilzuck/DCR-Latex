@@ -6,3 +6,6 @@ classic: notation=classic
 
 # CoopIS2023 notation (paper proposal, as in DCR-js): translated like Classic
 coopis23: notation=coopis23
+
+# long labels: the boxes grow instead of cutting the label
+grow: grow
