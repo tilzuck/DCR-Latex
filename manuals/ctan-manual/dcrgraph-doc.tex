@@ -161,6 +161,34 @@ coopis23). A loop goes round the corner given with
 style \key{guard label} (guards) and \key{delay label} (times):
 \example{self-values}
 
+\paragraph{Abbreviated guards.} Long guards crowd a picture. With
+\key{guards=abbreviated} the lines show short names, $g_1$, $g_2$, \dots{}
+(numbered in the order drawn; the same expression gets the same name), in all
+three notations, and \cs{dcrguards} lists them with their expressions, e.g.\
+in the caption below the figure. \key{guard abbrev=}\meta{name} gives one
+relation a name of its own (it also abbreviates that one guard in the other
+modes); \key{explicit=guard} shows one guard in full.
+\example{guard-abbrev}
+Often only one guard is long. Then keep the others as they are and give just
+that one a name with \key{guard abbrev=}; \cs{dcrguards} lists only it:
+\example{guard-abbrev-one}
+In a figure:
+\begin{lstlisting}
+\begin{figure}
+  \begin{dcrgraph}[guards=abbreviated] ... \end{dcrgraph}
+  \caption[Approval]{Approval of an expense. Guards: \dcrguards}
+\end{figure}
+\end{lstlisting}
+\cs{dcrguards} lists the graph drawn last. For a caption above the figure,
+name the graph with \key{id=}, e.g.\ \cs{begin\{dcrgraph\}[guards=abbreviated,
+id=approval]}, and write \cs{dcrguards[approval]}; the list then comes from
+the previous run (a second run, as for parallel relations). Give
+\cs{caption} a short version for the list of figures. The names are
+\cs{dcrguardabbrev}\marg{n} (\cs{renewcommand\{\textbackslash
+dcrguardabbrev\}[1]\{\$\textbackslash varphi\_\{\#1\}\$\}} for
+$\varphi_1, \varphi_2, \dots$), an entry is \cs{dcrguarditem}\marg{name}\marg{expression}
+(``name: expression''), separated by \cs{dcrguardsep} (``; '').
+
 \subsection{Collections}
 Nestings, subprocesses, forms and subgraphs group
 events. They are written after their events and placed around them;
@@ -413,6 +441,8 @@ Option & Meaning\\
 \key{guard side=left|right} & the side of the line (seen from the first to
   the second event) where the guard is written as text (default
   \key{left})\\
+\key{guard abbrev=}\meta{name} & show this name instead of the guard's
+  expression (in every mode), listed by \cs{dcrguards}\\
 \key{via=\{(x1,y1),(x2,y2)\}} & route the line through these points\\
 \key{selfpos=}\meta{length} & for a relation from an event to itself: where its
   marker sits on the top edge (its centre, from the left edge); without it,
@@ -451,11 +481,13 @@ Setting & Meaning (default)\\
 \midrule
 \key{notation=dcr-solutions|classic|coopis23} & markers of the DCR portal,
   arrows, or triangle and circle (default: dcr-solutions)\\
-\key{guards=shield|explicit|both|none} & how guards are shown\\
+\key{guards=shield|explicit|both|none|abbreviated} & how guards are shown
+  (\key{abbreviated}: $g_1$, $g_2$, \dots, listed by \cs{dcrguards})\\
 \key{delays=marker|explicit|none} & times of conditions etc.\\
 \key{deadlines=marker|explicit|none} & times of responses\\
 \key{explicit} & all three explicit\\
 \key{grow} & the key \key{grow} for all events (default: long labels are cut)\\
+\key{id=}\meta{name} & name of one graph, for \cs{dcrguards}\oarg{name}\\
 \multicolumn{2}{@{}p{\linewidth}@{}}{\small Defaults: dcr-solutions shows only
   the markers (shield, clock); classic and coopis23 have no shields or
   clocks and show the values as text. \key{explicit} adds the text (dcr-solutions),
@@ -529,6 +561,7 @@ Option & Meaning\\
   ``\meta{source} \meta{type} \meta{target}'' or ``\meta{source} \meta{target}''
   (ids from the file; \key{value} = \cs{update})\\
 \key{explicit} & all values as text\\
+\key{id=}\meta{name} & name of the graph, for \cs{dcrguards}\oarg{name}\\
 \key{marking=false} & without executed / pending / excluded\\
 \key{grow} & long labels: the boxes grow, labels are not cut (one event:
   \cs{adjustactivity}\marg{id}\texttt{\{grow\}})\\
@@ -616,7 +649,21 @@ punctuation: \verb|A \dcrcondition.|).
 For \texttt{>} and \texttt{<} in guards, use \cs{usepackage[T1]\{fontenc\}}
 (with the old default encoding OT1 they print as other characters).
 
-The format of guards on lines: \cs{dcrguardformat}.
+\subsection{Guards: format and abbreviations}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.42\linewidth}L@{}}
+\toprule
+Command & Meaning\\
+\midrule
+\cs{dcrguardformat}\marg{guard} & a guard on a line: ``[ \meta{guard} ]''\\
+\cs{dcrguards}, \cs{dcrguards}\oarg{id} & the abbreviated guards of the graph
+  drawn last (or of the graph with \key{id=}\meta{id}, from the previous run):
+  ``$g_1$: \meta{expression}; \dots''; nothing if it has none; for captions\\
+\cs{dcrguardabbrev}\marg{n} & the $n$-th abbreviation ($g_n$)\\
+\cs{dcrguarditem}\marg{name}\marg{expression} & one entry of \cs{dcrguards}
+  (``name: expression'')\\
+\cs{dcrguardsep} & between two entries (``; '')\\
+\bottomrule
+\end{tabularx}
 
 % =====================================================================
 \appendix

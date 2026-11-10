@@ -82,6 +82,9 @@ Commands, all `\relation[options]{from}{to}`:
 - [ ] `explicit`, `explicit={guard,delay,deadline}` on one relation
 - [ ] `guard side=left|right` (side of the line for the guard text) and line breaks in long guards (`\\` with `guard label/.append style={align=center}`)
 - [ ] Guard format: `\dcrguardformat`
+- [x] Abbreviated guards: `guards=abbreviated` (g₁, g₂, … on the lines, same expression = same name, all notations), `guard abbrev=` (own name, one relation), `\dcrguards` in the caption below; `id=` + `\dcrguards[id]` for a caption above (second run); `\dcrguardabbrev`, `\dcrguarditem`, `\dcrguardsep` – examples/guard-abbrev.tex
+- [x] Only one long guard abbreviated (`guards=explicit` + one `guard abbrev=`) – examples/guard-abbrev-one.tex
+- [ ] Import: `\includedcrgraph[guards=abbreviated, id=…]`
 
 ### Placing the lines
 - [ ] Straight line between the boxes (default)

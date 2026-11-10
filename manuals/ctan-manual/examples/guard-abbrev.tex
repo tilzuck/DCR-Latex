@@ -1,0 +1,10 @@
+\begin{dcrgraph}[guards=abbreviated]
+  \activity[pending]{Approve or Reject}{a}
+  \activity[right=3cm of a, excluded]{Justify rejection}{j}
+  \exclude[guard={$\mathit{amount} \leq \mathit{limit}$}]{a}{j}
+  \include[guard={$\mathit{amount} > \mathit{limit} \land \neg\mathit{urgent}$}]{a}{j}
+  \response[guard={$\mathit{amount} > \mathit{limit} \land \neg\mathit{urgent}$}]{a}{j}
+  \exclude[guard={$\mathit{done}$}, guard abbrev=$\psi$]{j}{j}  % own abbreviation
+\end{dcrgraph}
+
+\dcrguards

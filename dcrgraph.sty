@@ -759,6 +759,8 @@
   guard side/.is choice,
   guard side/left/.code={\def\dcr@gside{left}},
   guard side/right/.code={\def\dcr@gside{right}},
+  % this abbreviation instead of the expression (see guards=abbreviated)
+  guard abbrev/.code={\def\dcr@gabbr{#1}},
   % internal, for the classic translation of a pre-condition: the milestone
   % has no time and no guard (both are written at the condition), and the
   % two lines of a route run side by side (dcr@shift: the route moved
@@ -775,7 +777,7 @@
   \begingroup
   \def\dcr@from{#5}\def\dcr@to{#6}%
   \def\dcr@ropts{}\def\dcr@delay{}\def\dcr@deadline{}\def\dcr@via{}%
-  \dcr@guardfalse\def\dcr@gexpr{}\def\dcr@off{0}%
+  \dcr@guardfalse\def\dcr@gexpr{}\def\dcr@gabbr{}\def\dcr@off{0}%
   \dcr@xguardfalse\dcr@xdelayfalse\dcr@xdeadlinefalse\def\dcr@bundle{}%
   \def\dcr@selfpos{}\def\dcr@corner{}\def\dcr@gside{left}\def\dcr@rshift{0pt}%
   \pgfkeys{/dcr@rel,#4}%
@@ -820,19 +822,32 @@
   %   portal:  guard = shield, time = clock marker; explicit adds the text
   %   classic: no shields, no clocks -- the values as text
   %   none:    nothing, in both notations
+  %   abbreviated: an abbreviation as text (g1, ...; the guard abbrev=
+  %            of the relation), in all notations; \dcrguards lists them
   % guard
-  \dcr@gtextfalse\dcr@gshieldfalse\dcr@gallowshieldfalse
+  \dcr@gtextfalse\dcr@gshieldfalse\dcr@gallowshieldfalse\dcr@gabbrevfalse
   \ifx\dcr@gmode\dcr@kw@none\else
-    \ifdcr@classic
+    \ifx\dcr@gmode\dcr@kw@abbreviated
+      \dcr@gtexttrue\dcr@gabbrevtrue
+      \ifdcr@classic\else\dcr@gallowshieldtrue\fi
+    \else\ifdcr@classic
       \dcr@gtexttrue
     \else
       \dcr@gallowshieldtrue
       \ifx\dcr@gmode\dcr@kw@explicit\dcr@gtexttrue
       \else\ifx\dcr@gmode\dcr@kw@both\dcr@gtexttrue\dcr@gshieldtrue
       \else\dcr@gshieldtrue\fi\fi
-    \fi
+    \fi\fi
   \fi
-  \ifdcr@xguard\dcr@gtexttrue\dcr@gshieldfalse\fi
+  % guard abbrev= on the relation: its abbreviation, whatever the mode;
+  % explicit={guard}: the whole expression
+  \ifx\dcr@gabbr\@empty\else\dcr@gtexttrue\dcr@gabbrevtrue\dcr@gshieldfalse\fi
+  \ifdcr@xguard\dcr@gtexttrue\dcr@gshieldfalse\dcr@gabbrevfalse\fi
+  % the text of the guard: the expression or its abbreviation
+  \let\dcr@gshow\dcr@gexpr
+  \ifdcr@guard\ifdcr@gtext\ifdcr@gabbrev\ifx\dcr@gexpr\@empty\else
+    \dcr@abbreviate
+  \fi\fi\fi\fi
   % time (\dcr@tmp is still the relation style)
   \ifx\dcr@tmp\dcr@kw@response\let\dcr@tm\dcr@lmode\else\let\dcr@tm\dcr@dmode\fi
   \dcr@ttextfalse\dcr@tclockfalse
@@ -943,7 +958,7 @@
 % a graph (\begin{dcrgraph}[dcr/...]). Defaults depend on the notation:
 % portal = only the markers (shield, clock), no values; classic = the
 % values as text (classic notation has no shields or clocks).
-%   guards=shield | explicit | both | none
+%   guards=shield | explicit | both | none | abbreviated
 %   delays=marker | explicit | none       (times of conditions etc.)
 %   deadlines=marker | explicit | none    (times of responses)
 %   explicit                              all three explicit
@@ -952,7 +967,8 @@
 % shows the text. Single relations: the relation key explicit={...}.
 \def\dcr@gmode{default}\def\dcr@dmode{default}\def\dcr@lmode{default}
 \def\dcr@kw@none{none}\def\dcr@kw@explicit{explicit}\def\dcr@kw@both{both}
-\newif\ifdcr@showshield
+\def\dcr@kw@abbreviated{abbreviated}
+\newif\ifdcr@showshield \newif\ifdcr@gabbrev
 \newif\ifdcr@gtext \newif\ifdcr@gshield \newif\ifdcr@ttext  % per relation
 \newif\ifdcr@gallowshield \newif\ifdcr@tclock
 \tikzset{
@@ -961,6 +977,7 @@
   dcr/guards/explicit/.code={\def\dcr@gmode{explicit}},
   dcr/guards/both/.code={\def\dcr@gmode{both}},
   dcr/guards/none/.code={\def\dcr@gmode{none}},
+  dcr/guards/abbreviated/.code={\def\dcr@gmode{abbreviated}},
   dcr/delays/.is choice,
   dcr/delays/marker/.code={\def\dcr@dmode{marker}},
   dcr/delays/explicit/.code={\def\dcr@dmode{explicit}},
@@ -986,14 +1003,14 @@
 \newcommand\dcr@guardlabel[4]{% #1 style, #2 tikz options, #3 from, #4 to
   \ifdcr@guard\ifdcr@gtext\ifx\dcr@gexpr\@empty\else
     \ifdcr@auto
-      \path (dcr@s) -- node[#1, dcr/guard@line] {\dcrguardformat{\dcr@gexpr}} (dcr@e);
+      \path (dcr@s) -- node[#1, dcr/guard@line] {\dcrguardformat{\dcr@gshow}} (dcr@e);
     \else\ifdcr@routed
       % routed relation: halfway along the middle segment
       \dcr@i=\numexpr(\dcr@np-1)/2\relax
       \path (dcr@p\the\dcr@i) -- node[#1, dcr/guard@line]
-        {\dcrguardformat{\dcr@gexpr}} (dcr@p\the\numexpr\dcr@i+1\relax);
+        {\dcrguardformat{\dcr@gshow}} (dcr@p\the\numexpr\dcr@i+1\relax);
     \else
-      \path[#2] (#3) to node[#1, dcr/guard@line] {\dcrguardformat{\dcr@gexpr}} (#4);
+      \path[#2] (#3) to node[#1, dcr/guard@line] {\dcrguardformat{\dcr@gshow}} (#4);
     \fi\fi
   \fi\fi\fi}
 % the style dcr/this delay label: "<relation> delay label" if relation
@@ -1002,6 +1019,94 @@
   \pgfkeysifdefined{/tikz/#1 delay label/.@cmd}%
     {\tikzset{dcr/this delay label/.style={#1 delay label}}}%
     {\tikzset{dcr/this delay label/.style={}}}}
+
+% ------------------------------------------------------------------
+%  Guards as abbreviations (guards=abbreviated, or the relation key
+%  guard abbrev=...): the line shows g1, g2, ... instead of the
+%  expression, and \dcrguards lists them, e.g. in the caption:
+%    \caption{Approval. \dcrguards}     -> g1: x > 5; g2: ...
+%  Numbered per graph in the order drawn; the same expression gets the
+%  same abbreviation. \dcrguards lists the graph drawn last;
+%  \dcrguards[name] the graph with id=name (also before it, from the
+%  .aux: a second run).
+%  The list of a graph: \dcr@glist@<graph> = \dcr@gi{abbrev}{expr}...
+% ------------------------------------------------------------------
+\newcommand\dcrguardabbrev[1]{\ensuremath{g_{#1}}}  % the n-th abbreviation
+\newcommand\dcrguarditem[2]{#1:~#2}                % one entry of \dcrguards
+\newcommand\dcrguardsep{; }                        % between two entries
+\def\dcr@gid{}
+\tikzset{dcr/id/.code={\def\dcr@gid{#1}}}          % name of a graph
+% \dcr@gshow := the abbreviation of \dcr@gexpr (own: \dcr@gabbr), listed
+\newcommand\dcr@abbreviate{%
+  \ifx\dcr@gabbr\@empty
+    % automatic: the next number, or the one this expression already has
+    \edef\dcr@tmp{dcr@gab@\the\dcr@graph @\detokenize\expandafter{\dcr@gexpr}}%
+    \ifcsname\dcr@tmp\endcsname\else
+      \ifcsname dcr@gabn@\the\dcr@graph\endcsname\else
+        \expandafter\gdef\csname dcr@gabn@\the\dcr@graph\endcsname{0}%
+      \fi
+      \expandafter\xdef\csname dcr@gabn@\the\dcr@graph\endcsname{\the\numexpr
+        \csname dcr@gabn@\the\dcr@graph\endcsname+1\relax}%
+      \expandafter\xdef\csname\dcr@tmp\endcsname{\noexpand\dcrguardabbrev
+        {\csname dcr@gabn@\the\dcr@graph\endcsname}}%
+      \expandafter\dcr@addguard\csname\dcr@tmp\endcsname
+    \fi
+    \expandafter\let\expandafter\dcr@gshow\csname\dcr@tmp\endcsname
+  \else
+    % own abbreviation: listed once with its expression
+    \let\dcr@gshow\dcr@gabbr
+    \edef\dcr@tmp{dcr@gown@\the\dcr@graph @\detokenize\expandafter{\dcr@gabbr}%
+      |\detokenize\expandafter{\dcr@gexpr}}%
+    \ifcsname\dcr@tmp\endcsname\else
+      \expandafter\gdef\csname\dcr@tmp\endcsname{}%
+      \dcr@addguard\dcr@gabbr
+    \fi
+  \fi}
+% append \dcr@gi{abbreviation (the contents of macro #1)}{\dcr@gexpr}
+\newcommand\dcr@addguard[1]{%
+  \ifcsname dcr@glist@\the\dcr@graph\endcsname
+    \expandafter\let\expandafter\dcr@tmpb\csname dcr@glist@\the\dcr@graph\endcsname
+  \else
+    \let\dcr@tmpb\@empty
+  \fi
+  \expandafter\xdef\csname dcr@glist@\the\dcr@graph\endcsname{%
+    \unexpanded\expandafter{\dcr@tmpb}%
+    \noexpand\dcr@gi{\unexpanded\expandafter{#1}}{\unexpanded\expandafter{\dcr@gexpr}}}}
+% at the end of a graph: its list is the last one (and that of its id=;
+% in the .aux for \dcrguards[id] before the graph)
+\let\dcr@lastguards\@empty
+\def\dcr@auxguards#1#2{\expandafter\gdef\csname dcr@gl@#1\endcsname{#2}}
+\newcommand\dcr@endguards{%
+  \ifcsname dcr@glist@\the\dcr@graph\endcsname
+    \global\expandafter\let\expandafter\dcr@lastguards
+      \csname dcr@glist@\the\dcr@graph\endcsname
+  \else
+    \global\let\dcr@lastguards\@empty
+  \fi
+  \ifx\dcr@gid\@empty\else
+    \global\expandafter\let\csname dcr@gl@\dcr@gid\endcsname\dcr@lastguards
+    \immediate\write\@auxout{\string\dcr@auxguards{\dcr@gid}%
+      {\unexpanded\expandafter{\dcr@lastguards}}}%
+  \fi}
+\AtBeginDocument{\immediate\write\@auxout{\string\providecommand
+  \string\dcr@auxguards[2]{}}}
+% \dcrguards, \dcrguards[id]: "g1: expr; g2: expr" (nothing if the graph
+% has no abbreviated guards)
+\DeclareRobustCommand\dcrguards[1][]{%
+  \begingroup
+    \if\relax\detokenize{#1}\relax
+      \let\dcr@gl\dcr@lastguards
+    \else\ifcsname dcr@gl@#1\endcsname
+      \expandafter\let\expandafter\dcr@gl\csname dcr@gl@#1\endcsname
+    \else
+      \def\dcr@gl{\textbf{??}}%
+      \PackageWarning{dcrgraph}{\string\dcrguards: no graph with id=#1
+        (yet); rerun LaTeX}%
+    \fi\fi
+    \def\dcr@gsep{}%
+    \def\dcr@gi##1##2{\dcr@gsep\dcrguarditem{##1}{##2}\def\dcr@gsep{\dcrguardsep}}%
+    \dcr@gl
+  \endgroup}
 
 % The values of a self-relation as text (guard, then the time beyond it),
 % outside the box next to its loop or marker: from the point (#2,#3) (in
@@ -1014,7 +1119,7 @@
   \edef\dcr@selfend{#3}%
   \ifdcr@guard\ifdcr@gtext\ifx\dcr@gexpr\@empty\else
     \node[#1, dcr/guard label, anchor=\dcr@sanchor] (dcr@sl)
-      at (#2pt,\dcr@selfend pt) {\dcrguardformat{\dcr@gexpr}};
+      at (#2pt,\dcr@selfend pt) {\dcrguardformat{\dcr@gshow}};
     \pgfpointanchor{dcr@sl}{\ifdim#5pt>0pt north\else south\fi}%
     \edef\dcr@selfend{\strip@pt\pgf@y}%
   \fi\fi\fi
@@ -2113,6 +2218,7 @@
     \expandafter\let\csname\dcr@r\expandafter\endcsname
       \csname dcr@\dcr@r\endcsname\fi}%
   \global\advance\dcr@graph 1
+  \def\dcr@gid{}%   (id= names one graph)
   \pgfsetlayers{dcrnest6,dcrnest5,dcrnest4,dcrnest3,dcrnest2,dcrnest1,main}%
   \dcr@mapopts{#1}%   settings without dcr/, see \dcrset
   % into a box (as lrbox does), scaled at the end: see width= etc.
@@ -2122,6 +2228,7 @@
     % the sizes set in the options, out of the picture's group
     \global\let\dcr@g@w\dcr@w \global\let\dcr@g@h\dcr@h
     \global\let\dcr@g@maxw\dcr@maxw \global\let\dcr@g@maxh\dcr@maxh
+    \dcr@endguards   % the abbreviated guards, for \dcrguards
   \end{tikzpicture}%
   \color@endgroup\egroup
   \dcr@placegraph
@@ -3408,6 +3515,7 @@ local function emit(graph, opts, lay)
   if opts.notation then env[#env + 1] = "notation=" .. opts.notation end
   if opts.explicit_all then env[#env + 1] = "explicit" end
   if opts.grow then env[#env + 1] = "grow" end
+  if opts.id then env[#env + 1] = "id={" .. opts.id .. "}" end
   for _, k in ipairs({ "guards", "delays", "deadlines" }) do
     if opts[k] then env[#env + 1] = k .. "=" .. opts[k] end
   end
@@ -3587,7 +3695,8 @@ local function parse_options(str)
     elseif k == "guards" or k == "delays" or k == "deadlines" then
       -- a mode for the whole graph, or a list of relations whose value
       -- is shown as text: guards={A4 response A6, A6 A7}
-      local modes = (k == "guards") and { shield = 1, explicit = 1, both = 1, none = 1 }
+      local modes = (k == "guards")
+        and { shield = 1, explicit = 1, both = 1, none = 1, abbreviated = 1 }
                                      or { marker = 1, explicit = 1, none = 1 }
       if modes[v] then
         opts[k] = v
@@ -3600,6 +3709,10 @@ local function parse_options(str)
     elseif k == "grow" then
       -- long labels: the boxes grow, labels are not cut
       opts.grow = truthy(v)
+    elseif k == "id" then
+      -- name of the graph, for \dcrguards[id]
+      if not v or v == "" then fail("id= needs a name") end
+      opts.id = v
     elseif k == "width" or k == "height" or k == "max width" or k == "max height" then
       -- the size of the whole graph: passed on to the environment
       if not v or v == "" then fail(k .. "= needs a length") end
@@ -3802,6 +3915,7 @@ function M.describe_layout(graph, opts)
   if opts.grow then
     lines[#lines + 1] = "grow"
   end
+  if opts.id then lines[#lines + 1] = "id " .. opts.id end
   -- which values are written as text (options guards=, delays=,
   -- deadlines=, explicit; for the whole graph or single relations)
   local parts = M.explicit_parts(graph, opts)
@@ -3818,14 +3932,20 @@ function M.describe_layout(graph, opts)
   for i, r in ipairs(graph.relations) do
     local shown = {}
     for _, p in ipairs(parts[i] or {}) do shown[p] = true end
+    local named = shown.guard   -- guards={...} names it: the whole text
     if r.guard and as_text(opts.guards) then shown.guard = true end
+    -- guards=abbreviated (after explicit in the options, so it wins): an
+    -- abbreviation, unless the relation is named in guards={...}
+    if r.guard and opts.guards == "abbreviated" and not named then
+      shown.guard, shown["abbreviated-guard"] = nil, true
+    end
     if r.delay and r.kind == "response" and as_text(opts.deadlines) then
       shown.deadline = true
     end
     if r.delay and r.kind ~= "response" and as_text(opts.delays) then
       shown.delay = true
     end
-    for _, p in ipairs({ "guard", "delay", "deadline" }) do
+    for _, p in ipairs({ "guard", "abbreviated-guard", "delay", "deadline" }) do
       if shown[p] then
         lines[#lines + 1] = string.format("show %s %s %s -> %s", p, r.kind, r.from, r.to)
       end

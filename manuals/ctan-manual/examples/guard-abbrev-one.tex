@@ -1,0 +1,12 @@
+\begin{dcrgraph}[guards=explicit]
+  \activity[pending]{Approve or Reject}{a}
+  \activity[right=3cm of a, excluded]{Justify rejection}{j}
+  \activity[below=1.5cm of a]{Pay out}{p}
+  \exclude[guard={$x = 1$}]{a}{j}
+  \include[guard={$x = 0$}]{a}{j}
+  \include[guard={$\mathit{amount} \leq \mathit{limit} \lor
+    (\mathit{approved\_by} = \mathit{manager} \land \neg\mathit{urgent})$},
+    guard abbrev=$g$]{a}{p}                    % only this one abbreviated
+\end{dcrgraph}
+
+\dcrguards

@@ -37,3 +37,9 @@ unknown-relation: guards={A1 A7}
 wrong-type: guards={A4 condition A6}
 no-guard-there: guards={A1 condition A2}
 deadline-not-delay: delays={A2 response A5}
+
+# guards as abbreviations (g1, g2, ...; listed by \dcrguards), all
+# notations; a relation named in guards={...} keeps its whole text
+abbreviated: guards=abbreviated, id=timed
+abbreviated-classic: notation=classic, guards=abbreviated
+abbreviated-one-whole: guards=abbreviated, guards={A6 value A7}
